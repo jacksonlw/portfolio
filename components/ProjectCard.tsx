@@ -11,7 +11,7 @@ type Props = {
 function ProjectCard({ title, desc, img, imgType }: Props) {
   const imgURL: string = `url(/${img})`;
   return (
-    <div className="group cursor-pointer">
+    <div className="cursor-pointer group">
       <div
         className={`aspect-video w-full group-hover:bg-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.05)] transition rounded-lg flex items-center justify-center`}
       >
@@ -23,8 +23,10 @@ function ProjectCard({ title, desc, img, imgType }: Props) {
           alt={`${title} Image`}
         />
       </div>
-      <h3 className="text-xl font-medium mt-4">{title}</h3>
-      <p className="text-neutral-400 text-lg font-medium">{desc}</p>
+      <h3 className="mt-4 text-lg font-medium sm:text-xl">{title}</h3>
+      <p className="text-base font-medium sm:text-lg text-neutral-400">
+        {desc}
+      </p>
     </div>
   );
 }
