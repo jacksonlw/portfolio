@@ -6,6 +6,7 @@ type Project = {
   title: string;
   desc: string;
   imgType: "mobile" | "web";
+  url: string;
 };
 
 type Service = {
@@ -26,24 +27,28 @@ export const PROJECTS: Array<Project> = [
     title: "Grindstone",
     desc: "Jobs for the next generation",
     imgType: "mobile",
+    url: "https://github.com/GrindstoneApp",
+  },
+  {
+    img: "koistream-mockup.png",
+    title: "Koistream",
+    desc: "Connecting students, staff, and families through community livestreams",
+    imgType: "web",
+    url: "https://github.com/JacksonL1787/koistream",
   },
   {
     img: "tedx-mockup-2.png",
     title: "TEDx Design Tech High School",
     desc: "Sell and manage tickets for high school TEDx event",
     imgType: "web",
-  },
-  {
-    img: "markdown-mockup-2.png",
-    title: "Markdown",
-    desc: "Find better prices while shopping online",
-    imgType: "web",
+    url: "https://github.com/JacksonL1787/ticketing-tedxdesigntech",
   },
   {
     img: "branch-mockup.png",
     title: "Branch",
     desc: "Smart school prototype presented at Oracle OpenWorld 2019",
     imgType: "web",
+    url: "https://github.com/JacksonL1787/Branch",
   },
 ];
 

@@ -6,12 +6,13 @@ type Props = {
   title: string;
   desc: string;
   imgType: "mobile" | "web";
+  url: string;
 };
 
-function ProjectCard({ title, desc, img, imgType }: Props) {
+function ProjectCard({ title, desc, img, imgType, url }: Props) {
   const imgURL: string = `url(/${img})`;
   return (
-    <div className="cursor-pointer group">
+    <a className="group cursor-pointer" href={url} target="_blank">
       <div
         className={`aspect-video w-full group-hover:bg-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.05)] transition rounded-lg flex items-center justify-center`}
       >
@@ -23,11 +24,11 @@ function ProjectCard({ title, desc, img, imgType }: Props) {
           alt={`${title} Image`}
         />
       </div>
-      <h3 className="mt-4 text-lg font-medium sm:text-xl">{title}</h3>
-      <p className="text-base font-medium sm:text-lg text-neutral-400">
+      <h3 className="sm:text-xl mt-4 text-lg font-medium">{title}</h3>
+      <p className="sm:text-lg text-neutral-400 text-base font-medium">
         {desc}
       </p>
-    </div>
+    </a>
   );
 }
 

@@ -21,17 +21,17 @@ const Home: NextPage = () => {
       </Head>
       <Navbar />
       <div className="py-24 mx-auto max-w-[1440px] px-8 2xl:px-0">
-        <ShowOnScroll className="mt-24 lg:flex lg:justify-between lg:items-center">
-          <h1 className="overflow-hidden text-5xl font-medium tracking-tight sm:text-7xl">
+        <ShowOnScroll className="lg:flex lg:justify-between lg:items-center mt-24">
+          <h1 className="sm:text-7xl overflow-hidden text-5xl font-medium tracking-tight">
             Developer
           </h1>
-          <div className="max-w-lg mt-10 lg:max-w-md xl:max-w-lg lg:mt-0">
-            <h2 className="text-xl font-medium sm:text-2xl text-neutral-400">
+          <div className="lg:max-w-md xl:max-w-lg lg:mt-0 max-w-lg mt-10">
+            <h2 className="sm:text-2xl text-neutral-400 text-xl font-medium">
               I am Jackson Lawrence, a web and mobile developer based out of
               Silicon Valley.
             </h2>
             <a
-              className="flex items-center mt-4 cursor-pointer justify-left"
+              className="justify-left flex items-center mt-4 cursor-pointer"
               target="_blank"
               href="/resume.pdf"
             >
@@ -40,7 +40,7 @@ const Home: NextPage = () => {
             </a>
           </div>
         </ShowOnScroll>
-        <div className="grid w-full grid-cols-1 mt-24 lg:grid-cols-2 lg:gap-x-5 gap-y-10 lg:mt-48">
+        <div className="lg:grid-cols-2 lg:gap-x-5 gap-y-10 lg:mt-48 grid w-full grid-cols-1 mt-24">
           {PROJECTS.map((p, i) => (
             <ShowOnScroll key={i} delay={0.2}>
               <ProjectCard
@@ -48,17 +48,18 @@ const Home: NextPage = () => {
                 title={p.title}
                 desc={p.desc}
                 imgType={p.imgType}
+                url={p.url}
               />
             </ShowOnScroll>
           ))}
         </div>
         <div className="mt-36 sm:mt-60">
           <ShowOnScroll>
-            <h1 className="overflow-hidden text-5xl font-medium tracking-tight sm:text-7xl">
+            <h1 className="sm:text-7xl overflow-hidden text-5xl font-medium tracking-tight">
               Services
             </h1>
           </ShowOnScroll>
-          <div className="grid grid-cols-1 mt-16 sm:mt-24 lg:grid-cols-2 gap-y-10 lg:gap-y-0 lg:gap-x-5">
+          <div className="sm:mt-24 lg:grid-cols-2 gap-y-10 lg:gap-y-0 lg:gap-x-5 grid grid-cols-1 mt-16">
             {SERVICES.map((s, i) => (
               <ShowOnScroll key={i} delay={0.2}>
                 <ServiceCard Icon={s.Icon} title={s.title} desc={s.desc} />
@@ -67,7 +68,7 @@ const Home: NextPage = () => {
           </div>
         </div>
         <ShowOnScroll className="mt-36 sm:mt-60 lg:flex lg:justify-between lg:items-center">
-          <h1 className="overflow-hidden text-5xl font-medium tracking-tight sm:text-7xl">
+          <h1 className="sm:text-7xl overflow-hidden text-5xl font-medium tracking-tight">
             Skills
           </h1>
           <div className="w-full p-8 bg-[rgba(255,255,255,0.05)] rounded-lg mt-10 lg:max-w-2xl lg:mt-0">
@@ -78,7 +79,7 @@ const Home: NextPage = () => {
                 }`}
                 key={i}
               >
-                <p className="text-lg font-medium w-36 shrink-0">{s.name}</p>
+                <p className="w-36 shrink-0 text-lg font-medium">{s.name}</p>
                 <div className="w-full h-3 bg-[rgba(255,255,255,0.05)] rounded-full">
                   <div
                     className={`h-full rounded-full`}
