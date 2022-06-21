@@ -12,7 +12,12 @@ type Props = {
 function ProjectCard({ title, desc, img, imgType, url }: Props) {
   const imgURL: string = `url(/${img})`;
   return (
-    <a className="group cursor-pointer" href={url} target="_blank">
+    <a
+      className="group cursor-pointer"
+      href={url}
+      target="_blank"
+      rel="noreferrer"
+    >
       <div
         className={`aspect-video w-full group-hover:bg-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.05)] transition rounded-lg flex items-center justify-center`}
       >
