@@ -1,39 +1,39 @@
-import { motion, useAnimation } from "framer-motion";
-import React, { ReactNode, useEffect, useRef, useState } from "react";
+import { motion, useAnimation } from 'framer-motion'
+import React, { ReactNode, useEffect, useRef, useState } from 'react'
 
 type Props = {
-  children: ReactNode;
-  className?: string;
-  delay?: number;
-};
+  children: ReactNode
+  className?: string
+  delay?: number
+}
 
-function useOnScreen(ref: any, rootMargin = "0px") {
-  const [isIntersecting, setIntersecting] = useState(false);
+function useOnScreen(ref: any, rootMargin = '0px') {
+  const [isIntersecting, setIntersecting] = useState(false)
 
   useEffect(() => {
     const observer = new IntersectionObserver(
       ([entry]) => {
-        setIntersecting(entry.isIntersecting);
+        setIntersecting(entry.isIntersecting)
       },
       {
-        rootMargin,
+        rootMargin
       }
-    );
+    )
     if (ref.current) {
-      observer.observe(ref.current);
+      observer.observe(ref.current)
     }
     return () => {
-      observer.unobserve(ref.current);
-    };
-  }, [rootMargin, ref]);
+      observer.unobserve(ref.current)
+    }
+  }, [rootMargin, ref])
 
-  return isIntersecting;
+  return isIntersecting
 }
 
 function ShowOnScroll({ children, className, delay = 0.2 }: Props) {
-  const controls = useAnimation();
-  const ref = useRef(null);
-  const onScreen = useOnScreen(ref);
+  const controls = useAnimation()
+  const ref = useRef(null)
+  const onScreen = useOnScreen(ref)
   useEffect(() => {
     if (onScreen) {
       controls.start({
@@ -42,11 +42,11 @@ function ShowOnScroll({ children, className, delay = 0.2 }: Props) {
         transition: {
           duration: 0.5,
           delay: delay,
-          ease: "easeOut",
-        },
-      });
+          ease: 'easeOut'
+        }
+      })
     }
-  }, [onScreen, controls, delay]);
+  }, [onScreen, controls, delay])
 
   return (
     <motion.div
@@ -57,7 +57,7 @@ function ShowOnScroll({ children, className, delay = 0.2 }: Props) {
     >
       {children}
     </motion.div>
-  );
+  )
 }
 
-export default ShowOnScroll;
+export default ShowOnScroll

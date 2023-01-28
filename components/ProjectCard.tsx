@@ -1,16 +1,16 @@
 /* eslint-disable @next/next/no-img-element */
-import React from "react";
+import React from 'react'
 
 type Props = {
-  img: string;
-  title: string;
-  desc: string;
-  imgType: "mobile" | "web";
-  url: string;
-};
+  img: string
+  title: string
+  desc: string
+  imgType: 'mobile' | 'web'
+  url: string
+}
 
 function ProjectCard({ title, desc, img, imgType, url }: Props) {
-  const imgURL: string = `url(/${img})`;
+  const imgURL: string = `url(/${img})`
   return (
     <a
       className="group cursor-pointer"
@@ -19,22 +19,22 @@ function ProjectCard({ title, desc, img, imgType, url }: Props) {
       rel="noreferrer"
     >
       <div
-        className={`aspect-video w-full group-hover:bg-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.05)] transition rounded-lg flex items-center justify-center`}
+        className={`flex aspect-video w-full items-center justify-center rounded-lg bg-[rgba(255,255,255,0.05)] transition group-hover:bg-[rgba(255,255,255,0.08)]`}
       >
         <img
           className={`${
-            imgType === "mobile" ? "h-4/6 ml-[-5%]" : "h-5/6"
-          } bg-cover bg-no-repeat bg-center`}
+            imgType === 'mobile' ? 'ml-[-5%] h-4/6' : 'h-5/6'
+          } bg-cover bg-center bg-no-repeat`}
           src={`/${img}`}
           alt={`${title} Image`}
         />
       </div>
-      <h3 className="sm:text-xl mt-4 text-lg font-medium">{title}</h3>
-      <p className="sm:text-lg text-neutral-400 text-base font-medium">
+      <h3 className="mt-4 text-lg font-medium sm:text-xl">{title}</h3>
+      <p className="text-base font-medium text-neutral-400 sm:text-lg">
         {desc}
       </p>
     </a>
-  );
+  )
 }
 
-export default ProjectCard;
+export default ProjectCard

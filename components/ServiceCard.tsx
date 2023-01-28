@@ -1,23 +1,23 @@
-import React from "react";
+import React from 'react'
 
 type Props = {
-  Icon: React.FC<React.ComponentProps<"svg">>;
-  title: string;
-  desc: string;
-};
+  Icon: React.FC<React.ComponentProps<'svg'>>
+  title: string
+  desc: string
+}
 
 function ProjectCard({ Icon, title, desc }: Props) {
   return (
-    <div className="border-neutral-800 px-10 py-8 border rounded-lg">
-      <div className="flex items-center justify-center w-16 h-16 bg-white rounded-lg">
-        <Icon className="w-8 h-8 text-black" />
+    <div className="rounded-lg border border-neutral-800 px-10 py-8">
+      <div className="flex h-16 w-16 items-center justify-center rounded-lg bg-white">
+        <Icon className="h-8 w-8 text-black" />
       </div>
-      <h3 className="sm:text-2xl mt-5 text-xl font-medium">{title}</h3>
-      <p className="sm:text-lg font-meidum text-neutral-400 mt-3 text-base">
+      <h3 className="mt-5 text-xl font-medium sm:text-2xl">{title}</h3>
+      <p className="font-meidum mt-3 text-base text-neutral-400 sm:text-lg">
         {desc}
       </p>
     </div>
-  );
+  )
 }
 
-export default ProjectCard;
+export default ProjectCard
