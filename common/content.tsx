@@ -1,31 +1,11 @@
 import { LightBulbIcon, LightningBoltIcon } from '@heroicons/react/outline'
-import { SVGProps } from 'react'
-
-type Project = {
-  img: string
-  title: string
-  desc: string
-  imgType: 'mobile' | 'web'
-  url: string
-}
-
-type Service = {
-  Icon: React.FC<SVGProps<SVGSVGElement>>
-  title: string
-  desc: string
-}
-
-type Skill = {
-  name: string
-  percentage: number
-  color: string
-}
+import { Project, Service, Skill } from './contentTypes'
 
 export const PROJECTS: Array<Project> = [
   {
     img: 'grindstone-mockup-2.png',
     title: 'Trailblaze',
-    desc: 'Jobs for the next generation',
+    desc: 'Job opporutnities for the next generation of talent',
     imgType: 'mobile',
     url: 'https://trailblaze.to'
   },
@@ -82,7 +62,7 @@ export const SKILLS: Array<Skill> = [
     color: '#a55eea'
   },
   {
-    name: 'MySQL',
+    name: 'SQL',
     percentage: 80,
     color: '#f39c12'
   },

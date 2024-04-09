@@ -1,5 +1,4 @@
 /* eslint-disable @next/next/no-img-element */
-import React from 'react'
 
 type Props = {
   img: string
@@ -19,7 +18,7 @@ function ProjectCard({ title, desc, img, imgType, url }: Props) {
       rel="noreferrer"
     >
       <div
-        className={`flex aspect-video w-full items-center justify-center rounded-lg bg-[rgba(255,255,255,0.05)] transition group-hover:bg-[rgba(255,255,255,0.08)]`}
+        className={`flex aspect-video w-full items-center justify-center rounded-lg border-2 border-transparent bg-neutral-200 transition group-hover:bg-neutral-300`}
       >
         <img
           className={`${
@@ -29,10 +28,10 @@ function ProjectCard({ title, desc, img, imgType, url }: Props) {
           alt={`${title} Image`}
         />
       </div>
-      <h3 className="mt-4 text-lg font-medium sm:text-xl">{title}</h3>
-      <p className="text-base font-medium text-neutral-400 sm:text-lg">
-        {desc}
-      </p>
+      <h3 className="mt-4 text-xl font-medium transition group-hover:text-blue-600 sm:text-xl">
+        {title}
+      </h3>
+      <p className="text-base text-neutral-600 sm:text-lg">{desc}</p>
     </a>
   )
 }
