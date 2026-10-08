@@ -28,6 +28,12 @@
   --text-lede--font-weight: 400;
 }
 
+/* The portfolio's one departure from the AnyForm tokens: the page is white, not grey. */
+:root,
+.light {
+  --background: #ffffff;
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
@@ -55,7 +61,7 @@
    to related skills draw in. Only when motion is welcome; otherwise everything is simply there. */
 @media (prefers-reduced-motion: no-preference) {
   .constellation-star {
-    animation: constellation-rise 600ms cubic-bezier(0.22, 1, 0.36, 1) both;
+    animation: constellation-rise 600ms cubic-bezier(0.22, 1, 0.36, 1) backwards;
     animation-delay: calc(var(--i, 0) * 25ms);
   }
   .constellation-link {

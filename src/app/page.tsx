@@ -12,7 +12,7 @@ export default function Home() {
     <>
       <JsonLd data={personJsonLd()} />
 
-      <section aria-label="About" className="pt-10 pb-4 sm:pt-14">
+      <section aria-label="About" className="pt-16 pb-4 sm:pt-24">
         <Container className="grid items-start gap-10 lg:grid-cols-[minmax(0,22rem)_minmax(0,1fr)] lg:gap-16">
           <ProfileCard />
           <div className="min-w-0 lg:pt-6">
@@ -33,7 +33,7 @@ export default function Home() {
 
       <Section id="projects" className="py-12 sm:py-16">
         <h2 className="sr-only">Projects</h2>
-        <ul className="grid gap-5 sm:grid-cols-2">
+        <ul className="grid gap-x-8 gap-y-12 sm:grid-cols-2">
           {PROJECTS.map((p) => (
             <li key={p.slug}>
               <ProjectCard project={p} />
@@ -44,10 +44,9 @@ export default function Home() {
 
       <Section
         id="skills"
-        tone="white"
-        size="wide"
+        size="full"
         title="Skills"
-        description="Hover a skill to see where I’ve used it. Lines connect skills that shipped together."
+        description="Hover a skill to see the projects it went into, or a project to see what it was built with."
       >
         <SkillsConstellation skills={SKILLS} projects={PROJECTS} />
       </Section>

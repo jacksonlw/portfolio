@@ -1,39 +1,24 @@
 import { MapPinIcon } from '@phosphor-icons/react/ssr'
 import Image from 'next/image'
-import { HERO_PHOTO_BOX, HeroArt } from '@/components/illustrations/hero'
 import { PROFILE } from '@/content/profile'
 import { cn } from '@/lib/cn'
 import photo from '../../../public/profile-picture.jpg'
 import { CtaLink } from './cta-link'
 
-/**
- * The home page's profile: the photo over the hero art, then the name, the role and location
- * and the two actions. No frame; everything left-aligned.
- */
+/** The home page's profile: the photo, the name, the role and location, and the two actions. */
 export function ProfileCard({ className }: { className?: string }) {
   return (
     <div className={cn('min-w-0', className)}>
-      <div className="relative -ml-3 w-full max-w-[17rem]">
-        <HeroArt autoplay />
-        <div
-          className="absolute overflow-hidden rounded-full"
-          style={{
-            left: HERO_PHOTO_BOX.left,
-            top: HERO_PHOTO_BOX.top,
-            width: HERO_PHOTO_BOX.size,
-            height: HERO_PHOTO_BOX.size
-          }}
-        >
-          <Image
-            src={photo}
-            alt={`Portrait of ${PROFILE.name}`}
-            fill
-            priority
-            placeholder="blur"
-            sizes="160px"
-            className="scale-[1.35] object-cover object-[62%_18%]"
-          />
-        </div>
+      <div className="relative size-44 overflow-hidden rounded-full">
+        <Image
+          src={photo}
+          alt={`Portrait of ${PROFILE.name}`}
+          fill
+          priority
+          placeholder="blur"
+          sizes="176px"
+          className="scale-[1.35] object-cover object-[62%_18%]"
+        />
       </div>
 
       <h1 className="mt-6 text-title sm:text-headline">{PROFILE.name}</h1>

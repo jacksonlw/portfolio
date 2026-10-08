@@ -6,8 +6,10 @@ const WIDTHS = {
   narrow: 'max-w-3xl',
   /** The site's default content width. */
   default: 'max-w-6xl',
-  /** Full-bleed grids. */
-  wide: 'max-w-7xl'
+  /** Wide grids. */
+  wide: 'max-w-7xl',
+  /** Edge to edge, inside the page gutter. */
+  full: 'max-w-none'
 } as const
 
 export type ContainerSize = keyof typeof WIDTHS

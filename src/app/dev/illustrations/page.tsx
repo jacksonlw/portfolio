@@ -1,6 +1,5 @@
 import { notFound } from 'next/navigation'
 import { ILLUSTRATIONS } from '@/components/illustrations/registry'
-import { HeroArt } from '@/components/illustrations/hero'
 import { PROJECTS } from '@/content/profile'
 import { TINT_BG } from '@/lib/accent'
 import { cn } from '@/lib/cn'
@@ -34,9 +33,6 @@ export default function IllustrationGallery() {
         {Object.entries(ILLUSTRATIONS).slice(0, 4).map(([key, { component: Art }]) => (
           <Art key={key} size={56} />
         ))}
-      </div>
-      <div className="max-w-md">
-        <HeroArt />
       </div>
     </div>
   )

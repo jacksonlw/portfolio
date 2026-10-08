@@ -18,7 +18,7 @@ export function ReadMore({ className, children }: { className?: string; children
           className="size-4 transition-transform duration-200 group-open:rotate-180 motion-reduce:transition-none"
         />
       </summary>
-      <div className="mt-5 space-y-5 text-lg leading-relaxed text-pretty text-foreground/85 sm:text-xl sm:leading-relaxed">
+      <div className="mt-5 space-y-5 text-xl leading-relaxed text-pretty sm:text-2xl sm:leading-relaxed">
         {children}
       </div>
     </details>

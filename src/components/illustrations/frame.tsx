@@ -3,12 +3,11 @@ import { cn } from "@/lib/cn";
 import { Reveal } from "./reveal";
 import "./illustrations.css";
 
-export type IllustrationKind = "badge" | "scene" | "hero";
+export type IllustrationKind = "badge" | "scene";
 export type Surface = "page" | "card" | "ink";
 
-/** The viewBox of each kind: badges on a 160 square (4-unit grid), scenes 640×400 (8-unit grid),
-    the home hero a 480 square (16-unit grid). */
-export const VIEWBOX: Record<IllustrationKind, readonly [number, number]> = { badge: [160, 160], scene: [640, 400], hero: [480, 480] };
+/** The viewBox of each kind: badges on a 160 square (4-unit grid), scenes 640×400 (8-unit grid). */
+export const VIEWBOX: Record<IllustrationKind, readonly [number, number]> = { badge: [160, 160], scene: [640, 400] };
 
 /** What every illustration component takes (and passes to its frame). */
 export type IllustrationProps = {
@@ -33,7 +32,7 @@ export type IllustrationProps = {
  */
 export function strokeFor(kind: IllustrationKind, size: number | string | undefined): number {
   if (typeof size !== "number") return 2;
-  const sw = kind === "badge" ? 192 / size : kind === "hero" ? 600 / size : 800 / size;
+  const sw = kind === "badge" ? 192 / size : 800 / size;
   return Math.round(Math.min(kind === "badge" ? 3.5 : 4, Math.max(2, sw)) * 4) / 4;
 }
 

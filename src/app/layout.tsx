@@ -3,7 +3,6 @@ import localFont from 'next/font/local'
 import './globals.css'
 import { ChatbotSlot } from '@/components/chatbot/chatbot-slot'
 import { Footer } from '@/components/site/footer'
-import { Header } from '@/components/site/header'
 import { PROFILE } from '@/content/profile'
 
 // The AnyForm brand typeface and its mono companion (OFL; licences beside the files in ./fonts).
@@ -52,7 +51,6 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${flex.variable} ${code.variable}`}>
       <body className="flex min-h-dvh flex-col">
-        <Header />
         <main className="flex-1">{children}</main>
         <Footer />
         <ChatbotSlot />
