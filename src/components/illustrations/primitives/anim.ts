@@ -5,7 +5,7 @@ export const ANIMS = ["draw", "spill", "float", "pulse", "pop", "twinkle", "rise
 export type Anim = (typeof ANIMS)[number];
 
 /** What an accent means in an illustration (README.md). Blocked has no colour: it's an ink cross. */
-export const ACCENTS = ["sky", "mint", "sun", "lavender"] as const;
+export const ACCENTS = ["sky", "mint", "sun", "lavender", "rose", "ocean", "peach"] as const;
 export type Accent = (typeof ACCENTS)[number];
 /** The swash is blue or one accent. */
 export type SwashTone = "blue" | Accent;
@@ -22,7 +22,10 @@ export type Fill =
   | `${Accent}-tint`
   | "mint-deep"
   | "sun-deep"
-  | "lavender-deep";
+  | "lavender-deep"
+  | "rose-deep"
+  | "ocean-deep"
+  | "peach-deep";
 
 export const fill = (f: Fill) => `ill-f-${f}`;
 

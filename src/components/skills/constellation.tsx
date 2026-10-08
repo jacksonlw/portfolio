@@ -1,6 +1,6 @@
 'use client'
 
-import { ArrowRightIcon } from '@phosphor-icons/react/ssr'
+import { ArrowRightIcon, ArrowUpRightIcon } from '@phosphor-icons/react/ssr'
 import Link from 'next/link'
 import {
   useEffect,
@@ -12,7 +12,7 @@ import {
 } from 'react'
 import { Illustration } from '@/components/illustrations/registry'
 import type { Accent, Project, Skill, WorkNode } from '@/content/profile'
-import { TINT_BG } from '@/lib/accent'
+import { ACCENT_BG, TINT_BG } from '@/lib/accent'
 import { cn } from '@/lib/cn'
 
 /*
@@ -34,6 +34,7 @@ import { cn } from '@/lib/cn'
  * real link or button.
  */
 
+/** Each area wears its own pastel; none repeats. */
 type AreaDef = { key: string; accent: Accent; hub: [number, number] }
 
 const AREAS: Record<Skill['area'], AreaDef> = {
@@ -41,8 +42,8 @@ const AREAS: Record<Skill['area'], AreaDef> = {
   Languages: { key: 'area/languages', accent: 'lavender', hub: [14, 50] },
   'Frontend & mobile': { key: 'area/frontend', accent: 'mint', hub: [14, 83] },
   'Backend & data': { key: 'area/backend', accent: 'sun', hub: [86, 17] },
-  'Cloud & tools': { key: 'area/cloud', accent: 'sky', hub: [86, 50] },
-  'How I work': { key: 'area/work', accent: 'lavender', hub: [86, 83] }
+  'Cloud & tools': { key: 'area/cloud', accent: 'ocean', hub: [86, 50] },
+  'How I work': { key: 'area/work', accent: 'peach', hub: [86, 83] }
 }
 
 type BubbleSize = 'xl' | 'lg' | 'md' | 'sm'
@@ -72,12 +73,8 @@ const BUBBLE_STYLE: Record<
   sm: { disc: 'size-20', art: 'w-14', label: 'text-xs', depth: 8 }
 }
 
-const DOT: Record<Accent, string> = {
-  sky: 'bg-illo-sky',
-  mint: 'bg-illo-mint',
-  sun: 'bg-illo-sun',
-  lavender: 'bg-illo-lavender'
-}
+/** A skill's dot: its area's full accent. */
+const DOT = ACCENT_BG
 
 type Star = Skill & { x: number; y: number; i: number; above: boolean }
 type ProjectNode = (Project | WorkNode) & {
@@ -490,6 +487,23 @@ export function SkillsConstellation({
           )
           const body = (
             <>
+              {p.kind === 'project' && (
+                <span
+                  aria-hidden
+                  className={cn(
+                    'mb-2 inline-flex items-center gap-1 rounded-full bg-primary px-3 py-1 text-xs font-semibold text-primary-foreground transition-[opacity,translate,background-color] duration-300 group-hover:bg-brand group-focus-visible:bg-brand motion-reduce:transition-none',
+                    isActive
+                      ? 'translate-y-0 opacity-100'
+                      : 'pointer-events-none translate-y-1 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 group-focus-visible:translate-y-0 group-focus-visible:opacity-100'
+                  )}
+                >
+                  See more
+                  <ArrowUpRightIcon
+                    weight="bold"
+                    className="size-3.5 transition-transform duration-300 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 motion-reduce:transition-none"
+                  />
+                </span>
+              )}
               <span
                 className={cn(
                   'flex items-center justify-center rounded-full border-2 transition-[border-color,scale,box-shadow] duration-300 group-hover:scale-105',
@@ -619,7 +633,8 @@ export function SkillsConstellation({
               anchor.x > 50 && '-translate-x-full'
             )}
             style={{
-              left: `calc(${anchor.x}% ${anchor.x > 50 ? '- 2.5rem' : '+ 2.5rem'})`,
+              // Clear of a bubble's disc, tagline and See more pill; closer for a skill's dot.
+              left: `calc(${anchor.x}% ${anchor.x > 50 ? '-' : '+'} ${activeProject ? '6.5rem' : '1.5rem'})`,
               top: `calc(${anchor.y}% ${anchor.y > 60 ? '- 0.5rem' : '+ 0.5rem'})`
             }}
           >

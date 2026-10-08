@@ -19,7 +19,7 @@ export type StorySection = {
 }
 
 /** The brand's pastel accents: each project wears one (its art's swash and its tinted panels). */
-export type Accent = 'sky' | 'mint' | 'sun' | 'lavender'
+export type Accent = 'sky' | 'mint' | 'sun' | 'lavender' | 'rose' | 'ocean' | 'peach'
 
 export type Project = {
   slug: string

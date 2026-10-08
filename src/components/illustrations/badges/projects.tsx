@@ -65,12 +65,12 @@ export function CratestBadge(props: IllustrationProps) {
 export function TrailblazeBadge(props: IllustrationProps) {
   return (
     <IllustrationFrame kind="badge" {...props}>
-      <FamilySwash accent="mint" />
+      <FamilySwash accent="ocean" />
       <g {...animProps({ anim: 'float', delay: 1100 })}>
         <Shadowed>
           <Card x={40} y={28} w={60} h={104} r={8} />
           <path className="ill-f-none ill-s" d="M64 36H76M64 124H76" />
-          <Card x={48} y={48} w={44} h={28} r={2} tone="mint-tint" />
+          <Card x={48} y={48} w={44} h={28} r={2} tone="ocean-tint" />
           <Lines x={54} y={58} w={32} widths={[1, 0.6]} onLight />
           <Card x={48} y={84} w={44} h={28} r={2} />
           <Lines x={54} y={94} w={32} widths={[1, 0.6]} />
@@ -110,7 +110,7 @@ export function KoiStreamBadge(props: IllustrationProps) {
 export function TedxBadge(props: IllustrationProps) {
   return (
     <IllustrationFrame kind="badge" {...props}>
-      <FamilySwash accent="sky" />
+      <FamilySwash accent="rose" />
       <g {...animProps({ anim: 'float', delay: 1100 })}>
         <g transform="rotate(-10 80 84)">
           <Shadowed>
@@ -120,7 +120,7 @@ export function TedxBadge(props: IllustrationProps) {
             />
             <path className="ill-f-none ill-s ill-dash" d="M108 64V104" />
             <Lines x={32} y={76} w={60} widths={[1, 0.7, 0.4]} />
-            <rect className="ill-f-sky ill-s" x={116} y={76} width={16} height={16} rx={2} />
+            <rect className="ill-f-rose ill-s" x={116} y={76} width={16} height={16} rx={2} />
           </Shadowed>
         </g>
       </g>
@@ -156,15 +156,15 @@ export function BranchBadge(props: IllustrationProps) {
 export function OracleBadge(props: IllustrationProps) {
   return (
     <IllustrationFrame kind="badge" {...props}>
-      <FamilySwash accent="sky" />
+      <FamilySwash accent="rose" />
       <g {...animProps({ anim: 'float', delay: 1100 })}>
         <Shadowed>
           <path className="ill-f-none ill-s ill-s-bold" d="M56 60V48H88V60" />
           <Card x={20} y={60} w={104} h={64} />
           <path className="ill-f-none ill-s" d="M20 84H124" />
-          <rect className="ill-f-sky ill-s" x={64} y={76} width={16} height={16} rx={2} />
+          <rect className="ill-f-rose ill-s" x={64} y={76} width={16} height={16} rx={2} />
         </Shadowed>
-        <AgentBadge delay={450} />
+        <AgentBadge tone="rose" delay={450} />
       </g>
       <FamilySparkles big="topLeft" small="bottomRight" />
     </IllustrationFrame>
@@ -175,11 +175,11 @@ export function OracleBadge(props: IllustrationProps) {
 export function CareerFoundryBadge(props: IllustrationProps) {
   return (
     <IllustrationFrame kind="badge" {...props}>
-      <FamilySwash accent="mint" />
+      <FamilySwash accent="peach" />
       <g {...animProps({ anim: 'float', delay: 1100 })}>
         <path className="ill-f-none ill-s" d="M52 112L40 136M92 112L104 136" />
         <Shadowed>
-          <Card x={20} y={40} w={104} h={72} tone="mint-tint" />
+          <Card x={20} y={40} w={104} h={72} tone="peach-tint" />
           <path className="ill-f-none ill-s ill-s-bold ill-s-ink-fixed" d="M40 64L32 72L40 80M56 64L64 72L56 80" />
           <Lines x={76} y={64} w={36} widths={[1, 0.7, 0.45]} onLight />
         </Shadowed>

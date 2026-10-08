@@ -22,15 +22,27 @@ const code = localFont({
 
 export const metadata: Metadata = {
   metadataBase: new URL(PROFILE.url),
-  title: { default: PROFILE.name, template: `%s · ${PROFILE.name}` },
-  description: PROFILE.intro,
+  title: {
+    default: `${PROFILE.name} · ${PROFILE.role}`,
+    template: `%s · ${PROFILE.name}`
+  },
+  description: PROFILE.description,
+  authors: [{ name: PROFILE.name, url: PROFILE.url }],
+  creator: PROFILE.name,
   openGraph: {
     type: 'profile',
     siteName: PROFILE.name,
-    title: PROFILE.name,
-    description: PROFILE.intro,
+    title: `${PROFILE.name} · ${PROFILE.role}`,
+    description: PROFILE.description,
     url: '/',
-    locale: 'en_US'
+    locale: 'en_US',
+    firstName: 'Jackson',
+    lastName: 'Lawrence'
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: `${PROFILE.name} · ${PROFILE.role}`,
+    description: PROFILE.description
   },
   // Point agents at the machine-readable views of the same content.
   alternates: {

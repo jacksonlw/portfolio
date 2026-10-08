@@ -64,7 +64,7 @@ export function llmsTxt(): string {
   return [
     `# ${PROFILE.name}`,
     '',
-    `> ${PROFILE.role} at Oracle, based in ${PROFILE.location}. ${mdAbs(PROFILE.about.lead[0])}`,
+    `> ${PROFILE.description}`,
     '',
     'Everything on this site comes from one content file, so these views and the HTML pages say the same thing.',
     '',
@@ -168,17 +168,28 @@ export function profileJson() {
 }
 
 /** schema.org Person, for the home page. */
+/** schema.org ProfilePage around the Person, as search engines expect for a personal site. */
 export function personJsonLd() {
-  const current = EXPERIENCE.find((e) => e.dates.end === null)
   return {
     '@context': 'https://schema.org',
+    '@type': 'ProfilePage',
+    url: PROFILE.url,
+    name: `${PROFILE.name} · ${PROFILE.role}`,
+    mainEntity: person()
+  }
+}
+
+function person() {
+  const current = EXPERIENCE.find((e) => e.dates.end === null)
+  return {
     '@type': 'Person',
     '@id': abs('/#person'),
     name: PROFILE.name,
     url: PROFILE.url,
+    image: abs(PROFILE.photo),
     email: `mailto:${PROFILE.email}`,
     jobTitle: PROFILE.role,
-    description: PROFILE.intro,
+    description: PROFILE.description,
     address: {
       '@type': 'PostalAddress',
       addressLocality: 'San Francisco',
@@ -186,6 +197,11 @@ export function personJsonLd() {
       addressCountry: 'US'
     },
     worksFor: current && { '@type': 'Organization', name: current.company },
+    hasOccupation: current && {
+      '@type': 'Occupation',
+      name: current.title,
+      occupationLocation: { '@type': 'City', name: current.location ?? PROFILE.location }
+    },
     alumniOf: EDUCATION.map((e) => ({
       '@type': 'CollegeOrUniversity',
       name: e.school

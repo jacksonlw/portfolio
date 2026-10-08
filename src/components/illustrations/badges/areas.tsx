@@ -95,11 +95,11 @@ export function BackendBadge(props: IllustrationProps) {
 export function CloudBadge(props: IllustrationProps) {
   return (
     <IllustrationFrame kind="badge" {...props}>
-      <FamilySwash accent="sky" />
+      <FamilySwash accent="ocean" />
       <g {...animProps({ anim: 'float', delay: 1100 })}>
         <Shadowed>
           <path
-            className="ill-f-sky-tint ill-s"
+            className="ill-f-ocean-tint ill-s"
             d="M40 112A20 20 0 0 1 40 72A32 32 0 0 1 100 64A24 24 0 0 1 120 112Z"
           />
         </Shadowed>
@@ -115,14 +115,14 @@ export function CloudBadge(props: IllustrationProps) {
 export function WorkBadge(props: IllustrationProps) {
   return (
     <IllustrationFrame kind="badge" {...props}>
-      <FamilySwash accent="lavender" />
+      <FamilySwash accent="peach" />
       <g {...animProps({ anim: 'float', delay: 1100 })}>
         <Shadowed>
           <Card x={20} y={44} w={104} h={80} />
           <path className="ill-f-none ill-s" d="M56 44V124M88 44V124" />
-          <rect className="ill-f-lavender-tint ill-s" x={28} y={56} width={20} height={16} rx={2} />
-          <rect className="ill-f-lavender-tint ill-s" x={28} y={80} width={20} height={16} rx={2} />
-          <rect className="ill-f-lavender ill-s" x={64} y={56} width={16} height={16} rx={2} />
+          <rect className="ill-f-peach-tint ill-s" x={28} y={56} width={20} height={16} rx={2} />
+          <rect className="ill-f-peach-tint ill-s" x={28} y={80} width={20} height={16} rx={2} />
+          <rect className="ill-f-peach ill-s" x={64} y={56} width={16} height={16} rx={2} />
           <rect className="ill-f-paper ill-s" x={96} y={56} width={20} height={16} rx={2} />
         </Shadowed>
         <CheckBadge cx={112} cy={48} r={14} delay={450} />

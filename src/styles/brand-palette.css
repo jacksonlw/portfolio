@@ -1,7 +1,7 @@
 /*
  * The illustration palette, ported from the AnyForm brand (~/af-approvals/logo/source/colors.mjs).
- * For illustrations and brand bands only, never UI chrome. Each accent means something:
- * sky = the agent or a proposal, mint = goes through, sun = waits for a person, lavender = the record.
+ * For illustrations and brand bands only, never UI chrome. The AnyForm four (sky, mint, sun,
+ * lavender) plus three portfolio additions in the same family: rose, ocean and peach.
  */
 
 :root {
@@ -21,6 +21,16 @@
   --af-lavender: #D7C6FF;
   --af-lavender-tint: #F5F1FF;
   --af-lavender-deep: #5F4193;
+  /* Portfolio additions, in the same pastel family: light red, blue and peach. */
+  --af-rose: #FFC4BD;
+  --af-rose-tint: #FFF0EE;
+  --af-rose-deep: #9A2B20;
+  --af-ocean: #A9DBFF;
+  --af-ocean-tint: #EAF6FF;
+  --af-ocean-deep: #0A4F86;
+  --af-peach: #FFD3A8;
+  --af-peach-tint: #FFF3E6;
+  --af-peach-deep: #8A4510;
 }
 
 @theme inline {
@@ -40,4 +50,13 @@
   --color-illo-lavender: var(--af-lavender);
   --color-illo-lavender-tint: var(--af-lavender-tint);
   --color-illo-lavender-deep: var(--af-lavender-deep);
+  --color-illo-rose: var(--af-rose);
+  --color-illo-rose-tint: var(--af-rose-tint);
+  --color-illo-rose-deep: var(--af-rose-deep);
+  --color-illo-ocean: var(--af-ocean);
+  --color-illo-ocean-tint: var(--af-ocean-tint);
+  --color-illo-ocean-deep: var(--af-ocean-deep);
+  --color-illo-peach: var(--af-peach);
+  --color-illo-peach-tint: var(--af-peach-tint);
+  --color-illo-peach-deep: var(--af-peach-deep);
 }

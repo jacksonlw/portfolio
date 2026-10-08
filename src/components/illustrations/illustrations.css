@@ -39,7 +39,7 @@
 
 /* Light fills keep their ink outline in the dark: a light one would vanish into them. */
 :is(.dark .ill, .ill[data-surface="ink"])
-  :is(.ill-f-sky, .ill-f-sky-tint, .ill-f-mint, .ill-f-mint-tint, .ill-f-sun, .ill-f-sun-tint, .ill-f-lavender, .ill-f-lavender-tint, .ill-f-fog).ill-s {
+  :is(.ill-f-sky, .ill-f-sky-tint, .ill-f-mint, .ill-f-mint-tint, .ill-f-sun, .ill-f-sun-tint, .ill-f-lavender, .ill-f-lavender-tint, .ill-f-rose, .ill-f-rose-tint, .ill-f-ocean, .ill-f-ocean-tint, .ill-f-peach, .ill-f-peach-tint, .ill-f-fog).ill-s {
   stroke: var(--af-ink, #0b0b0c);
 }
 
@@ -66,6 +66,15 @@
 .ill-f-lavender { fill: var(--af-lavender, #c4b5fd); }
 .ill-f-lavender-tint { fill: var(--af-lavender-tint, #eee9ff); }
 .ill-f-lavender-deep { fill: var(--af-lavender-deep, #5b3fd1); }
+.ill-f-rose { fill: var(--af-rose, #ffc4bd); }
+.ill-f-rose-tint { fill: var(--af-rose-tint, #fff0ee); }
+.ill-f-rose-deep { fill: var(--af-rose-deep, #9a2b20); }
+.ill-f-ocean { fill: var(--af-ocean, #a9dbff); }
+.ill-f-ocean-tint { fill: var(--af-ocean-tint, #eaf6ff); }
+.ill-f-ocean-deep { fill: var(--af-ocean-deep, #0a4f86); }
+.ill-f-peach { fill: var(--af-peach, #ffd3a8); }
+.ill-f-peach-tint { fill: var(--af-peach-tint, #fff3e6); }
+.ill-f-peach-deep { fill: var(--af-peach-deep, #8a4510); }
 
 /* The ink outline: 2 units at the base size (frame.tsx thickens it for small renders). */
 .ill-s {
@@ -104,6 +113,9 @@
 .ill-tint-mint { background-color: var(--af-mint-tint, #dcf8ec); }
 .ill-tint-sun { background-color: var(--af-sun-tint, #fff3cc); }
 .ill-tint-lavender { background-color: var(--af-lavender-tint, #eee9ff); }
+.ill-tint-rose { background-color: var(--af-rose-tint, #fff0ee); }
+.ill-tint-ocean { background-color: var(--af-ocean-tint, #eaf6ff); }
+.ill-tint-peach { background-color: var(--af-peach-tint, #fff3e6); }
 
 /* Paper grain: two offset stipple layers, CSS only. */
 .ill-grain {

@@ -36,6 +36,10 @@ export const PROFILE = {
   /** A one-line description, for metadata and the machine-readable views. */
   intro:
     'I’m Jackson Lawrence, a software engineer at Oracle based in San Francisco, CA.',
+  /** The search and share description: what a scanner should take away in one sentence. */
+  description:
+    'Software engineer in San Francisco building AI agents in production at Oracle (multi-agent orchestration, RAG, full-stack), plus AnyForm and The Cratest.',
+  photo: '/profile-picture.jpg',
   /**
    * The About, in Jackson's direction: a short lead that's always shown and a longer part behind
    * "Read more". Every claim maps to his own words, his resume or a project in PROJECTS.
@@ -50,9 +54,7 @@ export const PROFILE = {
       'I keep a close eye on markets and emerging tech, because the best products come from knowing both what people need and what is possible.'
     ]
   },
-  links: [
-    { label: 'GitHub', href: 'https://github.com/JacksonL1787' }
-  ] as Link[]
+  links: [{ label: 'Code', href: 'https://github.com/JacksonL1787' }] as Link[]
 }
 
 export const EXPERIENCE: Experience[] = [
@@ -155,7 +157,7 @@ export const SKILLS: Skill[] = [
     ['oracle']
   ),
   skill(
-    'Prompting',
+    'Prompt Engineering',
     'AI & agents',
     'The everyday craft behind every agent I ship, and behind AnyForm, where models write findings from session traces and Scouts act as AI users.',
     ['anyform', 'oracle']
@@ -259,8 +261,8 @@ export const SKILLS: Skill[] = [
   skill(
     'React Native',
     'Frontend & mobile',
-    'I built Trailblaze’s job-recruiting app in React Native, screens to services to database, and grew it past 10,000 users in under a year.',
-    ['trailblaze']
+    'I built Trailblaze’s job-recruiting app in React Native, screens to services to database, and grew it past 10,000 users in under a year. The Cratest uses it too.',
+    ['trailblaze', 'cratest']
   ),
   skill(
     'SwiftUI',
@@ -271,8 +273,8 @@ export const SKILLS: Skill[] = [
   skill(
     'React',
     'Frontend & mobile',
-    'The foundation under my web and mobile work, from React Native apps to Next.js sites.',
-    ['trailblaze', 'anyform', 'cratest']
+    'The foundation under my web and mobile work: Trailblaze, AnyForm, The Cratest, my teaching at CareerFoundry and my work at Oracle.',
+    ['oracle', 'careerfoundry', 'trailblaze', 'anyform', 'cratest']
   ),
   skill(
     'Oracle JET',
@@ -297,8 +299,16 @@ export const SKILLS: Skill[] = [
   skill(
     'REST APIs',
     'Backend & data',
-    'From a microservice for LLM queries and file uploads, where I automated testing for over 90% of scenarios, to the Go APIs behind my projects.',
-    ['anyform', 'cratest', 'oracle']
+    'The backbone of nearly everything I’ve built: from a microservice for LLM queries and file uploads at Oracle, where I automated testing for over 90% of scenarios, to the APIs behind every one of my projects.',
+    [
+      'oracle',
+      'anyform',
+      'cratest',
+      'trailblaze',
+      'koistream',
+      'tedx',
+      'branch'
+    ]
   ),
   skill(
     'Helidon',
@@ -361,14 +371,22 @@ export const SKILLS: Skill[] = [
     'Running and scaling containerised services at Oracle.',
     ['oracle']
   ),
-  skill('Figma', 'Cloud & tools', 'Where I design before I build.'),
   skill(
-    'GitHub',
+    'Figma',
     'Cloud & tools',
-    'Where my code lives, KoiStream, TEDx and Branch included.',
+    'Where I design before I build: Trailblaze, KoiStream and the lessons I taught at CareerFoundry.',
+    ['trailblaze', 'koistream', 'careerfoundry']
+  ),
+  skill(
+    'Git',
+    'Cloud & tools',
+    'Version control for everything I build, including the public source for KoiStream, TEDx Design Tech and Branch.',
     ['koistream', 'tedx', 'branch']
   ),
-  skill('Jira', 'Cloud & tools', 'Tracking work on enterprise teams.'),
+  skill('Jira', 'Cloud & tools', 'Tracking work at Oracle and at Trailblaze.', [
+    'oracle',
+    'trailblaze'
+  ]),
 
   // How I work
   skill(
@@ -394,8 +412,8 @@ export const SKILLS: Skill[] = [
   skill(
     'Agile',
     'How I work',
-    'Scrum meetings, code reviews and production releases alongside full-time developers since my first Oracle internship.',
-    ['oracle']
+    'Scrum meetings, code reviews and production releases with Oracle teams since my first internship, and the same rhythm running engineering at Trailblaze.',
+    ['oracle', 'trailblaze']
   ),
   skill(
     'UI/UX',
@@ -460,7 +478,7 @@ export const PROJECTS: Project[] = [
   },
   {
     slug: 'trailblaze',
-    accent: 'mint',
+    accent: 'ocean',
     title: 'Trailblaze',
     tagline: 'Jobs for new talent',
     summary: 'Job opportunities for the next generation of talent.',
@@ -490,7 +508,10 @@ export const PROJECTS: Project[] = [
     dates: { start: 'March 2020', end: 'June 2021' },
     stack: ['FFmpeg', 'AWS MediaLive', 'Amazon CloudFront'],
     links: [
-      { label: 'GitHub', href: 'https://github.com/JacksonL1787/koistream' }
+      {
+        label: 'Source code',
+        href: 'https://github.com/JacksonL1787/koistream'
+      }
     ],
     highlights: [
       'Built a live streaming platform with viewing, chatting and moderation',
@@ -503,7 +524,7 @@ export const PROJECTS: Project[] = [
   },
   {
     slug: 'tedx',
-    accent: 'sky',
+    accent: 'rose',
     title: 'TEDx Design Tech',
     tagline: 'Event ticketing',
     summary: 'Sell and manage tickets for a high school TEDx event.',
@@ -513,7 +534,7 @@ export const PROJECTS: Project[] = [
     stack: [],
     links: [
       {
-        label: 'GitHub',
+        label: 'Source code',
         href: 'https://github.com/JacksonL1787/ticketing-tedxdesigntech'
       }
     ],
@@ -533,7 +554,7 @@ export const PROJECTS: Project[] = [
     dates: null,
     stack: [],
     links: [
-      { label: 'GitHub', href: 'https://github.com/JacksonL1787/Branch' }
+      { label: 'Source code', href: 'https://github.com/JacksonL1787/Branch' }
     ],
     highlights: ['Presented at Oracle OpenWorld 2019'],
     story: [],
@@ -551,7 +572,7 @@ export const WORK: WorkNode[] = [
     slug: 'oracle',
     title: 'Oracle',
     tagline: 'Software Engineer',
-    accent: 'sky',
+    accent: 'rose',
     summary:
       'Software Engineer on a small R&D team since June 2025, after two internships. Full-stack ownership of AI agents in production, handling thousands of Gen AI chats a day, plus OCR and RAG ingestion and AI-to-human handoff.'
   },
@@ -559,7 +580,7 @@ export const WORK: WorkNode[] = [
     slug: 'careerfoundry',
     title: 'CareerFoundry',
     tagline: 'Web Development Instructor',
-    accent: 'mint',
+    accent: 'peach',
     summary:
       'Web Development Instructor, July 2022 to May 2023. Taught new developers to build full-stack web apps, with feedback on every project within 24 hours.'
   }

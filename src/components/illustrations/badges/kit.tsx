@@ -38,11 +38,17 @@ export function FamilySparkles({ big, small }: { big: Slot; small?: Slot }) {
   );
 }
 
-/** The agent's status: a sky disc with an ink sparkle (a proposal). */
-export function AgentBadge({ cx = STATUS.cx, cy = STATUS.cy, r = STATUS.r, ...motion }: { cx?: number; cy?: number; r?: number } & Motion) {
+/** The agent's status: a disc (sky by default) with an ink sparkle (a proposal). */
+export function AgentBadge({
+  cx = STATUS.cx,
+  cy = STATUS.cy,
+  r = STATUS.r,
+  tone = "sky",
+  ...motion
+}: { cx?: number; cy?: number; r?: number; tone?: Accent } & Motion) {
   return (
     <g {...animProps({ anim: "pop", ...motion })}>
-      <circle className="ill-f-sky ill-s" cx={cx} cy={cy} r={r} />
+      <circle className={`${fill(tone)} ill-s`} cx={cx} cy={cy} r={r} />
       <path className="ill-f-ink-fixed" d={sparklePath(cx, cy, Math.round(r * 0.6))} />
     </g>
   );
