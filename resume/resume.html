@@ -1,0 +1,208 @@
+<!doctype html>
+<!--
+  Jackson Lawrence's resume. The source for public/resume.pdf: `pnpm resume` prints it with headless
+  Chrome. The layout reproduces the original Google Docs resume measure for measure: US Letter,
+  0.5in side margins, Times New Roman (20pt name, 14pt section heads, 11pt body on a 14.6pt line),
+  Arial bullets at 54pt with text at 72pt, label columns at 126pt and a rule under each heading.
+  Content rule: only facts from Jackson; keep it to one page.
+-->
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>jackson-lawrence-resume</title>
+    <style>
+      @page {
+        size: letter;
+        margin: 0;
+      }
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+      html {
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+      body {
+        width: 612pt;
+        padding: 36pt 36pt 0;
+        font-family: 'Times New Roman', Times, serif;
+        font-size: 11pt;
+        line-height: 14.6pt;
+        color: #000;
+      }
+      a {
+        color: #1155cc;
+        text-decoration: underline;
+      }
+      header {
+        text-align: center;
+      }
+      .name {
+        font-size: 20pt;
+        line-height: 25pt;
+        font-weight: bold;
+      }
+      .contact {
+        margin-top: 1.6pt;
+      }
+      h2 {
+        margin-top: 10pt;
+        padding-bottom: 3.4pt;
+        border-bottom: 1pt solid #000;
+        font-size: 14pt;
+        line-height: 17pt;
+        font-weight: bold;
+      }
+      section > :nth-child(2) {
+        margin-top: 10pt;
+      }
+      .entry + .entry {
+        margin-top: 9.9pt;
+      }
+      .head {
+        display: flex;
+        justify-content: space-between;
+        gap: 12pt;
+        white-space: nowrap;
+      }
+      .head b + i:not(.plain)::before {
+        content: ' | ';
+        font-style: normal;
+      }
+      ul {
+        list-style: none;
+      }
+      li {
+        position: relative;
+        padding-left: 36pt;
+      }
+      li::before {
+        content: '●';
+        position: absolute;
+        left: 18pt;
+        font-family: Arial, sans-serif;
+      }
+      .row {
+        display: grid;
+        grid-template-columns: 90pt 1fr;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1 class="name">Jackson Lawrence</h1>
+      <p class="contact">
+        San Francisco, CA | <a href="mailto:jlawrence1787@gmail.com">jlawrence1787@gmail.com</a> |
+        <a href="https://jlawrence.io">jlawrence.io</a>
+      </p>
+    </header>
+
+    <section>
+      <h2>EXPERIENCE</h2>
+
+      <div class="entry">
+        <div class="head">
+          <span><b>Oracle</b><i>Software Engineer</i></span>
+          <span>San Francisco, CA | <b>June 2025 - Present</b></span>
+        </div>
+        <ul>
+          <li>Architected an agentic workflow builder adopted by multiple customers in production for support chat</li>
+          <li>Developed and deployed an OCR + RAG pipeline that ingested over 2 million documents in less than a month</li>
+          <li>Collaborated across multiple teams to deliver AI agent to human agent handoff</li>
+        </ul>
+      </div>
+
+      <div class="entry">
+        <div class="head">
+          <span><b>Oracle</b><i>Software Engineer Intern</i></span>
+          <span>Redwood City, CA | <b>June 2024 - September 2024</b></span>
+        </div>
+        <ul>
+          <li>Developed and deployed a Helidon MP Microservice featuring CRUD endpoints to upload documents for RAG</li>
+          <li>Designed a type-safe way for an existing Oracle JET Knockout project to manage global state with 30+ variables</li>
+          <li>Automated testing for over 90% of scenarios in a REST microservice that supports LLM queries and file uploads</li>
+        </ul>
+      </div>
+
+      <div class="entry">
+        <div class="head">
+          <span><b>Oracle</b><i>Software Engineer Intern</i></span>
+          <span>Redwood City, CA | <b>June 2023 - September 2023</b></span>
+        </div>
+        <ul>
+          <li>Developed new features for internal and consumer-facing applications used in the Oracle Health LOB</li>
+          <li>Collaborated with full-time developers to facilitate scrum meetings, code reviews, and production releases</li>
+        </ul>
+      </div>
+
+      <div class="entry">
+        <div class="head">
+          <span><b>Trailblaze</b><i>Co-Founder &amp; CTO</i></span>
+          <span>Boston, MA | <b>January 2021 - April 2024</b></span>
+        </div>
+        <ul>
+          <li>Developed screens, services, and database architecture for a job-recruiting mobile app in React Native</li>
+          <li>Launched and grew mobile app to over 10,000 users in less than one year</li>
+          <li>Designed and developed our company's public-facing website using Next.js</li>
+        </ul>
+      </div>
+
+      <div class="entry">
+        <div class="head">
+          <span><b>CareerFoundry</b><i>Web Development Instructor</i></span>
+          <span>Remote, US | <b>July 2022 - May 2023</b></span>
+        </div>
+        <ul>
+          <li>Taught new students in the industry to develop full-stack web applications</li>
+          <li>Provided groups of students with feedback on projects within 24 hours of submission</li>
+          <li>Collaborated with course mentors to provide students with careers in the web development industry</li>
+        </ul>
+      </div>
+    </section>
+
+    <section>
+      <h2>EDUCATION</h2>
+
+      <div class="entry">
+        <div class="head">
+          <span><b>Northeastern University</b> | BS <i class="plain">Computer Science and Business (Fintech concentration)</i></span>
+          <span>Boston, MA | <b>June 2025</b></span>
+        </div>
+        <p><b>Khoury College of Computer Sciences</b></p>
+        <div class="row">
+          <span>Related Courses:</span>
+          <span>Object-Oriented Design | Algorithms and Data | Fundamentals of Computer Science 1 &amp; 2 | Intro to Web Development | Discrete Structures | Foundations of Cybersecurity</span>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2>SKILLS</h2>
+
+      <div>
+        <div class="row">
+          <b>Languages:</b>
+          <span>TypeScript | JavaScript | Go | Java | Python | SQL | GraphQL | HTML | CSS</span>
+        </div>
+        <div class="row">
+          <b>AI:</b>
+          <span>Prompting | Multi-Agent Orchestration | RAG | Embeddings | Vector DBs | LangChain | LangGraph | Claude Code | Codex</span>
+        </div>
+        <div class="row">
+          <b>Frameworks:</b>
+          <span>React | React Native | Next.js | Node.js | Express | Tailwind CSS | Helidon | Jest</span>
+        </div>
+        <div class="row">
+          <b>Tools:</b>
+          <span>OCI | Oracle 26ai Database | AWS | Terraform | Kubernetes | GitHub | Jira | Figma | SQL Developer</span>
+        </div>
+        <div class="row">
+          <b>Concepts:</b>
+          <span>REST APIs | Server-Side Rendering | Git Versioning | UI/UX | Design Thinking | Agile Development</span>
+        </div>
+      </div>
+    </section>
+  </body>
+</html>

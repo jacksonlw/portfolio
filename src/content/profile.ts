@@ -61,10 +61,10 @@ export const EXPERIENCE: Experience[] = [
     title: 'Software Engineer',
     location: null,
     dates: { start: 'June 2025', end: null },
-    // Draft wording from Jackson; to be strengthened with his facts before the resume rebuild.
+    // Matches resume/resume.html.
     bullets: [
-      'Architected an agentic workflow builder, adopted by multiple customers and deployed in production for support chat use cases',
-      'Developed and deployed an OCR + RAG pipeline that ingested more than 2 million documents in less than a month',
+      'Architected an agentic workflow builder adopted by multiple customers in production for support chat',
+      'Developed and deployed an OCR + RAG pipeline that ingested over 2 million documents in less than a month',
       'Collaborated across multiple teams to deliver AI agent to human agent handoff'
     ]
   },
@@ -86,8 +86,7 @@ export const EXPERIENCE: Experience[] = [
     dates: { start: 'June 2023', end: 'September 2023' },
     bullets: [
       'Developed new features for internal and consumer-facing applications used in the Oracle Health LOB',
-      'Collaborated with full-time developers to facilitate scrum meetings, code reviews, and production releases',
-      'Expanded my technical and professional skillset by scheduling frequent meetings with leaders at Oracle'
+      'Collaborated with full-time developers to facilitate scrum meetings, code reviews, and production releases'
     ]
   },
   {
