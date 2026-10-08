@@ -165,41 +165,46 @@ export const SKILLS: Skill[] = [
   skill(
     'Vector DBs',
     'AI & agents',
-    'Where embeddings live and get searched: the storage layer under a RAG pipeline.'
+    'Where embeddings live and get searched: the storage layer under the RAG pipelines I build at Oracle.',
+    ['oracle']
   ),
   skill(
     'LangGraph',
     'AI & agents',
-    'Agent workflows as graphs, with state, branches and loops: the same shape as the agentic workflows I build.'
+    'Agent workflows as graphs, with state, branches and loops: the shape of the agentic workflows I build at Oracle.',
+    ['oracle']
   ),
   skill(
     'LangChain',
     'AI & agents',
-    'Building blocks for LLM apps: chaining model calls, tools and retrieval together.'
+    'Building blocks for LLM apps: chaining model calls, tools and retrieval together, part of my AI work at Oracle.',
+    ['oracle']
   ),
   skill(
     'Claude Code',
     'AI & agents',
-    'One of my daily drivers for writing software. This site was built with it.'
+    'One of my daily drivers for writing software, on AnyForm, The Cratest and this site.',
+    ['anyform', 'cratest']
   ),
   skill(
     'Codex',
     'AI & agents',
-    'Another coding agent in my toolbox. Trying the newest tools as they land is part of staying current.'
+    'One of the coding agents I use at Oracle. Trying the newest tools as they land is part of staying current.',
+    ['oracle']
   ),
 
   // Languages
   skill(
     'TypeScript',
     'Languages',
-    'My default for anything on the web: AnyForm’s dashboard and site, The Cratest’s admin console and this portfolio.',
-    ['anyform', 'cratest']
+    'My default since KoiStream: Trailblaze, AnyForm, The Cratest, this site, and my work at Oracle.',
+    ['oracle', 'koistream', 'trailblaze', 'anyform', 'cratest']
   ),
   skill(
     'Go',
     'Languages',
-    'The backend language of my current projects: both AnyForm’s and The Cratest’s APIs are written in Go.',
-    ['anyform', 'cratest']
+    'My backend language of choice: Trailblaze’s services and the APIs behind AnyForm and The Cratest.',
+    ['trailblaze', 'anyform', 'cratest']
   ),
   skill(
     'Java',
@@ -210,7 +215,8 @@ export const SKILLS: Skill[] = [
   skill(
     'Python',
     'Languages',
-    'Scripting and AI tooling, where new AI libraries usually land first.'
+    'Scripting and AI tooling at Oracle, where new AI libraries usually land first.',
+    ['oracle']
   ),
   skill(
     'SQL',
@@ -221,12 +227,23 @@ export const SKILLS: Skill[] = [
   skill(
     'JavaScript',
     'Languages',
-    'The language I learned the web on, and the base of everything I build with React and Node.js.'
+    'The language under everything I’ve built, from Branch and KoiStream to Trailblaze, my teaching at CareerFoundry and my work at Oracle.',
+    [
+      'oracle',
+      'careerfoundry',
+      'anyform',
+      'cratest',
+      'trailblaze',
+      'koistream',
+      'tedx',
+      'branch'
+    ]
   ),
   skill(
     'GraphQL',
     'Languages',
-    'APIs queried by shape, so a client asks for exactly the data it needs.'
+    'The API layer behind Trailblaze, so the app asks for exactly the data it needs.',
+    ['trailblaze']
   ),
 
   // Frontend & mobile
@@ -263,7 +280,8 @@ export const SKILLS: Skill[] = [
   skill(
     'Tailwind CSS',
     'Frontend & mobile',
-    'How I style most things, this site included.'
+    'How I style the web: AnyForm, The Cratest, Trailblaze and this site.',
+    ['anyform', 'cratest', 'trailblaze']
   ),
 
   // Backend & data
@@ -293,16 +311,22 @@ export const SKILLS: Skill[] = [
   skill(
     'Node.js',
     'Backend & data',
-    'JavaScript on the server, for APIs and tooling.'
+    'JavaScript on the server, behind Branch, the TEDx ticketing site and KoiStream.',
+    ['branch', 'tedx', 'koistream']
   ),
-  skill('Express', 'Backend & data', 'Lightweight HTTP APIs on Node.js.'),
+  skill(
+    'Express',
+    'Backend & data',
+    'HTTP APIs on Node.js for Branch, the TEDx ticketing site and KoiStream.',
+    ['branch', 'tedx', 'koistream']
+  ),
 
   // Cloud & tools
   skill(
     'AWS',
     'Cloud & tools',
-    'KoiStream delivered HD live video to our school community through AWS MediaLive and Amazon CloudFront.',
-    ['koistream']
+    'KoiStream delivered HD live video through AWS MediaLive and Amazon CloudFront, and Trailblaze, AnyForm and The Cratest run on AWS too.',
+    ['koistream', 'trailblaze', 'anyform', 'cratest']
   ),
   skill(
     'FFmpeg',
@@ -313,8 +337,8 @@ export const SKILLS: Skill[] = [
   skill(
     'Playwright',
     'Cloud & tools',
-    'AnyForm’s Scouts, AI users that rehearse your app before real users do, run on Playwright.',
-    ['anyform']
+    'Browser automation at Oracle, and the engine behind AnyForm’s Scouts, AI users that rehearse your app before real users do.',
+    ['oracle', 'anyform']
   ),
   skill(
     'OCI',
@@ -325,12 +349,14 @@ export const SKILLS: Skill[] = [
   skill(
     'Terraform',
     'Cloud & tools',
-    'Infrastructure as code: cloud setups that are written down, reviewed and repeatable.'
+    'Infrastructure as code at Oracle and for AnyForm and The Cratest: cloud setups that are written down, reviewed and repeatable.',
+    ['oracle', 'anyform', 'cratest']
   ),
   skill(
     'Kubernetes',
     'Cloud & tools',
-    'Running and scaling containerised services.'
+    'Running and scaling containerised services at Oracle.',
+    ['oracle']
   ),
   skill('Figma', 'Cloud & tools', 'Where I design before I build.'),
   skill(
