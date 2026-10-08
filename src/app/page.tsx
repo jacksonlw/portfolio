@@ -38,7 +38,7 @@ export default function Home() {
       <section id="skills" aria-labelledby="skills-title" className="pt-16 pb-20 sm:pt-20 sm:pb-28">
         {/* The heading keeps the page's width; the board below runs edge to edge. */}
         <Container className="mb-10 sm:mb-12">
-          <h2 id="skills-title" className="text-2xl font-semibold tracking-[-0.02em]">
+          <h2 id="skills-title" className="text-title">
             Work, projects and skills
           </h2>
           <p className="mt-1.5 text-lg text-pretty text-muted-foreground">

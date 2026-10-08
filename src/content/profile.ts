@@ -43,11 +43,11 @@ export const PROFILE = {
    */
   about: {
     lead: [
-      'I’m a **software engineer** who builds products people actually want to use. Design thinking got drilled into me in high school and it stuck: I start with the people I’m building for, put something real in front of them early, and keep refining until it works for them.'
+      'I’m a **software engineer** who builds products people actually want to use. I picked up design thinking in high school and it’s shaped how I work ever since: I start with the people I’m building for, put something real in front of them early, and keep refining until it works for them.'
     ],
     more: [
       'That approach has carried me from a smart school prototype I presented at Oracle OpenWorld and a livestream platform for my school’s community, to co-founding Trailblaze and growing our app past 10,000 users in its first year, to teaching new developers at CareerFoundry. Today I build AI agents at Oracle, and on my own time I’m working on AnyForm and The Cratest.',
-      'I keep a close eye on markets and emerging tech, because the best products come from knowing both what people need and what just became possible. When a new tool earns its place, it goes straight into what I’m building.'
+      'I keep a close eye on markets and emerging tech, because the best products come from knowing both what people need and what is possible.'
     ]
   },
   links: [
