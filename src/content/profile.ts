@@ -74,7 +74,7 @@ export const EXPERIENCE: Experience[] = [
   {
     company: 'Oracle',
     title: 'Software Engineer Intern (x2)',
-    location: 'Redwood City, CA',
+    location: 'Redwood Shores, CA',
     dates: { start: 'Summers 2023', end: '2024' },
     bullets: [
       'Developed and deployed a Helidon MP microservice featuring CRUD endpoints to upload documents for RAG',
