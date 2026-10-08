@@ -10,11 +10,17 @@ import {
   PROFILE,
   PROJECTS,
   SKILLS,
+  WORK,
   formatDates,
+  usedInTitle,
   type Project
 } from '@/content/profile'
 
 const abs = (path: string) => new URL(path, PROFILE.url).toString()
+
+/** The About's light markup with its site links made absolute, for the Markdown views. */
+const mdAbs = (text: string) =>
+  text.replace(/\]\((\/[^)]*)\)/g, (_, path: string) => `](${abs(path)})`)
 
 export const projectPath = (slug: string) => `/projects/${slug}`
 
@@ -24,7 +30,8 @@ const STATUS_LABEL: Record<NonNullable<Project['status']>, string> = {
   archived: 'Archived'
 }
 
-export const statusLabel = (s: Project['status']) => (s ? STATUS_LABEL[s] : null)
+export const statusLabel = (s: Project['status']) =>
+  s ? STATUS_LABEL[s] : null
 
 /** One project as Markdown: the facts, then the story sections in order. */
 export function projectMarkdown(p: Project, level = 1): string {
@@ -43,7 +50,11 @@ export function projectMarkdown(p: Project, level = 1): string {
     lines.push(`${h}# Highlights`, '', ...p.highlights.map((x) => `- ${x}`), '')
   }
   for (const s of p.story) {
-    lines.push(`${h}# ${s.heading}`, '', ...s.paragraphs.flatMap((x) => [x, '']))
+    lines.push(
+      `${h}# ${s.heading}`,
+      '',
+      ...s.paragraphs.flatMap((x) => [x, ''])
+    )
   }
   return lines.join('\n').trimEnd() + '\n'
 }
@@ -53,7 +64,7 @@ export function llmsTxt(): string {
   return [
     `# ${PROFILE.name}`,
     '',
-    `> ${PROFILE.role} at Oracle, based in ${PROFILE.location}. ${PROFILE.about.lead[0]}`,
+    `> ${PROFILE.role} at Oracle, based in ${PROFILE.location}. ${mdAbs(PROFILE.about.lead[0])}`,
     '',
     'Everything on this site comes from one content file, so these views and the HTML pages say the same thing.',
     '',
@@ -65,7 +76,9 @@ export function llmsTxt(): string {
     '',
     '## Projects',
     '',
-    ...PROJECTS.map((p) => `- [${p.title}](${abs(`${projectPath(p.slug)}.md`)}): ${p.summary}`),
+    ...PROJECTS.map(
+      (p) => `- [${p.title}](${abs(`${projectPath(p.slug)}.md`)}): ${p.summary}`
+    ),
     '',
     '## Contact',
     '',
@@ -85,7 +98,14 @@ export function llmsFullTxt(): string {
     PROFILE.intro,
     ''
   ]
-  out.push('## About', '', ...[...PROFILE.about.lead, ...PROFILE.about.more].flatMap((p) => [p, '']))
+  out.push(
+    '## About',
+    '',
+    ...[...PROFILE.about.lead, ...PROFILE.about.more].flatMap((p) => [
+      mdAbs(p),
+      ''
+    ])
+  )
 
   out.push('## Experience', '')
   for (const e of EXPERIENCE) {
@@ -115,9 +135,11 @@ export function llmsFullTxt(): string {
   for (const area of [...new Set(SKILLS.map((s) => s.area))]) {
     out.push(`### ${area}`, '')
     for (const s of SKILLS.filter((x) => x.area === area)) {
-      const used = s.projects.map((slug) => PROJECTS.find((p) => p.slug === slug)?.title)
+      const used = s.projects.map(usedInTitle)
       const usedIn = used.length > 0 ? ` (used in ${used.join(', ')})` : ''
-      out.push(`- ${s.name}${usedIn}${s.explanation ? `: ${s.explanation}` : ''}`)
+      out.push(
+        `- ${s.name}${usedIn}${s.explanation ? `: ${s.explanation}` : ''}`
+      )
     }
     out.push('')
   }
@@ -135,6 +157,7 @@ export function profileJson() {
     experience: EXPERIENCE,
     education: EDUCATION,
     skills: SKILLS,
+    work: WORK,
     projects: PROJECTS.map((p) => ({
       ...p,
       url: abs(projectPath(p.slug)),
@@ -156,9 +179,17 @@ export function personJsonLd() {
     email: `mailto:${PROFILE.email}`,
     jobTitle: PROFILE.role,
     description: PROFILE.intro,
-    address: { '@type': 'PostalAddress', addressLocality: 'San Francisco', addressRegion: 'CA', addressCountry: 'US' },
+    address: {
+      '@type': 'PostalAddress',
+      addressLocality: 'San Francisco',
+      addressRegion: 'CA',
+      addressCountry: 'US'
+    },
     worksFor: current && { '@type': 'Organization', name: current.company },
-    alumniOf: EDUCATION.map((e) => ({ '@type': 'CollegeOrUniversity', name: e.school })),
+    alumniOf: EDUCATION.map((e) => ({
+      '@type': 'CollegeOrUniversity',
+      name: e.school
+    })),
     knowsAbout: SKILLS.map((s) => s.name),
     sameAs: PROFILE.links.map((l) => l.href)
   }

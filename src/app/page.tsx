@@ -1,10 +1,11 @@
 import { JsonLd } from '@/components/json-ld'
 import { SkillsConstellation } from '@/components/skills/constellation'
+import { RichText } from '@/components/site/rich-text'
 import { ReadMore } from '@/components/site/read-more'
 import { ProfileCard } from '@/components/site/profile-card'
 import { ProjectCard } from '@/components/site/project-card'
 import { Container, Section } from '@/components/site/section'
-import { PROFILE, PROJECTS, SKILLS } from '@/content/profile'
+import { PROFILE, PROJECTS, SKILLS, WORK } from '@/content/profile'
 import { personJsonLd } from '@/lib/machine'
 
 export default function Home() {
@@ -19,12 +20,16 @@ export default function Home() {
             <h2 className="sr-only">About</h2>
             <div className="max-w-2xl space-y-5 text-xl leading-relaxed text-pretty sm:text-2xl sm:leading-relaxed">
               {PROFILE.about.lead.map((para, i) => (
-                <p key={i}>{para}</p>
+                <p key={i}>
+                  <RichText text={para} />
+                </p>
               ))}
             </div>
             <ReadMore className="mt-5 max-w-2xl">
               {PROFILE.about.more.map((para, i) => (
-                <p key={i}>{para}</p>
+                <p key={i}>
+                  <RichText text={para} />
+                </p>
               ))}
             </ReadMore>
           </div>
@@ -48,7 +53,7 @@ export default function Home() {
         title="Skills"
         description="Hover a skill to see the projects it went into, or a project to see what it was built with."
       >
-        <SkillsConstellation skills={SKILLS} projects={PROJECTS} />
+        <SkillsConstellation skills={SKILLS} projects={PROJECTS} work={WORK} />
       </Section>
     </>
   )

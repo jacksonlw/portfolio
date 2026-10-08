@@ -151,3 +151,22 @@ export function BranchBadge(props: IllustrationProps) {
     </IllustrationFrame>
   )
 }
+
+/** Oracle (a work bubble, not a project): a work briefcase with the agent's sparkle. */
+export function OracleBadge(props: IllustrationProps) {
+  return (
+    <IllustrationFrame kind="badge" {...props}>
+      <FamilySwash accent="sky" />
+      <g {...animProps({ anim: 'float', delay: 1100 })}>
+        <Shadowed>
+          <path className="ill-f-none ill-s ill-s-bold" d="M56 60V48H88V60" />
+          <Card x={20} y={60} w={104} h={64} />
+          <path className="ill-f-none ill-s" d="M20 84H124" />
+          <rect className="ill-f-sky ill-s" x={64} y={76} width={16} height={16} rx={2} />
+        </Shadowed>
+        <AgentBadge delay={450} />
+      </g>
+      <FamilySparkles big="topLeft" small="bottomRight" />
+    </IllustrationFrame>
+  )
+}

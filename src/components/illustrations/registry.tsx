@@ -13,6 +13,7 @@ import {
   BranchBadge,
   CratestBadge,
   KoiStreamBadge,
+  OracleBadge,
   TedxBadge,
   TrailblazeBadge
 } from './badges/projects'
@@ -29,6 +30,7 @@ export const ILLUSTRATIONS: Record<string, { component: ComponentType<Illustrati
   koistream: { component: KoiStreamBadge, label: 'A broadcast camera on a tripod' },
   tedx: { component: TedxBadge, label: 'An event ticket' },
   branch: { component: BranchBadge, label: 'A school building with a tree beside it' },
+  oracle: { component: OracleBadge, label: 'A work briefcase with an AI sparkle' },
   // Skill areas, keyed `area/<slug>`.
   'area/ai': { component: AgentsBadge, label: 'A chat window with an AI agent answering' },
   'area/languages': { component: LanguagesBadge, label: 'A code editor' },

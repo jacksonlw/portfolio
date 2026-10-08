@@ -70,6 +70,14 @@ export type Skill = {
   area: SkillArea
   /** What it is to Jackson and where he used it, shown on hover in the skills constellation. */
   explanation: string
-  /** Slugs of projects where he used it. */
+  /** Where he used it: project slugs, or a work bubble's slug (WORK, e.g. 'oracle'). */
   projects: string[]
+}
+
+/** Work shown beside the projects in the skills constellation, with no page of its own. */
+export type WorkNode = {
+  slug: string
+  title: string
+  accent: Accent
+  summary: string
 }

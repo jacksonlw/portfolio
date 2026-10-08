@@ -5,7 +5,7 @@ import { cn } from '@/lib/cn'
 import photo from '../../../public/profile-picture.jpg'
 import { CtaLink } from './cta-link'
 
-/** The home page's profile: the photo, the name, the role and location, and the two actions. */
+/** The home page's profile: the photo, the name, the location and the two actions. */
 export function ProfileCard({ className }: { className?: string }) {
   return (
     <div className={cn('min-w-0', className)}>
@@ -16,18 +16,15 @@ export function ProfileCard({ className }: { className?: string }) {
           fill
           priority
           placeholder="blur"
-          sizes="176px"
-          className="scale-[1.35] object-cover object-[62%_18%]"
+          sizes="320px"
+          className="origin-[82%_8%] scale-[1.6] object-cover object-top"
         />
       </div>
 
       <h1 className="mt-6 text-title sm:text-headline">{PROFILE.name}</h1>
-      <p className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-lg">
-        <span>{PROFILE.role}</span>
-        <span className="flex items-center gap-1.5">
-          <MapPinIcon weight="bold" aria-hidden className="size-5" />
-          {PROFILE.location}
-        </span>
+      <p className="mt-2 flex items-center gap-1.5 text-lg">
+        <MapPinIcon weight="bold" aria-hidden className="size-5" />
+        {PROFILE.location}
       </p>
       <div className="mt-6 flex flex-wrap gap-3">
         <CtaLink href={PROFILE.resume} arrow>
