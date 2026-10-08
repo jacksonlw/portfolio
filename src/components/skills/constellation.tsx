@@ -28,8 +28,10 @@ import { cn } from '@/lib/cn'
  * to the DOM, so React doesn't re-render per frame. Under reduced motion it all holds still.
  *
  * Positions are percentages of the board; lines are drawn in a pixel-space SVG sized to it.
- * Below `xl` the same content is a list of work, projects and grouped chips, with the
- * explanation in an ink card. Every node is a real link or button.
+ * The board shows from `lg`, its nodes scaled down a little until `xl`. Below `lg` the same
+ * content is CompactConstellation: work and projects as cards with the skills they used, then
+ * skills grouped by area, each opening an ink panel that says where it was used. Every node is a
+ * real link or button.
  */
 
 type AreaDef = { key: string; accent: Accent; hub: [number, number] }
@@ -55,9 +57,9 @@ const BUBBLES: Record<string, { x: number; y: number; size: BubbleSize }> = {
   cratest: { x: 63, y: 16, size: 'lg' },
   trailblaze: { x: 39, y: 60, size: 'lg' },
   careerfoundry: { x: 64, y: 48, size: 'md' },
-  koistream: { x: 59, y: 75, size: 'md' },
+  koistream: { x: 56, y: 72, size: 'md' },
   tedx: { x: 35, y: 85, size: 'sm' },
-  branch: { x: 66, y: 87, size: 'sm' }
+  branch: { x: 68, y: 89, size: 'sm' }
 }
 
 const BUBBLE_STYLE: Record<
@@ -250,6 +252,39 @@ function useConstellationMotion(
   return size
 }
 
+/**
+ * Every job and project gets a bubble: the hand-placed spot in BUBBLES when it has one, otherwise
+ * the next point on a sunflower spiral through the middle column (work large, projects medium), so
+ * adding a project never drops it from the board.
+ */
+function placeBubbles(
+  list: ((Project & { kind: 'project' }) | (WorkNode & { kind: 'work' }))[]
+): ProjectNode[] {
+  let k = 0
+  return list.map((n) => {
+    const fixed = BUBBLES[n.slug]
+    if (fixed) return { ...n, ...fixed }
+    const i = k++
+    const a = i * 2.39996 // the golden angle, in radians
+    const r = Math.sqrt(i + 0.5) / Math.sqrt(12)
+    return {
+      ...n,
+      x: 50 + Math.cos(a) * r * 16,
+      y: 52 + Math.sin(a) * r * 36,
+      size: n.kind === 'work' ? 'lg' : 'md'
+    }
+  })
+}
+
+/**
+ * The board's height follows how much is on it: a base, plus room per skill and per bubble,
+ * clamped between a compact board and a tall one. More work, projects or skills, more space.
+ */
+function boardHeight(skills: number, bubbles: number) {
+  const rem = 20 + skills * 0.55 + bubbles * 2
+  return `clamp(38rem, ${rem.toFixed(2)}rem, 80rem)`
+}
+
 /* ---------- the board ---------- */
 
 const hubId = (area: string) => `hub:${area}`
@@ -268,12 +303,10 @@ export function SkillsConstellation({
   const stars = useMemo(() => layoutStars(skills), [skills])
   const nodes: ProjectNode[] = useMemo(
     () =>
-      [
+      placeBubbles([
         ...work.map((w) => ({ ...w, kind: 'work' as const })),
         ...projects.map((p) => ({ ...p, kind: 'project' as const }))
-      ]
-        .filter((n) => BUBBLES[n.slug])
-        .map((n) => ({ ...n, ...BUBBLES[n.slug] })),
+      ]),
     [projects, work]
   )
   const [active, setActive] = useState<Active>(null)
@@ -357,7 +390,8 @@ export function SkillsConstellation({
       {/* The board, from xl up. */}
       <div
         ref={board}
-        className="relative hidden h-[calc(100svh-4rem)] min-h-[52rem] w-full xl:block"
+        className="relative hidden w-full lg:block"
+        style={{ height: boardHeight(stars.length, nodes.length) }}
         onMouseLeave={() => setActive(null)}
       >
         {w > 0 && (
@@ -477,9 +511,9 @@ export function SkillsConstellation({
               >
                 {p.title}
               </span>
-              {p.kind === 'work' && (
-                <span className="text-xs text-muted-foreground">Work</span>
-              )}
+              <span className="max-w-40 text-center text-xs leading-snug text-muted-foreground">
+                {p.tagline}
+              </span>
             </>
           )
           return (
@@ -535,7 +569,10 @@ export function SkillsConstellation({
                 } as CSSProperties
               }
             >
-              <div data-node={starId(s.name)} className="will-change-transform">
+              <div
+                data-node={starId(s.name)}
+                className="will-change-transform lg:scale-[0.88] xl:scale-100"
+              >
                 <button
                   type="button"
                   {...on({ kind: 'skill', id: s.name })}
@@ -596,13 +633,8 @@ export function SkillsConstellation({
         )}
       </div>
 
-      {/* Below xl: projects and grouped chips, with the explanation in an ink card. */}
-      <MobileSkills
-        stars={stars}
-        nodes={nodes}
-        active={active}
-        setActive={setActive}
-      />
+      {/* Below lg: work and projects with their skills, then skills grouped by area. */}
+      <CompactConstellation stars={stars} nodes={nodes} />
     </>
   )
 }
@@ -644,7 +676,9 @@ function Explain({
     return (
       <>
         <p className="text-xs font-medium text-muted-foreground">
-          {project.kind === 'work' ? 'Work' : 'Project'}
+          {project.kind === 'work'
+            ? `Work · ${project.tagline}`
+            : `Project · ${project.tagline}`}
         </p>
         <p className="mt-0.5 text-lg font-semibold">{project.title}</p>
         <p className="mt-2 text-sm text-pretty text-foreground/85">
@@ -664,127 +698,223 @@ function Explain({
   return null
 }
 
-function MobileSkills({
+const RANK: Record<BubbleSize, number> = { xl: 0, lg: 1, md: 2, sm: 3 }
+
+/** How many skills a card shows before "+N more". */
+const CARD_SKILLS = 6
+
+/**
+ * The constellation for phones and small tablets. Work and projects come first, biggest first,
+ * each with its art, summary and the skills it used; then the skills, grouped under each area's
+ * illustration. Tapping a skill opens an ink panel under its group with where it was used.
+ */
+function CompactConstellation({
   stars,
-  nodes,
-  active,
-  setActive
+  nodes
 }: {
   stars: Star[]
   nodes: ProjectNode[]
-  active: Active
-  setActive: (a: Active) => void
 }) {
-  const star =
-    active?.kind === 'skill'
-      ? stars.find((s) => s.name === active.id)
-      : undefined
-  const project =
-    active?.kind === 'project'
-      ? nodes.find((p) => p.slug === active.id)
-      : undefined
-  const linkedProjects = new Set(star?.projects ?? [])
-  const linkedSkills = new Set(
-    project
-      ? stars
-          .filter((s) => s.projects.includes(project.slug))
-          .map((s) => s.name)
-      : []
-  )
-
-  const chip = (selected: boolean, linked: boolean) =>
-    cn(
-      'rounded-full border px-3 py-1 text-xs font-medium transition-colors focus-ring',
-      selected
-        ? 'border-brand bg-brand text-brand-foreground'
-        : linked
-          ? 'border-brand text-link'
-          : 'border-border bg-card'
-    )
+  const [open, setOpen] = useState<string | null>(null)
+  const [expanded, setExpanded] = useState<Set<string>>(() => new Set())
+  const ranked = [...nodes].sort((a, b) => RANK[a.size] - RANK[b.size])
 
   return (
-    <div className="space-y-8 xl:hidden">
-      <div
-        className="dark min-h-32 max-w-xl rounded-lg bg-background p-5 text-foreground"
-        aria-live="polite"
-      >
-        {star || project ? (
-          <>
-            <Explain
-              star={star}
-              project={project}
-              nodes={nodes}
-              stars={stars}
-            />
-            {project?.kind === 'project' && (
-              <Link
-                href={`/projects/${project.slug}`}
-                className="mt-4 inline-flex items-center gap-1 rounded-sm text-sm font-semibold text-link underline-offset-4 focus-ring hover:underline"
-              >
-                Read about {project.title}
-                <ArrowRightIcon weight="bold" aria-hidden className="size-4" />
-              </Link>
-            )}
-          </>
-        ) : (
-          <p className="text-sm text-muted-foreground">
-            Tap a project or a skill to see how they connect.
-          </p>
-        )}
-      </div>
+    <div className="space-y-14 lg:hidden">
       <div>
-        <h3 className="text-sm font-semibold">Work and projects</h3>
-        <ul className="mt-2 flex flex-wrap gap-1.5">
-          {nodes.map((p) => (
-            <li key={p.slug}>
-              <button
-                type="button"
-                onClick={() => setActive({ kind: 'project', id: p.slug })}
-                aria-pressed={project?.slug === p.slug}
-                className={chip(
-                  project?.slug === p.slug,
-                  linkedProjects.has(p.slug)
-                )}
-              >
-                {p.title}
-              </button>
-            </li>
-          ))}
+        <h3 className="text-lg font-semibold">Work and projects</h3>
+        <ul className="mt-5 grid gap-x-8 gap-y-8 sm:grid-cols-2">
+          {ranked.map((n) => {
+            const used = stars.filter((s) => s.projects.includes(n.slug))
+            const all = expanded.has(n.slug)
+            const shown = all ? used : used.slice(0, CARD_SKILLS)
+            return (
+              <li key={n.slug} className="flex gap-4">
+                <span
+                  className={cn(
+                    'flex size-16 shrink-0 items-center justify-center rounded-full border-2 border-foreground/80',
+                    TINT_BG[n.accent]
+                  )}
+                >
+                  <Illustration name={n.slug} className="w-12" decorative />
+                </span>
+                <div className="min-w-0 flex-1">
+                  <p className="flex flex-wrap items-baseline gap-x-2">
+                    {n.kind === 'project' ? (
+                      <Link
+                        href={`/projects/${n.slug}`}
+                        className="rounded-sm text-base font-semibold underline-offset-4 focus-ring hover:text-link hover:underline"
+                      >
+                        {n.title}
+                      </Link>
+                    ) : (
+                      <span className="text-base font-semibold">{n.title}</span>
+                    )}
+                    <span className="text-xs text-muted-foreground">
+                      {n.tagline}
+                    </span>
+                  </p>
+                  <p className="mt-1 text-sm text-pretty text-muted-foreground">
+                    {n.summary}
+                  </p>
+                  {used.length > 0 && (
+                    <ul
+                      className="mt-3 flex flex-wrap gap-1.5"
+                      aria-label={`Skills used at ${n.title}`}
+                    >
+                      {shown.map((s) => (
+                        <li
+                          key={s.name}
+                          className="flex items-center gap-1.5 rounded-full border border-border px-2.5 py-0.5 text-xs font-medium"
+                        >
+                          <span
+                            className={cn(
+                              'size-2 rounded-full border border-foreground/70',
+                              DOT[AREAS[s.area].accent]
+                            )}
+                            aria-hidden
+                          />
+                          {s.name}
+                        </li>
+                      ))}
+                      {used.length > CARD_SKILLS && (
+                        <li>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setExpanded((prev) => {
+                                const next = new Set(prev)
+                                if (next.has(n.slug)) next.delete(n.slug)
+                                else next.add(n.slug)
+                                return next
+                              })
+                            }
+                            aria-expanded={all}
+                            className="rounded-full px-2.5 py-0.5 text-xs font-semibold text-link focus-ring"
+                          >
+                            {all
+                              ? 'Show fewer'
+                              : `+${used.length - CARD_SKILLS} more`}
+                          </button>
+                        </li>
+                      )}
+                    </ul>
+                  )}
+                  {n.kind === 'project' && (
+                    <Link
+                      href={`/projects/${n.slug}`}
+                      className="mt-3 inline-flex items-center gap-1 rounded-sm text-sm font-semibold text-link underline-offset-4 focus-ring hover:underline"
+                    >
+                      Read the story
+                      <ArrowRightIcon
+                        weight="bold"
+                        aria-hidden
+                        className="size-4"
+                      />
+                    </Link>
+                  )}
+                </div>
+              </li>
+            )
+          })}
         </ul>
       </div>
-      {Object.entries(AREAS).map(([area, { accent }]) => (
-        <div key={area}>
-          <h3 className="flex items-center gap-2 text-sm font-semibold">
-            <span
-              className={cn(
-                'size-2.5 rounded-full border-2 border-foreground',
-                DOT[accent]
-              )}
-              aria-hidden
-            />
-            {area}
-          </h3>
-          <ul className="mt-2 flex flex-wrap gap-1.5">
-            {stars
-              .filter((s) => s.area === area)
-              .map((s) => (
-                <li key={s.name}>
-                  <button
-                    type="button"
-                    onClick={() => setActive({ kind: 'skill', id: s.name })}
-                    aria-pressed={star?.name === s.name}
-                    className={chip(
-                      star?.name === s.name,
-                      linkedSkills.has(s.name)
+
+      <div>
+        <h3 className="text-lg font-semibold">Skills</h3>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Tap a skill to see where I’ve used it.
+        </p>
+        <div className="mt-6 grid gap-x-8 gap-y-10 sm:grid-cols-2">
+          {Object.entries(AREAS).map(([area, { key, accent }]) => {
+            const list = stars.filter((s) => s.area === area)
+            const current = list.find((s) => s.name === open)
+            const where = current
+              ? nodes.filter((n) => current.projects.includes(n.slug))
+              : []
+            return (
+              <div key={area}>
+                <div className="flex items-center gap-2">
+                  <Illustration name={key} className="w-11" decorative />
+                  <h4
+                    className={cn(
+                      'rounded-full border border-foreground/80 px-2.5 py-0.5 text-xs font-semibold',
+                      TINT_BG[accent]
                     )}
                   >
-                    {s.name}
-                  </button>
-                </li>
-              ))}
-          </ul>
+                    {area}
+                  </h4>
+                </div>
+                <ul className="mt-3 flex flex-wrap gap-1.5">
+                  {list.map((s) => {
+                    const on = s.name === open
+                    return (
+                      <li key={s.name}>
+                        <button
+                          type="button"
+                          onClick={() => setOpen(on ? null : s.name)}
+                          aria-expanded={on}
+                          className={cn(
+                            'flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm font-medium focus-ring transition-colors',
+                            on
+                              ? 'border-brand bg-brand text-brand-foreground'
+                              : 'border-border bg-card hover:border-foreground/40'
+                          )}
+                        >
+                          <span
+                            className={cn(
+                              'size-2 rounded-full border',
+                              on
+                                ? 'border-brand-foreground bg-brand-foreground'
+                                : cn('border-foreground/70', DOT[accent])
+                            )}
+                            aria-hidden
+                          />
+                          {s.name}
+                        </button>
+                      </li>
+                    )
+                  })}
+                </ul>
+                {current && (
+                  <div
+                    className="dark mt-3 rounded-lg bg-background p-4 text-foreground"
+                    aria-live="polite"
+                  >
+                    <p className="text-base font-semibold">{current.name}</p>
+                    <p className="mt-1.5 text-sm text-pretty text-foreground/85">
+                      {current.explanation}
+                    </p>
+                    {where.length > 0 && (
+                      <div className="mt-3">
+                        <p className="text-xs text-muted-foreground">Used in</p>
+                        <ul className="mt-1.5 flex flex-wrap gap-1.5">
+                          {where.map((n) => (
+                            <li key={n.slug}>
+                              {n.kind === 'project' ? (
+                                <Link
+                                  href={`/projects/${n.slug}`}
+                                  className="inline-flex rounded-full bg-foreground/10 px-2.5 py-1 text-xs font-semibold text-foreground focus-ring transition-colors hover:bg-foreground/20"
+                                >
+                                  {n.title}
+                                </Link>
+                              ) : (
+                                <span className="inline-flex rounded-full bg-foreground/10 px-2.5 py-1 text-xs font-semibold">
+                                  {n.title}
+                                </span>
+                              )}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )
+          })}
         </div>
-      ))}
+      </div>
     </div>
   )
 }

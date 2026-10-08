@@ -430,6 +430,7 @@ export const PROJECTS: Project[] = [
     slug: 'anyform',
     accent: 'sky',
     title: 'AnyForm',
+    tagline: 'AI-reviewed session replays',
     summary: 'See what your users saw, and fix what got in their way.',
     status: 'in-development',
     role: null,
@@ -445,6 +446,7 @@ export const PROJECTS: Project[] = [
     slug: 'cratest',
     accent: 'sun',
     title: 'The Cratest',
+    tagline: 'Social music reviews',
     summary: 'A social platform for reviewing songs, albums and artists.',
     status: 'in-development',
     role: null,
@@ -460,6 +462,7 @@ export const PROJECTS: Project[] = [
     slug: 'trailblaze',
     accent: 'mint',
     title: 'Trailblaze',
+    tagline: 'Jobs for new talent',
     summary: 'Job opportunities for the next generation of talent.',
     status: null,
     role: 'Co-Founder & CTO',
@@ -479,6 +482,7 @@ export const PROJECTS: Project[] = [
     slug: 'koistream',
     accent: 'lavender',
     title: 'KoiStream',
+    tagline: 'Community livestreams',
     summary:
       'Connecting students, staff, and families through community livestreams.',
     status: 'archived',
@@ -501,6 +505,7 @@ export const PROJECTS: Project[] = [
     slug: 'tedx',
     accent: 'sky',
     title: 'TEDx Design Tech',
+    tagline: 'Event ticketing',
     summary: 'Sell and manage tickets for a high school TEDx event.',
     status: 'archived',
     role: null,
@@ -521,6 +526,7 @@ export const PROJECTS: Project[] = [
     slug: 'branch',
     accent: 'mint',
     title: 'Branch',
+    tagline: 'Smart school prototype',
     summary: 'Smart school prototype presented at Oracle OpenWorld 2019.',
     status: 'archived',
     role: null,
@@ -544,6 +550,7 @@ export const WORK: WorkNode[] = [
   {
     slug: 'oracle',
     title: 'Oracle',
+    tagline: 'Software Engineer',
     accent: 'sky',
     summary:
       'Software Engineer on a small R&D team since June 2025, after two internships. Full-stack ownership of AI agents in production, handling thousands of Gen AI chats a day, plus OCR and RAG ingestion and AI-to-human handoff.'
@@ -551,6 +558,7 @@ export const WORK: WorkNode[] = [
   {
     slug: 'careerfoundry',
     title: 'CareerFoundry',
+    tagline: 'Web Development Instructor',
     accent: 'mint',
     summary:
       'Web Development Instructor, July 2022 to May 2023. Taught new developers to build full-stack web apps, with feedback on every project within 24 hours.'

@@ -9,7 +9,7 @@ import { CtaLink } from './cta-link'
 export function ProfileCard({ className }: { className?: string }) {
   return (
     <div className={cn('min-w-0', className)}>
-      <div className="relative size-44 overflow-hidden rounded-full">
+      <div className="relative size-44 overflow-hidden rounded-full border-2 border-foreground/80">
         <Image
           src={photo}
           alt={`Portrait of ${PROFILE.name}`}
@@ -17,7 +17,7 @@ export function ProfileCard({ className }: { className?: string }) {
           priority
           placeholder="blur"
           sizes="320px"
-          className="origin-[87%_3%] scale-[1.6] object-cover object-top"
+          className="origin-[62%_31%] scale-[1.6] object-cover object-top"
         />
       </div>
 

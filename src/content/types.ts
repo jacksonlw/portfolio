@@ -25,6 +25,8 @@ export type Project = {
   slug: string
   title: string
   accent: Accent
+  /** A few words under the project's bubble in the constellation. */
+  tagline: string
   /** One line, shown on cards and as the page lede. */
   summary: string
   status: 'live' | 'in-development' | 'archived' | null
@@ -79,5 +81,7 @@ export type WorkNode = {
   slug: string
   title: string
   accent: Accent
+  /** A few words under the bubble: the role. */
+  tagline: string
   summary: string
 }
