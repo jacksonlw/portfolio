@@ -379,7 +379,17 @@ export const SKILLS: Skill[] = [
   skill(
     'Design Thinking',
     'How I work',
-    'Design thinking has shaped how I build since high school at Design Tech. It taught me to start with the people I’m building for, then prototype, test and refine until it works for them. Every product I’ve designed since has started with the user.'
+    'Design thinking has shaped how I build since high school at Design Tech. It taught me to start with the people I’m building for, then prototype, test and refine until it works for them. Every product I’ve designed since has started with the user.',
+    [
+      'oracle',
+      'careerfoundry',
+      'anyform',
+      'cratest',
+      'trailblaze',
+      'koistream',
+      'tedx',
+      'branch'
+    ]
   ),
   skill(
     'Agile',
@@ -390,8 +400,16 @@ export const SKILLS: Skill[] = [
   skill(
     'UI/UX',
     'How I work',
-    'Designing for the people using it. Trailblaze’s website was mine end to end, and AnyForm exists to find what gets in users’ way.',
-    ['trailblaze', 'anyform']
+    'Designing for the people using it, in my work at Oracle and in every project I’ve built: Trailblaze’s website was mine end to end, and AnyForm exists to find what gets in users’ way.',
+    [
+      'oracle',
+      'anyform',
+      'cratest',
+      'trailblaze',
+      'koistream',
+      'tedx',
+      'branch'
+    ]
   ),
   skill(
     'Teaching',
