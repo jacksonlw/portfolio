@@ -56,37 +56,29 @@ export const PROFILE = {
 }
 
 export const EXPERIENCE: Experience[] = [
+  // Matches resume/resume.html.
   {
     company: 'Oracle',
     title: 'Software Engineer',
-    location: null,
+    location: 'Redwood Shores, CA',
     dates: { start: 'June 2025', end: null },
-    // Matches resume/resume.html.
     bullets: [
-      'Architected an agentic workflow builder adopted by multiple customers in production for support chat',
+      'Architected an agentic workflow builder adopted by multiple customers, handling thousands of Gen AI chats daily',
       'Developed and deployed an OCR + RAG pipeline that ingested over 2 million documents in less than a month',
-      'Collaborated across multiple teams to deliver AI agent to human agent handoff'
+      'Partnered with multiple teams to deliver AI agent to human agent handoff for production support chat',
+      'Own full-stack projects end to end on a small R&D team, from design through production deployment'
     ]
   },
   {
     company: 'Oracle',
-    title: 'Software Engineer Intern',
+    title: 'Software Engineer Intern (x2)',
     location: 'Redwood City, CA',
-    dates: { start: 'June 2024', end: 'September 2024' },
+    dates: { start: 'Summers 2023', end: '2024' },
     bullets: [
       'Developed and deployed a Helidon MP microservice featuring CRUD endpoints to upload documents for RAG',
       'Designed a type-safe way for an existing Oracle JET Knockout project to manage global state with 30+ variables',
-      'Automated testing for over 90% of scenarios in a REST microservice that supports LLM queries and file uploads'
-    ]
-  },
-  {
-    company: 'Oracle',
-    title: 'Software Engineer Intern',
-    location: 'Redwood City, CA',
-    dates: { start: 'June 2023', end: 'September 2023' },
-    bullets: [
-      'Developed new features for internal and consumer-facing applications used in the Oracle Health LOB',
-      'Collaborated with full-time developers to facilitate scrum meetings, code reviews, and production releases'
+      'Automated testing for over 90% of scenarios in a REST microservice that supports LLM queries and file uploads',
+      'Developed new features for internal and consumer-facing applications used in the Oracle Health LOB'
     ]
   },
   {
@@ -109,6 +101,17 @@ export const EXPERIENCE: Experience[] = [
       'Taught new students in the industry to develop full-stack web applications',
       'Provided groups of students with feedback on projects within 24 hours of submission',
       'Collaborated with course mentors to provide students with careers in the web development industry'
+    ]
+  },
+  {
+    company: 'KoiStream',
+    title: 'Director & Full-Stack Developer',
+    location: 'Redwood City, CA',
+    dates: { start: 'March 2020', end: 'June 2021' },
+    bullets: [
+      'Developed a live streaming platform with viewing, chatting, and moderation capabilities',
+      'Delivered HD video stream through the use of FFmpeg, AWS MediaLive, and Amazon CloudFront',
+      'Constructed a full-fledged broadcasting studio on campus with high-grade production equipment'
     ]
   }
 ]
@@ -142,7 +145,7 @@ export const SKILLS: Skill[] = [
   skill(
     'Multi-Agent Orchestration',
     'AI & agents',
-    'Getting agents to hand work to each other and to people. At Oracle I architected an agentic workflow builder that runs in production for support chat, and helped deliver the handoff from AI agents to human agents.',
+    'Getting agents to hand work to each other and to people. At Oracle I architected an agentic workflow builder that handles thousands of Gen AI chats a day in production, and helped deliver the handoff from AI agents to human agents.',
     ['oracle']
   ),
   skill(
@@ -525,7 +528,7 @@ export const WORK: WorkNode[] = [
     title: 'Oracle',
     accent: 'sky',
     summary:
-      'Software Engineer since June 2025, after two internships. AI agents in production for support chat, OCR and RAG ingestion, and AI-to-human handoff.'
+      'Software Engineer on a small R&D team since June 2025, after two internships. Full-stack ownership of AI agents in production, handling thousands of Gen AI chats a day, plus OCR and RAG ingestion and AI-to-human handoff.'
   },
   {
     slug: 'careerfoundry',
