@@ -4,7 +4,8 @@
   Chrome. The layout reproduces the original Google Docs resume measure for measure: US Letter,
   0.5in side margins, Times New Roman (20pt name, 14pt section heads, 11pt body on a 14.6pt line),
   Arial bullets at 54pt with text at 72pt, label columns at 126pt and a rule under each heading.
-  Content rule: only facts from Jackson; keep it to one page.
+  Content rule: only facts from Jackson; keep it to one page. Entry and heading gaps are 8pt
+  (the original used 9.9pt and 10pt) to fit the summary and the longer course list.
 -->
 <html lang="en">
   <head>
@@ -53,7 +54,7 @@
         text-align: left;
       }
       h2 {
-        margin-top: 10pt;
+        margin-top: 8pt;
         padding-bottom: 3.4pt;
         border-bottom: 1pt solid #000;
         font-size: 14pt;
@@ -64,7 +65,7 @@
         margin-top: 10pt;
       }
       .entry + .entry {
-        margin-top: 9.9pt;
+        margin-top: 8pt;
       }
       .head {
         display: flex;
@@ -163,7 +164,7 @@
       <div class="entry">
         <div class="head">
           <span><b>KoiStream</b><i>Director &amp; Full-Stack Developer</i></span>
-          <span>Redwood City, CA | <b>March 2020 - June 2021</b></span>
+          <span>Redwood Shores, CA | <b>March 2020 - June 2021</b></span>
         </div>
         <ul>
           <li>Developed a live streaming platform with viewing, chatting, and moderation capabilities</li>
@@ -184,7 +185,7 @@
         <p><b>Khoury College of Computer Sciences</b></p>
         <div class="row">
           <span>Related Courses:</span>
-          <span>Object-Oriented Design | Algorithms and Data | Fundamentals of Computer Science 1 &amp; 2 | Intro to Web Development | Discrete Structures | Foundations of Cybersecurity</span>
+          <span>Software Engineering | Algorithmic Trading | Data Science Fundamentals | Object-Oriented Design | Algorithms and Data | Fundamentals of Computer Science 1 &amp; 2 | Intro to Web Development | Discrete Structures | Foundations of Cybersecurity</span>
         </div>
       </div>
     </section>

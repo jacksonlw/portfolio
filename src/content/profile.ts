@@ -108,7 +108,7 @@ export const EXPERIENCE: Experience[] = [
   {
     company: 'KoiStream',
     title: 'Director & Full-Stack Developer',
-    location: 'Redwood City, CA',
+    location: 'Redwood Shores, CA',
     dates: { start: 'March 2020', end: 'June 2021' },
     bullets: [
       'Developed a live streaming platform with viewing, chatting, and moderation capabilities',
@@ -126,7 +126,7 @@ export const EDUCATION: Education[] = [
     graduated: 'June 2025',
     details: [
       'Khoury College of Computer Sciences',
-      'Related courses: Object-Oriented Design, Algorithms and Data, Fundamentals of Computer Science 1 & 2, Intro to Web Development, Discrete Structures, Foundations of Cybersecurity'
+      'Related courses: Software Engineering, Algorithmic Trading, Data Science Fundamentals, Object-Oriented Design, Algorithms and Data, Fundamentals of Computer Science 1 & 2, Intro to Web Development, Discrete Structures, Foundations of Cybersecurity'
     ]
   }
 ]
