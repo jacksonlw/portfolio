@@ -48,7 +48,7 @@ export default async function ProjectPage({ params }: Props) {
       <header className="border-b border-border bg-card py-14 sm:py-20">
         <Container>
           <Link
-            href="/#projects"
+            href="/#skills"
             className="inline-flex items-center gap-1.5 rounded-sm text-sm font-medium text-muted-foreground transition-colors hover:text-foreground focus-ring"
           >
             <ArrowLeftIcon weight="bold" aria-hidden className="size-4" />

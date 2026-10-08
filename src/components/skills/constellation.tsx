@@ -1,5 +1,6 @@
 'use client'
 
+import { ArrowRightIcon } from '@phosphor-icons/react/ssr'
 import Link from 'next/link'
 import { useMemo, useState, type CSSProperties } from 'react'
 import { Illustration } from '@/components/illustrations/registry'
@@ -497,7 +498,18 @@ function MobileSkills({
         aria-live="polite"
       >
         {star || project ? (
-          <Explain star={star} project={project} nodes={nodes} stars={stars} />
+          <>
+            <Explain star={star} project={project} nodes={nodes} stars={stars} />
+            {project?.kind === 'project' && (
+              <Link
+                href={`/projects/${project.slug}`}
+                className="mt-4 inline-flex items-center gap-1 rounded-sm text-sm font-semibold text-link underline-offset-4 hover:underline focus-ring"
+              >
+                Read about {project.title}
+                <ArrowRightIcon weight="bold" aria-hidden className="size-4" />
+              </Link>
+            )}
+          </>
         ) : (
           <p className="text-sm text-muted-foreground">
             Tap a project or a skill to see how they connect.
