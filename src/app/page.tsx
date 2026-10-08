@@ -1,11 +1,14 @@
+import { JsonLd } from '@/components/json-ld'
 import { CtaLink } from '@/components/site/cta-link'
 import { ProjectCard } from '@/components/site/project-card'
 import { Container, Section } from '@/components/site/section'
 import { PROFILE, PROJECTS } from '@/content/profile'
+import { personJsonLd } from '@/lib/machine'
 
 export default function Home() {
   return (
     <>
+      <JsonLd data={personJsonLd()} />
       <header className="border-b border-border bg-card py-20 sm:py-28">
         <Container>
           <h1 className="text-[2.75rem] leading-[1.02] font-semibold tracking-[-0.04em] text-balance sm:text-display lg:text-display-xl">

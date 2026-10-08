@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next'
 import localFont from 'next/font/local'
 import './globals.css'
+import { ChatbotSlot } from '@/components/chatbot/chatbot-slot'
 import { Footer } from '@/components/site/footer'
 import { Header } from '@/components/site/header'
 import { PROFILE } from '@/content/profile'
@@ -31,6 +32,13 @@ export const metadata: Metadata = {
     description: PROFILE.intro,
     url: '/',
     locale: 'en_US'
+  },
+  // Point agents at the machine-readable views of the same content.
+  alternates: {
+    types: {
+      'text/plain': '/llms.txt',
+      'application/json': '/profile.json'
+    }
   }
 }
 
@@ -47,6 +55,7 @@ export default function RootLayout({
         <Header />
         <main className="flex-1">{children}</main>
         <Footer />
+        <ChatbotSlot />
       </body>
     </html>
   )
