@@ -57,15 +57,24 @@
   }
 }
 
-/* The skills constellation (components/skills): stars rise in one after another, and the lines
-   to related skills draw in. Only when motion is welcome; otherwise everything is simply there. */
+/* The skills constellation (components/skills): stars rise in one after another, and active
+   links flow. Only when motion is welcome; otherwise everything is simply there. The drift,
+   parallax and lean are in the component's motion loop. */
 @media (prefers-reduced-motion: no-preference) {
   .constellation-star {
     animation: constellation-rise 600ms cubic-bezier(0.22, 1, 0.36, 1) backwards;
     animation-delay: calc(var(--i, 0) * 25ms);
   }
-  .constellation-link {
-    animation: constellation-draw 500ms cubic-bezier(0.65, 0, 0.35, 1) both;
+  /* Active links: a dash that flows from the active node outward, for as long as it's active. */
+  .constellation-flow {
+    stroke-dasharray: 2 14;
+    animation: constellation-flow 1.4s linear infinite;
+  }
+}
+
+@keyframes constellation-flow {
+  to {
+    stroke-dashoffset: -32;
   }
 }
 
@@ -80,11 +89,3 @@
   }
 }
 
-@keyframes constellation-draw {
-  from {
-    stroke-dashoffset: 1;
-  }
-  to {
-    stroke-dashoffset: 0;
-  }
-}
