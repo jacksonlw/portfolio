@@ -7,9 +7,9 @@ const VARIANTS = {
   /** An ink pill (a white pill on ink bands) that turns brand blue on hover. */
   primary:
     'bg-primary text-primary-foreground hover:bg-brand hover:text-brand-foreground',
-  /** A hairline pill; clear with a light line on ink bands. */
+  /** An outlined pill that fills light grey and darkens its line on hover; clear on ink bands. */
   secondary:
-    'border-border bg-card text-foreground hover:border-foreground/40 dark:border-foreground/25 dark:bg-transparent dark:hover:border-foreground/60',
+    'border-foreground/30 bg-card text-foreground hover:border-foreground/60 hover:bg-muted dark:border-foreground/30 dark:bg-transparent dark:hover:border-foreground/60 dark:hover:bg-foreground/5',
   /** Text only, for quiet links in the header. */
   ghost: 'text-foreground hover:bg-muted'
 } as const
