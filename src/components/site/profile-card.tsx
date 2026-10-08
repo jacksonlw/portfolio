@@ -17,7 +17,7 @@ export function ProfileCard({ className }: { className?: string }) {
           priority
           placeholder="blur"
           sizes="320px"
-          className="origin-[82%_8%] scale-[1.6] object-cover object-top"
+          className="origin-[87%_3%] scale-[1.6] object-cover object-top"
         />
       </div>
 

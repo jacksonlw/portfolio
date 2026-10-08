@@ -39,15 +39,15 @@ export const PROFILE = {
   /**
    * The About, in Jackson's direction: a short lead that's always shown and a longer part behind
    * "Read more". Every claim maps to his own words, his resume or a project in PROJECTS.
-   * Light markup: **bold** and [links](/path) (components/site/rich-text.tsx).
+   * Light markup: **bold** (components/site/rich-text.tsx).
    */
   about: {
     lead: [
-      'I’m a **software engineer** at Oracle, building the AI agents our customers run in production. I started writing software in high school and never really stopped. Outside of work, I’m building [AnyForm](/projects/anyform) and [The Cratest](/projects/cratest).'
+      'I’m a **software engineer** who builds products people actually want to use. Design thinking got drilled into me in high school and it stuck: I start with the people I’m building for, put something real in front of them early, and keep refining until it works for them.'
     ],
     more: [
-      'At Oracle I architected the agentic workflow builder customers use for support chat, built OCR and RAG ingestion at the scale of millions of documents, and worked across teams to hand conversations from AI agents to human ones. When something breaks in production, I own the root cause analysis from start to finish.',
-      'Before Oracle, I co-founded [Trailblaze](/projects/trailblaze) and ran engineering as CTO, taking our app past 10,000 users in its first year. I’ve also taught full-stack development at CareerFoundry, and I’ve shipped on the web, on mobile and natively on iOS, for startups, for enterprise teams and for the fun of it.'
+      'That approach has carried me from a smart school prototype I presented at Oracle OpenWorld and a livestream platform for my school’s community, to co-founding Trailblaze and growing our app past 10,000 users in its first year, to teaching new developers at CareerFoundry. Today I build AI agents at Oracle, and on my own time I’m working on AnyForm and The Cratest.',
+      'I keep a close eye on markets and emerging tech, because the best products come from knowing both what people need and what just became possible. When a new tool earns its place, it goes straight into what I’m building.'
     ]
   },
   links: [
@@ -368,7 +368,8 @@ export const SKILLS: Skill[] = [
   skill(
     'Teaching',
     'How I work',
-    'As a CareerFoundry instructor I taught new developers to build full-stack web apps, with feedback on every project within 24 hours.'
+    'As a CareerFoundry instructor I taught new developers to build full-stack web apps, with feedback on every project within 24 hours.',
+    ['careerfoundry']
   ),
   skill(
     'Startups',
@@ -500,6 +501,13 @@ export const WORK: WorkNode[] = [
     accent: 'sky',
     summary:
       'Software Engineer since June 2025, after two internships. AI agents in production for support chat, OCR and RAG ingestion, and AI-to-human handoff.'
+  },
+  {
+    slug: 'careerfoundry',
+    title: 'CareerFoundry',
+    accent: 'mint',
+    summary:
+      'Web Development Instructor, July 2022 to May 2023. Taught new developers to build full-stack web apps, with feedback on every project within 24 hours.'
   }
 ]
 

@@ -170,3 +170,22 @@ export function OracleBadge(props: IllustrationProps) {
     </IllustrationFrame>
   )
 }
+
+/** CareerFoundry (a work bubble): a chalkboard on an easel with a lesson in code on it. */
+export function CareerFoundryBadge(props: IllustrationProps) {
+  return (
+    <IllustrationFrame kind="badge" {...props}>
+      <FamilySwash accent="mint" />
+      <g {...animProps({ anim: 'float', delay: 1100 })}>
+        <path className="ill-f-none ill-s" d="M52 112L40 136M92 112L104 136" />
+        <Shadowed>
+          <Card x={20} y={40} w={104} h={72} tone="mint-tint" />
+          <path className="ill-f-none ill-s ill-s-bold ill-s-ink-fixed" d="M40 64L32 72L40 80M56 64L64 72L56 80" />
+          <Lines x={76} y={64} w={36} widths={[1, 0.7, 0.45]} onLight />
+        </Shadowed>
+        <CheckBadge cx={STATUS.cx + 8} cy={STATUS.cy - 12} r={14} delay={450} />
+      </g>
+      <FamilySparkles big="topLeft" small="bottomRight" />
+    </IllustrationFrame>
+  )
+}

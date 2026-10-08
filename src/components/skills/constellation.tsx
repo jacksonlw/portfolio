@@ -8,10 +8,10 @@ import { TINT_BG } from '@/lib/accent'
 import { cn } from '@/lib/cn'
 
 /*
- * The skills constellation, filling the screen. Oracle sits in the middle with the projects in a
- * ring around it; the skill areas flank them, each a cluster of skills around its illustration.
- * Hover (or focus, or tap) a skill and lines run to where it was used; hover Oracle or a project
- * and lines run to every skill it used. A dark ink popover beside the pointer explains it.
+ * The skills constellation, filling the screen. Work (Oracle, CareerFoundry) runs along the top of
+ * the centre column with the projects below it; the skill areas flank them, each a cluster of
+ * skills around its illustration. Hover (or focus, or tap) a skill and lines run to where it was
+ * used; hover a job or a project and lines run to every skill it used. A dark ink popover beside the pointer explains it.
  * Labels sit above stars in a cluster's upper half and below in its lower half, away from the
  * lines into the hub.
  *
@@ -31,15 +31,18 @@ const AREAS: Record<Skill['area'], AreaDef> = {
   'How I work': { key: 'area/work', accent: 'lavender', hub: [86, 83] }
 }
 
-/** Work bubbles in the centre; the projects on a hexagon around it, starting top left. */
-const CENTRE: [number, number] = [50, 50]
-const RING: [number, number][] = [
-  [40, 21],
-  [60, 21],
-  [68, 50],
-  [60, 79],
-  [40, 79],
-  [32, 50]
+/** The centre column: work along the top, the projects in two rows of three below. */
+const WORK_SLOTS: [number, number][] = [
+  [43, 17],
+  [57, 17]
+]
+const PROJECT_SLOTS: [number, number][] = [
+  [36, 50],
+  [50, 50],
+  [64, 50],
+  [36, 81],
+  [50, 81],
+  [64, 81]
 ]
 
 const DOT: Record<Accent, string> = {
@@ -105,17 +108,17 @@ export function SkillsConstellation({
   const stars = useMemo(() => layoutStars(skills), [skills])
   const nodes: ProjectNode[] = useMemo(
     () => [
-      ...work.map((w) => ({
+      ...work.map((w, k) => ({
         ...w,
         kind: 'work' as const,
-        x: CENTRE[0],
-        y: CENTRE[1]
+        x: WORK_SLOTS[k][0],
+        y: WORK_SLOTS[k][1]
       })),
       ...projects.map((p, k) => ({
         ...p,
         kind: 'project' as const,
-        x: RING[k][0],
-        y: RING[k][1]
+        x: PROJECT_SLOTS[k][0],
+        y: PROJECT_SLOTS[k][1]
       }))
     ],
     [projects, work]
@@ -234,7 +237,23 @@ export function SkillsConstellation({
           </div>
         ))}
 
-        {/* Oracle in the centre, the projects around it. */}
+        {/* Captions over the centre column's two groups. */}
+        {(
+          [
+            ['Work', 4],
+            ['Projects', 33]
+          ] as const
+        ).map(([label, y]) => (
+          <p
+            key={label}
+            className="pointer-events-none absolute -translate-x-1/2 text-sm font-medium text-muted-foreground"
+            style={pos(50, y)}
+          >
+            {label}
+          </p>
+        ))}
+
+        {/* Work along the top, the projects below. */}
         {nodes.map((p) => {
           const isActive = activeProject?.slug === p.slug
           const isLinked = linked.projects.has(p.slug)
@@ -249,16 +268,12 @@ export function SkillsConstellation({
               <span
                 className={cn(
                   'flex items-center justify-center rounded-full border-2 transition-[border-color,scale] duration-200 group-hover:scale-105',
-                  p.kind === 'work' ? 'size-32' : 'size-24',
+                  'size-24',
                   TINT_BG[p.accent],
                   lit ? 'scale-105 border-brand' : 'border-foreground/80'
                 )}
               >
-                <Illustration
-                  name={p.slug}
-                  className={p.kind === 'work' ? 'w-24' : 'w-[4.5rem]'}
-                  decorative
-                />
+                <Illustration name={p.slug} className="w-[4.5rem]" decorative />
               </span>
               <span
                 className={cn(
