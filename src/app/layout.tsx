@@ -61,8 +61,14 @@ export default function RootLayout({
   children
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en" className={`${flex.variable} ${code.variable}`}>
-      <body className="flex min-h-dvh flex-col">
+    // suppressHydrationWarning: browser extensions (Grammarly and the like) add attributes to
+    // <html> and <body> before React loads. It only covers these two elements' own attributes.
+    <html
+      lang="en"
+      className={`${flex.variable} ${code.variable}`}
+      suppressHydrationWarning
+    >
+      <body className="flex min-h-dvh flex-col" suppressHydrationWarning>
         <main className="flex-1">{children}</main>
         <Footer />
         <ChatbotSlot />
