@@ -1,0 +1,52 @@
+@import 'tailwindcss';
+@import '../styles/tailwind.css';
+@import '../styles/theme.css';
+@import '../styles/brand-palette.css';
+
+/* The display type scale from the AnyForm brand (web/DESIGN.md): all semibold and tight, plus a
+   regular lede. Everything else uses Tailwind's default steps. */
+@theme {
+  --text-display-xl: 4.5rem;
+  --text-display-xl--line-height: 1;
+  --text-display-xl--letter-spacing: -0.04em;
+  --text-display-xl--font-weight: 600;
+  --text-display: 3.5rem;
+  --text-display--line-height: 1.04;
+  --text-display--letter-spacing: -0.035em;
+  --text-display--font-weight: 600;
+  --text-headline: 2.5rem;
+  --text-headline--line-height: 1.08;
+  --text-headline--letter-spacing: -0.03em;
+  --text-headline--font-weight: 600;
+  --text-title: 1.75rem;
+  --text-title--line-height: 1.15;
+  --text-title--letter-spacing: -0.02em;
+  --text-title--font-weight: 600;
+  --text-lede: 1.25rem;
+  --text-lede--line-height: 1.5;
+  --text-lede--letter-spacing: -0.005em;
+  --text-lede--font-weight: 400;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  html {
+    @apply font-sans antialiased;
+  }
+  body {
+    @apply bg-background text-foreground;
+    /* The brand face stays sharp (ROND at its default, 0): the liquid mark is the only soft element. */
+  }
+  ::selection {
+    background: var(--highlight);
+    color: var(--highlight-foreground);
+  }
+  button:not(:disabled),
+  [role='button']:not(:disabled),
+  a[href],
+  label[for] {
+    cursor: pointer;
+  }
+}

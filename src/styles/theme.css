@@ -1,0 +1,101 @@
+/*
+ * Theme tokens, ported verbatim from the AnyForm brand (~/af-approvals/web/src/embed/theme.css).
+ * Plain CSS custom properties: `:root` and `.light` hold the light theme, `.dark` the dark one,
+ * and either class on an ancestor switches the subtree (ink bands are `.dark` sections).
+ * Blue is a signal, not a fill: #2B3BFF is links, focus, selection and the brand only; primary
+ * actions are ink. Surfaces are flat; only floating layers get --shadow-pop.
+ */
+
+:root {
+  /* Fonts. The app sets --font-flex and --font-code (next/font); a host sets these directly. */
+  --af-font-sans: var(--font-flex, ui-sans-serif), ui-sans-serif, system-ui, sans-serif;
+  --af-font-heading: var(--font-flex, ui-sans-serif), ui-sans-serif, system-ui, sans-serif;
+  --af-font-mono: var(--font-code, ui-monospace), ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+:root,
+.light {
+  color-scheme: light;
+  /* Surfaces and text */
+  --background: #f4f5f7;
+  --foreground: #0b0b0c;
+  --card: #ffffff;
+  --card-foreground: #0b0b0c;
+  --popover: #ffffff;
+  --popover-foreground: #0b0b0c;
+  --muted: #f1f2f4;
+  --muted-foreground: #5b6270;
+  /* Actions and emphasis: ink primary; blue is the brand, links, focus and selection */
+  --primary: #0b0b0c;
+  --primary-foreground: #ffffff;
+  --secondary: #edeef1;
+  --secondary-foreground: #0b0b0c;
+  --accent: #f1f2f4;
+  --accent-foreground: #0b0b0c;
+  --brand: #2b3bff;
+  --brand-foreground: #ffffff;
+  --link: #2b3bff;
+  --highlight: #e5edff;
+  --highlight-foreground: #1608ae;
+  /* Status */
+  --destructive: #d23b31;
+  --success: #1f8a4c;
+  --warning: #a8691a;
+  --info: #2b3bff;
+  /* Lines and focus: the hairline, a field's 3:1 boundary, the focus ring */
+  --border: #e3e5e9;
+  --input: #8a909b;
+  --ring: #2b3bff;
+  /* Chart series, in order */
+  --chart-1: #2b3bff;
+  --chart-2: #799cff;
+  --chart-3: #1608ae;
+  --chart-4: #a7bfff;
+  --chart-5: #7a808c;
+  /* Corner radius; the sm..4xl steps derive from it (sm 4px, md 6, lg 8, xl 12) */
+  --radius: 0.5rem;
+  /* Elevation: surfaces are flat (shadow-card), a hover lift (shadow-card-hover), and the one
+     shadow floating layers get (shadow-pop) */
+  --shadow-card: none;
+  --shadow-card-hover: 0 1px 2px rgb(11 11 12 / 0.04), 0 6px 16px -6px rgb(11 11 12 / 0.12);
+  --shadow-pop: 0 1px 2px rgb(11 11 12 / 0.06), 0 12px 32px -8px rgb(11 11 12 / 0.18);
+}
+
+.dark {
+  color-scheme: dark;
+  --background: #0b0b0c;
+  --foreground: #f4f5f7;
+  --card: #141416;
+  --card-foreground: #f4f5f7;
+  --popover: #161619;
+  --popover-foreground: #f4f5f7;
+  --muted: #1a1a1d;
+  --muted-foreground: #9a9ca5;
+  --primary: #f4f5f7;
+  --primary-foreground: #0b0b0c;
+  --secondary: #1f1f23;
+  --secondary-foreground: #f4f5f7;
+  --accent: #1f1f23;
+  --accent-foreground: #f4f5f7;
+  --brand: #2b3bff;
+  --brand-foreground: #ffffff;
+  --link: #799cff;
+  --highlight: #10086a;
+  --highlight-foreground: #ccdaff;
+  --destructive: #f2675d;
+  --success: #3fb26f;
+  --warning: #e0a93b;
+  --info: #799cff;
+  --border: #2a2a2e;
+  --input: #3a3a40;
+  --ring: #799cff;
+  --chart-1: #799cff;
+  --chart-2: #4a70ff;
+  --chart-3: #ccdaff;
+  --chart-4: #2b3bff;
+  --chart-5: #9a9ca5;
+  /* Dark surfaces are flat too; a light hairline marks the hover lift. */
+  --shadow-card: none;
+  --shadow-card-hover: inset 0 0 0 1px rgb(255 255 255 / 0.1);
+  --shadow-pop: 0 12px 32px -8px rgb(0 0 0 / 0.6);
+}

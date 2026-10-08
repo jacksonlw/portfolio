@@ -1,0 +1,43 @@
+/*
+ * The illustration palette, ported from the AnyForm brand (~/af-approvals/logo/source/colors.mjs).
+ * For illustrations and brand bands only, never UI chrome. Each accent means something:
+ * sky = the agent or a proposal, mint = goes through, sun = waits for a person, lavender = the record.
+ */
+
+:root {
+  --af-blue: #2B3BFF;
+  --af-ink: #0B0B0C;
+  --af-white: #FFFFFF;
+  --af-fog: #F4F5F7;
+  --af-sky: #CCDAFF;
+  --af-sky-tint: #F3F7FF;
+  --af-sky-deep: #1F19D9;
+  --af-mint: #93EDCB;
+  --af-mint-tint: #E1FAF0;
+  --af-mint-deep: #00654B;
+  --af-sun: #FDDB72;
+  --af-sun-tint: #FBF3DD;
+  --af-sun-deep: #685300;
+  --af-lavender: #D7C6FF;
+  --af-lavender-tint: #F5F1FF;
+  --af-lavender-deep: #5F4193;
+}
+
+@theme inline {
+  --color-illo-blue: var(--af-blue);
+  --color-illo-ink: var(--af-ink);
+  --color-illo-white: var(--af-white);
+  --color-illo-fog: var(--af-fog);
+  --color-illo-sky: var(--af-sky);
+  --color-illo-sky-tint: var(--af-sky-tint);
+  --color-illo-sky-deep: var(--af-sky-deep);
+  --color-illo-mint: var(--af-mint);
+  --color-illo-mint-tint: var(--af-mint-tint);
+  --color-illo-mint-deep: var(--af-mint-deep);
+  --color-illo-sun: var(--af-sun);
+  --color-illo-sun-tint: var(--af-sun-tint);
+  --color-illo-sun-deep: var(--af-sun-deep);
+  --color-illo-lavender: var(--af-lavender);
+  --color-illo-lavender-tint: var(--af-lavender-tint);
+  --color-illo-lavender-deep: var(--af-lavender-deep);
+}
