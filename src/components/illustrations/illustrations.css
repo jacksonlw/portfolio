@@ -84,6 +84,8 @@
   stroke-linecap: round;
 }
 .ill-s-bold { stroke-width: calc(var(--ill-sw) * 1.5); }
+/* Sketch details: creases, stripes, hatching. */
+.ill-s-thin { stroke-width: calc(var(--ill-sw) * 0.6); }
 .ill-s-paper { stroke: var(--ill-paper); }
 /* Marks drawn on an accent fill (a check, clock hands, a keyhole) stay ink on any surface. */
 .ill-s-ink-fixed { stroke: var(--af-ink, #0b0b0c); }

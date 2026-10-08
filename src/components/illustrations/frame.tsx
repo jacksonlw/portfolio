@@ -3,11 +3,11 @@ import { cn } from "@/lib/cn";
 import { Reveal } from "./reveal";
 import "./illustrations.css";
 
-export type IllustrationKind = "badge" | "scene";
+export type IllustrationKind = "badge" | "scene" | "sketch";
 export type Surface = "page" | "card" | "ink";
 
 /** The viewBox of each kind: badges on a 160 square (4-unit grid), scenes 640×400 (8-unit grid). */
-export const VIEWBOX: Record<IllustrationKind, readonly [number, number]> = { badge: [160, 160], scene: [640, 400] };
+export const VIEWBOX: Record<IllustrationKind, readonly [number, number]> = { badge: [160, 160], scene: [640, 400], sketch: [200, 200] };
 
 /** What every illustration component takes (and passes to its frame). */
 export type IllustrationProps = {
@@ -31,6 +31,11 @@ export type IllustrationProps = {
  * a badge is drawn small so the outline stays about a pixel or more (56 px → 3.5).
  */
 export function strokeFor(kind: IllustrationKind, size: number | string | undefined): number {
+  // Sketches draw a heavier, hand-drawn ink: 2.75 at a 200 frame, up to 5 when small.
+  if (kind === "sketch") {
+    if (typeof size !== "number") return 2.75;
+    return Math.round(Math.min(5, Math.max(2.75, 300 / size)) * 4) / 4;
+  }
   if (typeof size !== "number") return 2;
   const sw = kind === "badge" ? 192 / size : 800 / size;
   return Math.round(Math.min(kind === "badge" ? 3.5 : 4, Math.max(2, sw)) * 4) / 4;
