@@ -50,3 +50,35 @@
     cursor: pointer;
   }
 }
+
+/* The skills constellation (components/skills): stars rise in one after another, and the lines
+   to related skills draw in. Only when motion is welcome; otherwise everything is simply there. */
+@media (prefers-reduced-motion: no-preference) {
+  .constellation-star {
+    animation: constellation-rise 600ms cubic-bezier(0.22, 1, 0.36, 1) both;
+    animation-delay: calc(var(--i, 0) * 25ms);
+  }
+  .constellation-link {
+    animation: constellation-draw 500ms cubic-bezier(0.65, 0, 0.35, 1) both;
+  }
+}
+
+@keyframes constellation-rise {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes constellation-draw {
+  from {
+    stroke-dashoffset: 1;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}

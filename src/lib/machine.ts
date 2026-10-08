@@ -53,7 +53,7 @@ export function llmsTxt(): string {
   return [
     `# ${PROFILE.name}`,
     '',
-    `> ${PROFILE.role} at Oracle, based in ${PROFILE.location}. ${PROFILE.headline}`,
+    `> ${PROFILE.role} at Oracle, based in ${PROFILE.location}. ${PROFILE.about.lead[0]}`,
     '',
     'Everything on this site comes from one content file, so these views and the HTML pages say the same thing.',
     '',
@@ -85,7 +85,7 @@ export function llmsFullTxt(): string {
     PROFILE.intro,
     ''
   ]
-  if (PROFILE.about) out.push('## About', '', PROFILE.about, '')
+  out.push('## About', '', ...[...PROFILE.about.lead, ...PROFILE.about.more].flatMap((p) => [p, '']))
 
   out.push('## Experience', '')
   for (const e of EXPERIENCE) {

@@ -57,13 +57,19 @@ export type Education = {
   details: string[]
 }
 
-export type SkillArea = 'AI & agents' | 'Languages' | 'Frontend & mobile' | 'Backend' | 'Cloud & tools'
+export type SkillArea =
+  | 'AI & agents'
+  | 'Languages'
+  | 'Frontend & mobile'
+  | 'Backend & data'
+  | 'Cloud & tools'
+  | 'How I work'
 
 export type Skill = {
   name: string
   area: SkillArea
-  /** Jackson's own explanation, shown on hover in the skills constellation. */
-  explanation: string | null
+  /** What it is to Jackson and where he used it, shown on hover in the skills constellation. */
+  explanation: string
   /** Slugs of projects where he used it. */
   projects: string[]
 }

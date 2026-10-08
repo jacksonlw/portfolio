@@ -14,15 +14,26 @@ export type { Accent, Education, Experience, Link, Project, Skill } from './type
 export const PROFILE = {
   name: 'Jackson Lawrence',
   role: 'Software Engineer',
-  /** The big line at the top of the home page. Grounded in his Oracle agent work in production. */
-  headline: 'I build AI agents for production.',
   location: 'San Francisco, CA',
   email: 'jlawrence1787@gmail.com',
   url: 'https://jlawrence.io',
   resume: '/resume.pdf',
-  /** The intro under the headline. Jackson is writing the full about; this line is from the resume. */
+  /** A one-line description, for metadata and the machine-readable views. */
   intro: 'I’m Jackson Lawrence, a software engineer at Oracle based in San Francisco, CA.',
-  about: null as string | null,
+  /**
+   * The About, in Jackson's direction: a short lead that's always shown and a longer part behind
+   * "Read more". Every claim maps to his own words, his resume or a project in PROJECTS.
+   */
+  about: {
+    lead: [
+      'I’m a software engineer at Oracle, building the AI agents our customers run in production. I started writing software in high school and never really stopped. Outside of work, I’m building AnyForm and The Cratest.'
+    ],
+    more: [
+      'At Oracle I architected the agentic workflow builder customers use for support chat, built OCR and RAG ingestion at the scale of millions of documents, and worked across teams to hand conversations from AI agents to human ones. When something breaks in production, I own the root cause analysis from start to finish.',
+      'Before Oracle, I co-founded Trailblaze and ran engineering as CTO, taking our app past 10,000 users in its first year. I’ve also taught full-stack development at CareerFoundry, and I’ve shipped on the web, on mobile and natively on iOS, for startups, for enterprise teams and for the fun of it.',
+      'I follow AI closely because every new model and agent framework changes what one engineer can build. The ones that hold up end up in my software.'
+    ]
+  },
   links: [{ label: 'GitHub', href: 'https://github.com/JacksonL1787' }] as Link[]
 }
 
@@ -98,50 +109,218 @@ export const EDUCATION: Education[] = [
   }
 ]
 
-const skill = (name: string, area: Skill['area'], projects: string[] = []): Skill => ({
-  name,
-  area,
-  explanation: null,
-  projects
-})
+const skill = (
+  name: string,
+  area: Skill['area'],
+  explanation: string,
+  projects: string[] = []
+): Skill => ({ name, area, explanation, projects })
 
-/** From the resume plus the skills Jackson added. Project links only where a README or the resume shows it. */
+/**
+ * Every skill, with an explanation tied to the resume or a project. Drafted for Jackson to edit;
+ * the generic ones (no project or role behind them yet) are the first to sharpen.
+ */
 export const SKILLS: Skill[] = [
-  skill('Prompting', 'AI & agents'),
-  skill('Multi-Agent Orchestration', 'AI & agents'),
-  skill('Claude Code', 'AI & agents'),
-  skill('Codex', 'AI & agents'),
-  skill('LangChain', 'AI & agents'),
-  skill('LangGraph', 'AI & agents'),
-  skill('RAG', 'AI & agents'),
-  skill('Embeddings', 'AI & agents'),
-  skill('Vector DBs', 'AI & agents'),
-  skill('TypeScript', 'Languages', ['anyform']),
-  skill('JavaScript', 'Languages'),
-  skill('Go', 'Languages', ['anyform', 'cratest']),
-  skill('Java', 'Languages'),
-  skill('Python', 'Languages'),
-  skill('SQL', 'Languages', ['anyform', 'cratest']),
-  skill('GraphQL', 'Languages'),
-  skill('React', 'Frontend & mobile'),
-  skill('Next.js', 'Frontend & mobile', ['anyform', 'cratest', 'trailblaze']),
-  skill('React Native', 'Frontend & mobile', ['trailblaze']),
-  skill('SwiftUI', 'Frontend & mobile', ['cratest']),
-  skill('Tailwind CSS', 'Frontend & mobile'),
-  skill('Node.js', 'Backend'),
-  skill('Express', 'Backend'),
-  skill('Helidon', 'Backend'),
-  skill('PostgreSQL', 'Backend', ['anyform', 'cratest']),
-  skill('Oracle 26ai Database', 'Backend'),
-  skill('REST APIs', 'Backend'),
-  skill('OCI', 'Cloud & tools'),
-  skill('AWS', 'Cloud & tools', ['koistream']),
-  skill('Terraform', 'Cloud & tools'),
-  skill('Kubernetes', 'Cloud & tools'),
-  skill('Playwright', 'Cloud & tools', ['anyform']),
-  skill('Figma', 'Cloud & tools'),
-  skill('GitHub', 'Cloud & tools'),
-  skill('Jira', 'Cloud & tools')
+  // AI & agents
+  skill(
+    'Multi-Agent Orchestration',
+    'AI & agents',
+    'Getting agents to hand work to each other and to people. At Oracle I architected an agentic workflow builder that runs in production for support chat, and helped deliver the handoff from AI agents to human agents.'
+  ),
+  skill(
+    'RAG',
+    'AI & agents',
+    'Grounding models in real documents. At Oracle I built and deployed an OCR + RAG pipeline that ingested over 2 million documents in under a month; as an intern I built the microservice that uploads documents for RAG.'
+  ),
+  skill(
+    'Prompting',
+    'AI & agents',
+    'The everyday craft behind every agent I ship, and behind AnyForm, where models write findings from session traces and Scouts act as AI users.',
+    ['anyform']
+  ),
+  skill(
+    'Embeddings',
+    'AI & agents',
+    'Turning documents into vectors so retrieval finds meaning, not just matching words: the core of the RAG systems I build.'
+  ),
+  skill(
+    'Vector DBs',
+    'AI & agents',
+    'Where embeddings live and get searched: the storage layer under a RAG pipeline.'
+  ),
+  skill(
+    'LangGraph',
+    'AI & agents',
+    'Agent workflows as graphs, with state, branches and loops: the same shape as the agentic workflows I build.'
+  ),
+  skill(
+    'LangChain',
+    'AI & agents',
+    'Building blocks for LLM apps: chaining model calls, tools and retrieval together.'
+  ),
+  skill(
+    'Claude Code',
+    'AI & agents',
+    'One of my daily drivers for writing software. This site was built with it.'
+  ),
+  skill(
+    'Codex',
+    'AI & agents',
+    'Another coding agent in my toolbox. Trying the newest tools as they land is part of staying current.'
+  ),
+
+  // Languages
+  skill(
+    'TypeScript',
+    'Languages',
+    'My default for anything on the web: AnyForm’s dashboard and site, The Cratest’s admin console and this portfolio.',
+    ['anyform', 'cratest']
+  ),
+  skill(
+    'Go',
+    'Languages',
+    'The backend language of my current projects: both AnyForm’s and The Cratest’s APIs are written in Go.',
+    ['anyform', 'cratest']
+  ),
+  skill(
+    'Java',
+    'Languages',
+    'Enterprise backends at Oracle, including a Helidon MP microservice with CRUD endpoints for RAG document uploads.'
+  ),
+  skill('Python', 'Languages', 'Scripting and AI tooling, where new AI libraries usually land first.'),
+  skill(
+    'SQL',
+    'Languages',
+    'Designing data models, from Trailblaze’s database architecture to the PostgreSQL schemas behind AnyForm and The Cratest.',
+    ['trailblaze', 'anyform', 'cratest']
+  ),
+  skill(
+    'JavaScript',
+    'Languages',
+    'The language I learned the web on, and the base of everything I build with React and Node.js.'
+  ),
+  skill('GraphQL', 'Languages', 'APIs queried by shape, so a client asks for exactly the data it needs.'),
+
+  // Frontend & mobile
+  skill(
+    'Next.js',
+    'Frontend & mobile',
+    'Trailblaze’s public website, AnyForm’s dashboard and site, The Cratest’s admin console, and this site.',
+    ['trailblaze', 'anyform', 'cratest']
+  ),
+  skill(
+    'React Native',
+    'Frontend & mobile',
+    'I built Trailblaze’s job-recruiting app in React Native, screens to services to database, and grew it past 10,000 users in under a year.',
+    ['trailblaze']
+  ),
+  skill(
+    'SwiftUI',
+    'Frontend & mobile',
+    'The Cratest’s native iOS app is SwiftUI with UIKit, music games like Crate Digger and Cover Story included.',
+    ['cratest']
+  ),
+  skill(
+    'React',
+    'Frontend & mobile',
+    'The foundation under my web and mobile work, from React Native apps to Next.js sites.',
+    ['trailblaze', 'anyform', 'cratest']
+  ),
+  skill(
+    'Oracle JET',
+    'Frontend & mobile',
+    'Oracle’s JavaScript toolkit. As an intern I designed a type-safe way for a Knockout-based JET project to manage global state with 30+ variables.'
+  ),
+  skill('Tailwind CSS', 'Frontend & mobile', 'How I style most things, this site included.'),
+
+  // Backend & data
+  skill(
+    'PostgreSQL',
+    'Backend & data',
+    'The database under both AnyForm and The Cratest.',
+    ['anyform', 'cratest']
+  ),
+  skill(
+    'REST APIs',
+    'Backend & data',
+    'From a microservice for LLM queries and file uploads, where I automated testing for over 90% of scenarios, to the Go APIs behind my projects.',
+    ['anyform', 'cratest']
+  ),
+  skill(
+    'Helidon',
+    'Backend & data',
+    'Oracle’s Java microservice framework. I built and deployed a Helidon MP service with CRUD endpoints for RAG uploads.'
+  ),
+  skill(
+    'Oracle 26ai Database',
+    'Backend & data',
+    'Oracle’s AI database, with vector search built in.'
+  ),
+  skill('Node.js', 'Backend & data', 'JavaScript on the server, for APIs and tooling.'),
+  skill('Express', 'Backend & data', 'Lightweight HTTP APIs on Node.js.'),
+
+  // Cloud & tools
+  skill(
+    'AWS',
+    'Cloud & tools',
+    'KoiStream delivered HD live video to our school community through AWS MediaLive and Amazon CloudFront.',
+    ['koistream']
+  ),
+  skill(
+    'FFmpeg',
+    'Cloud & tools',
+    'The video workhorse behind KoiStream’s HD live streams.',
+    ['koistream']
+  ),
+  skill(
+    'Playwright',
+    'Cloud & tools',
+    'AnyForm’s Scouts, AI users that rehearse your app before real users do, run on Playwright.',
+    ['anyform']
+  ),
+  skill('OCI', 'Cloud & tools', 'Oracle Cloud Infrastructure, home to my enterprise work at Oracle.'),
+  skill(
+    'Terraform',
+    'Cloud & tools',
+    'Infrastructure as code: cloud setups that are written down, reviewed and repeatable.'
+  ),
+  skill('Kubernetes', 'Cloud & tools', 'Running and scaling containerised services.'),
+  skill('Figma', 'Cloud & tools', 'Where I design before I build.'),
+  skill('GitHub', 'Cloud & tools', 'Where my code lives, KoiStream, TEDx and Branch included.', [
+    'koistream',
+    'tedx',
+    'branch'
+  ]),
+  skill('Jira', 'Cloud & tools', 'Tracking work on enterprise teams.'),
+
+  // How I work
+  skill(
+    'Root cause analysis',
+    'How I work',
+    'Following a problem all the way to its cause, not just its symptom. Full RCA, start to finish.'
+  ),
+  skill(
+    'Agile',
+    'How I work',
+    'Scrum meetings, code reviews and production releases alongside full-time developers since my first Oracle internship.'
+  ),
+  skill(
+    'UI/UX',
+    'How I work',
+    'Designing for the people using it. Trailblaze’s website was mine end to end, and AnyForm exists to find what gets in users’ way.',
+    ['trailblaze', 'anyform']
+  ),
+  skill(
+    'Teaching',
+    'How I work',
+    'As a CareerFoundry instructor I taught new developers to build full-stack web apps, with feedback on every project within 24 hours.'
+  ),
+  skill(
+    'Startups',
+    'How I work',
+    'Co-founder and CTO of Trailblaze for over three years, from the first screen to 10,000+ users.',
+    ['trailblaze']
+  )
 ]
 
 export const PROJECTS: Project[] = [
