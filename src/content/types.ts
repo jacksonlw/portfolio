@@ -18,9 +18,13 @@ export type StorySection = {
   illustration: string | null
 }
 
+/** The brand's pastel accents: each project wears one (its art's swash and its tinted panels). */
+export type Accent = 'sky' | 'mint' | 'sun' | 'lavender'
+
 export type Project = {
   slug: string
   title: string
+  accent: Accent
   /** One line, shown on cards and as the page lede. */
   summary: string
   status: 'live' | 'in-development' | 'archived' | null

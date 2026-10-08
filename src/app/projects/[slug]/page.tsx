@@ -8,6 +8,7 @@ import { CtaLink } from '@/components/site/cta-link'
 import { ProjectMedia } from '@/components/site/project-media'
 import { Container } from '@/components/site/section'
 import { PROJECTS, formatDates, getProject, type Project } from '@/content/profile'
+import { TINT_BG, TINT_CHIP } from '@/lib/accent'
 import { cn } from '@/lib/cn'
 import { projectJsonLd, projectPath, statusLabel } from '@/lib/machine'
 import { EYEBROW, SURFACE, SURFACE_HOVER } from '@/lib/surface'
@@ -53,29 +54,48 @@ export default async function ProjectPage({ params }: Props) {
             <ArrowLeftIcon weight="bold" aria-hidden className="size-4" />
             All projects
           </Link>
-          <div className="mt-8 grid items-center gap-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,0.85fr)] lg:gap-16">
-            <div className="min-w-0">
+          <div className="mt-8 flex flex-col gap-8 lg:flex-row lg:items-end lg:justify-between">
+            <div className="max-w-3xl min-w-0">
               <h1 className="text-headline text-balance sm:text-display">{project.title}</h1>
               <p className="mt-5 text-lg text-pretty text-muted-foreground sm:text-lede">
                 {project.summary}
               </p>
-              {project.links.length > 0 && (
-                <div className="mt-8 flex flex-wrap gap-3">
-                  {project.links.map((l, n) => (
-                    <CtaLink key={l.href} href={l.href} variant={n === 0 ? 'primary' : 'secondary'} arrow>
-                      {l.label}
-                    </CtaLink>
-                  ))}
-                </div>
-              )}
             </div>
-            <ProjectMedia project={project} className="bg-background" />
+            {project.links.length > 0 && (
+              <div className="flex shrink-0 flex-wrap gap-3">
+                {project.links.map((l, n) => (
+                  <CtaLink key={l.href} href={l.href} variant={n === 0 ? 'primary' : 'secondary'} arrow>
+                    {l.label}
+                  </CtaLink>
+                ))}
+              </div>
+            )}
           </div>
+          <ProjectMedia
+            project={project}
+            className="mt-12 aspect-[4/3] rounded-xl sm:aspect-[16/9] lg:aspect-[21/9]"
+            artClassName="w-[64%] sm:w-[40%] lg:w-[30%]"
+          />
         </Container>
       </header>
 
       <Container className="grid gap-12 py-16 sm:py-20 lg:grid-cols-[minmax(0,1fr)_20rem] lg:gap-16">
-        <div className="min-w-0">
+        <div className="min-w-0 space-y-16">
+          {project.image && (
+            <figure
+              className={cn(
+                'flex items-center justify-center overflow-hidden rounded-xl px-6 py-10 sm:py-14',
+                TINT_BG[project.accent]
+              )}
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={project.image}
+                alt={`${project.title} screenshot`}
+                className={project.imageKind === 'mobile' ? 'h-auto w-full max-w-md' : 'h-auto w-full max-w-3xl'}
+              />
+            </figure>
+          )}
           {project.story.length > 0 ? (
             <div className="space-y-16">
               {project.story.map((s) => (
@@ -128,7 +148,7 @@ function Facts({ project: p }: { project: Project }) {
       value: (
         <ul className="mt-1 flex flex-wrap gap-1.5">
           {p.stack.map((s) => (
-            <li key={s} className="rounded-full border border-border px-3 py-1 text-xs font-medium">
+            <li key={s} className={cn('rounded-full px-3 py-1 text-xs font-medium', TINT_CHIP[p.accent])}>
               {s}
             </li>
           ))}

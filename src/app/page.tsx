@@ -1,32 +1,31 @@
 import { JsonLd } from '@/components/json-ld'
-import { CtaLink } from '@/components/site/cta-link'
+import { ProfileCard } from '@/components/site/profile-card'
 import { ProjectCard } from '@/components/site/project-card'
 import { Container, Section } from '@/components/site/section'
 import { PROFILE, PROJECTS } from '@/content/profile'
 import { personJsonLd } from '@/lib/machine'
 
 export default function Home() {
+  // Jackson is writing the About; until then the intro line (from his resume) stands in.
+  const about = PROFILE.about ? PROFILE.about.split(/\n\s*\n/) : [PROFILE.intro]
+
   return (
     <>
       <JsonLd data={personJsonLd()} />
-      <header className="border-b border-border bg-card py-20 sm:py-28">
-        <Container>
-          <h1 className="text-[2.75rem] leading-[1.02] font-semibold tracking-[-0.04em] text-balance sm:text-display lg:text-display-xl">
-            {PROFILE.headline}
-          </h1>
-          <p className="mt-6 max-w-2xl text-lg text-pretty text-muted-foreground sm:text-lede">
-            {PROFILE.intro}
-          </p>
-          <div className="mt-10 flex flex-wrap gap-3">
-            <CtaLink href={PROFILE.resume} arrow>
-              Read my resume
-            </CtaLink>
-            <CtaLink href={`mailto:${PROFILE.email}`} variant="secondary">
-              Get in touch
-            </CtaLink>
+
+      <section aria-label="About" className="pt-10 pb-4 sm:pt-14">
+        <Container className="grid items-start gap-10 lg:grid-cols-[minmax(0,26rem)_minmax(0,1fr)] lg:gap-16">
+          <ProfileCard />
+          <div className="min-w-0 lg:pt-4">
+            <h2 className="text-title sm:text-headline">About</h2>
+            <div className="mt-6 max-w-2xl space-y-5 text-lg text-pretty text-foreground/85 sm:text-lede">
+              {about.map((para, i) => (
+                <p key={i}>{para}</p>
+              ))}
+            </div>
           </div>
         </Container>
-      </header>
+      </section>
 
       <Section id="projects" className="py-12 sm:py-16">
         <h2 className="sr-only">Projects</h2>

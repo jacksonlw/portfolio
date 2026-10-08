@@ -1,24 +1,36 @@
-/* eslint-disable @next/next/no-img-element */
 import type { Project } from '@/content/profile'
 import { Illustration, hasIllustration } from '@/components/illustrations/registry'
+import { TINT_BG } from '@/lib/accent'
 import { cn } from '@/lib/cn'
-import { INSET } from '@/lib/surface'
 
 /**
- * A project's visual on a quiet inset: its illustration once drawn, else its screenshot, else its
- * name set large and muted.
+ * A project's art on a panel in its pastel accent: its badge once drawn, else its name set large.
+ * `size` is the badge's rendered width (it sets the outline weight for small renders).
  */
-export function ProjectMedia({ project, className }: { project: Project; className?: string }) {
-  const { slug, title, image, imageKind } = project
+export function ProjectMedia({
+  project,
+  className,
+  artClassName,
+  size
+}: {
+  project: Project
+  className?: string
+  artClassName?: string
+  size?: number
+}) {
   return (
-    <div className={cn(INSET, 'flex aspect-video items-center justify-center overflow-hidden', className)}>
-      {hasIllustration(slug) ? (
-        <Illustration name={slug} className="h-5/6 w-auto" />
-      ) : image ? (
-        <img src={image} alt="" className={imageKind === 'mobile' ? 'ml-[-5%] h-4/6' : 'h-5/6'} />
+    <div
+      className={cn(
+        'flex aspect-video items-center justify-center overflow-hidden rounded-md',
+        TINT_BG[project.accent],
+        className
+      )}
+    >
+      {hasIllustration(project.slug) ? (
+        <Illustration name={project.slug} size={size} className={cn('h-auto w-[44%]', artClassName)} />
       ) : (
-        <span className="text-title text-muted-foreground/60" aria-hidden>
-          {title}
+        <span className="text-title text-foreground/40" aria-hidden>
+          {project.title}
         </span>
       )}
     </div>

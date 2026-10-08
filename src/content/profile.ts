@@ -9,7 +9,7 @@
 
 import type { Education, Experience, Link, Project, Skill } from './types'
 
-export type { Education, Experience, Link, Project, Skill } from './types'
+export type { Accent, Education, Experience, Link, Project, Skill } from './types'
 
 export const PROFILE = {
   name: 'Jackson Lawrence',
@@ -147,6 +147,7 @@ export const SKILLS: Skill[] = [
 export const PROJECTS: Project[] = [
   {
     slug: 'anyform',
+    accent: 'sky',
     title: 'AnyForm',
     summary: 'See what your users saw, and fix what got in their way.',
     status: 'in-development',
@@ -161,6 +162,7 @@ export const PROJECTS: Project[] = [
   },
   {
     slug: 'cratest',
+    accent: 'sun',
     title: 'The Cratest',
     summary: 'A social platform for reviewing songs, albums and artists.',
     status: 'in-development',
@@ -175,6 +177,7 @@ export const PROJECTS: Project[] = [
   },
   {
     slug: 'trailblaze',
+    accent: 'mint',
     title: 'Trailblaze',
     summary: 'Job opportunities for the next generation of talent.',
     status: null,
@@ -193,6 +196,7 @@ export const PROJECTS: Project[] = [
   },
   {
     slug: 'koistream',
+    accent: 'lavender',
     title: 'KoiStream',
     summary: 'Connecting students, staff, and families through community livestreams.',
     status: 'archived',
@@ -211,6 +215,7 @@ export const PROJECTS: Project[] = [
   },
   {
     slug: 'tedx',
+    accent: 'sky',
     title: 'TEDx Design Tech High School',
     summary: 'Sell and manage tickets for a high school TEDx event.',
     status: 'archived',
@@ -227,6 +232,7 @@ export const PROJECTS: Project[] = [
   },
   {
     slug: 'branch',
+    accent: 'mint',
     title: 'Branch',
     summary: 'Smart school prototype presented at Oracle OpenWorld 2019.',
     status: 'archived',
