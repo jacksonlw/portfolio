@@ -6,7 +6,12 @@
 export type Link = { label: string; href: string }
 
 /** A month and year, e.g. "June 2025". `null` end means "Present". */
-export type DateRange = { start: string; end: string | null }
+export type DateRange = {
+  start: string
+  end: string | null
+  /** How to show it when start–end would mislead (e.g. two separate summers). */
+  label?: string
+}
 
 /** One part of a project's story, written by Jackson. */
 export type StorySection = {
@@ -19,7 +24,8 @@ export type StorySection = {
 }
 
 /** The brand's pastel accents: each project wears one (its art's swash and its tinted panels). */
-export type Accent = 'sky' | 'mint' | 'sun' | 'lavender' | 'rose' | 'ocean' | 'peach'
+export type Accent =
+  'sky' | 'mint' | 'sun' | 'lavender' | 'rose' | 'ocean' | 'peach'
 
 export type Project = {
   slug: string

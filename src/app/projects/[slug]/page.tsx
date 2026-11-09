@@ -2,12 +2,21 @@ import { ArrowLeftIcon, ArrowRightIcon } from '@phosphor-icons/react/ssr'
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
-import { Illustration, hasIllustration } from '@/components/illustrations/registry'
+import {
+  Illustration,
+  hasIllustration
+} from '@/components/illustrations/registry'
 import { JsonLd } from '@/components/json-ld'
 import { CtaLink } from '@/components/site/cta-link'
 import { ProjectMedia } from '@/components/site/project-media'
 import { Container } from '@/components/site/section'
-import { PROJECTS, formatDates, getProject, type Project } from '@/content/profile'
+import {
+  PROJECT_PAGES_ENABLED,
+  PROJECTS,
+  formatDates,
+  getProject,
+  type Project
+} from '@/content/profile'
 import { TINT_BG, TINT_CHIP } from '@/lib/accent'
 import { cn } from '@/lib/cn'
 import { projectJsonLd, projectPath, statusLabel } from '@/lib/machine'
@@ -15,8 +24,9 @@ import { EYEBROW, SURFACE, SURFACE_HOVER } from '@/lib/surface'
 
 export const dynamicParams = false
 
+// Switched off for now (PROJECT_PAGES_ENABLED): no pages are built and every slug 404s.
 export function generateStaticParams() {
-  return PROJECTS.map((p) => ({ slug: p.slug }))
+  return PROJECT_PAGES_ENABLED ? PROJECTS.map((p) => ({ slug: p.slug })) : []
 }
 
 type Props = { params: Promise<{ slug: string }> }
@@ -36,7 +46,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function ProjectPage({ params }: Props) {
   const project = getProject((await params).slug)
-  if (!project) notFound()
+  if (!project || !PROJECT_PAGES_ENABLED) notFound()
   const i = PROJECTS.indexOf(project)
   const prev = PROJECTS[(i - 1 + PROJECTS.length) % PROJECTS.length]
   const next = PROJECTS[(i + 1) % PROJECTS.length]
@@ -49,14 +59,16 @@ export default async function ProjectPage({ params }: Props) {
         <Container>
           <Link
             href="/#skills"
-            className="inline-flex items-center gap-1.5 rounded-sm text-sm font-medium text-muted-foreground transition-colors hover:text-foreground focus-ring"
+            className="inline-flex items-center gap-1.5 rounded-sm text-sm font-medium text-muted-foreground focus-ring transition-colors hover:text-foreground"
           >
             <ArrowLeftIcon weight="bold" aria-hidden className="size-4" />
             All projects
           </Link>
           <div className="mt-8 flex flex-col gap-8 lg:flex-row lg:items-end lg:justify-between">
             <div className="max-w-3xl min-w-0">
-              <h1 className="text-headline text-balance sm:text-display">{project.title}</h1>
+              <h1 className="text-headline text-balance sm:text-display">
+                {project.title}
+              </h1>
               <p className="mt-5 text-lg text-pretty text-muted-foreground sm:text-lede">
                 {project.summary}
               </p>
@@ -64,7 +76,12 @@ export default async function ProjectPage({ params }: Props) {
             {project.links.length > 0 && (
               <div className="flex shrink-0 flex-wrap gap-3">
                 {project.links.map((l, n) => (
-                  <CtaLink key={l.href} href={l.href} variant={n === 0 ? 'primary' : 'secondary'} arrow>
+                  <CtaLink
+                    key={l.href}
+                    href={l.href}
+                    variant={n === 0 ? 'primary' : 'secondary'}
+                    arrow
+                  >
                     {l.label}
                   </CtaLink>
                 ))}
@@ -92,14 +109,22 @@ export default async function ProjectPage({ params }: Props) {
               <img
                 src={project.image}
                 alt={`${project.title} screenshot`}
-                className={project.imageKind === 'mobile' ? 'h-auto w-full max-w-md' : 'h-auto w-full max-w-3xl'}
+                className={
+                  project.imageKind === 'mobile'
+                    ? 'h-auto w-full max-w-md'
+                    : 'h-auto w-full max-w-3xl'
+                }
               />
             </figure>
           )}
           {project.story.length > 0 ? (
             <div className="space-y-16">
               {project.story.map((s) => (
-                <section key={s.id} id={s.id} aria-labelledby={`${s.id}-heading`}>
+                <section
+                  key={s.id}
+                  id={s.id}
+                  aria-labelledby={`${s.id}-heading`}
+                >
                   <h2 id={`${s.id}-heading`} className="text-title">
                     {s.heading}
                   </h2>
@@ -110,23 +135,34 @@ export default async function ProjectPage({ params }: Props) {
                   </div>
                   {hasIllustration(s.illustration) && (
                     <figure className="mt-10">
-                      <Illustration name={s.illustration!} className="h-auto w-full max-w-2xl" />
+                      <Illustration
+                        name={s.illustration!}
+                        className="h-auto w-full max-w-2xl"
+                      />
                     </figure>
                   )}
                 </section>
               ))}
             </div>
           ) : (
-            <p className="text-lg text-muted-foreground">The full write-up for this project is coming soon.</p>
+            <p className="text-lg text-muted-foreground">
+              The full write-up for this project is coming soon.
+            </p>
           )}
         </div>
 
-        <aside aria-label="Project facts" className="lg:sticky lg:top-24 lg:self-start">
+        <aside
+          aria-label="Project facts"
+          className="lg:sticky lg:top-24 lg:self-start"
+        >
           <Facts project={project} />
         </aside>
       </Container>
 
-      <nav aria-label="More projects" className="border-t border-border bg-card py-12 sm:py-16">
+      <nav
+        aria-label="More projects"
+        className="border-t border-border bg-card py-12 sm:py-16"
+      >
         <Container className="grid gap-4 sm:grid-cols-2">
           <PagerLink project={prev} direction="prev" />
           <PagerLink project={next} direction="next" />
@@ -148,7 +184,13 @@ function Facts({ project: p }: { project: Project }) {
       value: (
         <ul className="mt-1 flex flex-wrap gap-1.5">
           {p.stack.map((s) => (
-            <li key={s} className={cn('rounded-full px-3 py-1 text-xs font-medium', TINT_CHIP[p.accent])}>
+            <li
+              key={s}
+              className={cn(
+                'rounded-full px-3 py-1 text-xs font-medium',
+                TINT_CHIP[p.accent]
+              )}
+            >
               {s}
             </li>
           ))}
@@ -180,7 +222,7 @@ function Facts({ project: p }: { project: Project }) {
         <dd className="mt-1">
           <a
             href={`${projectPath(p.slug)}.md`}
-            className="rounded-sm font-mono text-xs text-link underline-offset-4 hover:underline focus-ring"
+            className="rounded-sm font-mono text-xs text-link underline-offset-4 focus-ring hover:underline"
           >
             {projectPath(p.slug)}.md
           </a>
@@ -190,7 +232,13 @@ function Facts({ project: p }: { project: Project }) {
   )
 }
 
-function PagerLink({ project, direction }: { project: Project; direction: 'prev' | 'next' }) {
+function PagerLink({
+  project,
+  direction
+}: {
+  project: Project
+  direction: 'prev' | 'next'
+}) {
   const Icon = direction === 'prev' ? ArrowLeftIcon : ArrowRightIcon
   return (
     <Link
@@ -202,10 +250,16 @@ function PagerLink({ project, direction }: { project: Project; direction: 'prev'
         direction === 'next' && 'flex-row-reverse text-right'
       )}
     >
-      <Icon weight="bold" aria-hidden className="size-5 shrink-0 text-muted-foreground transition-colors group-hover:text-link" />
+      <Icon
+        weight="bold"
+        aria-hidden
+        className="size-5 shrink-0 text-muted-foreground transition-colors group-hover:text-link"
+      />
       <div className="min-w-0">
         <p className={EYEBROW}>{direction === 'prev' ? 'Previous' : 'Next'}</p>
-        <p className="mt-0.5 truncate font-semibold transition-colors group-hover:text-link">{project.title}</p>
+        <p className="mt-0.5 truncate font-semibold transition-colors group-hover:text-link">
+          {project.title}
+        </p>
       </div>
     </Link>
   )

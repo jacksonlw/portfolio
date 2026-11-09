@@ -8,6 +8,7 @@
  */
 
 import type {
+  DateRange,
   Education,
   Experience,
   Link,
@@ -75,7 +76,11 @@ export const EXPERIENCE: Experience[] = [
     company: 'Oracle',
     title: 'Software Engineer Intern (x2)',
     location: 'Redwood Shores, CA',
-    dates: { start: 'Summers 2023', end: '2024' },
+    dates: {
+      start: 'June 2023',
+      end: 'September 2024',
+      label: 'Summers 2023 & 2024'
+    },
     bullets: [
       'Developed and deployed a Helidon MP microservice featuring CRUD endpoints to upload documents for RAG',
       'Designed a type-safe way for an existing Oracle JET Knockout project to manage global state with 30+ variables',
@@ -443,6 +448,13 @@ export const SKILLS: Skill[] = [
   )
 ]
 
+/**
+ * Project pages (/projects/<slug> and their .md twins) are built but switched off for now: the
+ * routes 404, nothing links to them, and the sitemap and agent views leave them out. Flip to true
+ * to publish them again; their content below stays the source either way.
+ */
+export const PROJECT_PAGES_ENABLED = false
+
 export const PROJECTS: Project[] = [
   {
     slug: 'anyform',
@@ -594,5 +606,5 @@ export const usedInTitle = (slug: string) =>
   PROJECTS.find((p) => p.slug === slug)?.title ??
   WORK.find((w) => w.slug === slug)?.title
 
-export const formatDates = (d: { start: string; end: string | null }) =>
-  `${d.start} – ${d.end ?? 'Present'}`
+export const formatDates = (d: DateRange) =>
+  d.label ?? `${d.start} – ${d.end ?? 'Present'}`

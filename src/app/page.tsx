@@ -35,18 +35,26 @@ export default function Home() {
         </Container>
       </section>
 
-      <section id="skills" aria-labelledby="skills-title" className="pt-16 pb-20 sm:pt-20 sm:pb-28">
+      <section
+        id="skills"
+        aria-labelledby="skills-title"
+        className="pt-16 pb-20 sm:pt-20 sm:pb-28"
+      >
         {/* The heading keeps the page's width; the board below runs edge to edge. */}
         <Container className="mb-10 sm:mb-12">
           <h2 id="skills-title" className="text-title">
             Work, projects and skills
           </h2>
           <p className="mt-1.5 text-lg text-pretty text-muted-foreground">
-            Hover anything to see how it connects. Click a project to read the full story.
+            Hover anything to see how my work, projects and skills connect.
           </p>
         </Container>
         <Container size="full">
-          <SkillsConstellation skills={SKILLS} projects={PROJECTS} work={WORK} />
+          <SkillsConstellation
+            skills={SKILLS}
+            projects={PROJECTS}
+            work={WORK}
+          />
         </Container>
       </section>
     </>

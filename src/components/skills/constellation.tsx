@@ -11,7 +11,13 @@ import {
   type CSSProperties
 } from 'react'
 import { Illustration } from '@/components/illustrations/registry'
-import type { Accent, Project, Skill, WorkNode } from '@/content/profile'
+import {
+  PROJECT_PAGES_ENABLED,
+  type Accent,
+  type Project,
+  type Skill,
+  type WorkNode
+} from '@/content/profile'
 import { ACCENT_BG, TINT_BG } from '@/lib/accent'
 import { cn } from '@/lib/cn'
 
@@ -459,7 +465,7 @@ export function SkillsConstellation({
           >
             <div
               data-node={hubId(area)}
-              className="flex flex-col items-center will-change-transform"
+              className="flex flex-col items-center will-change-transform lg:scale-[0.8] xl:scale-100"
             >
               <Illustration name={key} className="w-16" decorative />
               <span
@@ -487,7 +493,7 @@ export function SkillsConstellation({
           )
           const body = (
             <>
-              {p.kind === 'project' && (
+              {p.kind === 'project' && PROJECT_PAGES_ENABLED && (
                 <span
                   aria-hidden
                   className={cn(
@@ -538,9 +544,9 @@ export function SkillsConstellation({
             >
               <div
                 data-node={bubbleId(p.slug)}
-                className="will-change-transform"
+                className="will-change-transform lg:scale-[0.78] xl:scale-100"
               >
-                {p.kind === 'project' ? (
+                {p.kind === 'project' && PROJECT_PAGES_ENABLED ? (
                   <Link
                     href={`/projects/${p.slug}`}
                     {...on({ kind: 'project', id: p.slug })}
@@ -755,7 +761,7 @@ function CompactConstellation({
                 </span>
                 <div className="min-w-0 flex-1">
                   <p className="flex flex-wrap items-baseline gap-x-2">
-                    {n.kind === 'project' ? (
+                    {n.kind === 'project' && PROJECT_PAGES_ENABLED ? (
                       <Link
                         href={`/projects/${n.slug}`}
                         className="rounded-sm text-base font-semibold underline-offset-4 focus-ring hover:text-link hover:underline"
@@ -815,7 +821,7 @@ function CompactConstellation({
                       )}
                     </ul>
                   )}
-                  {n.kind === 'project' && (
+                  {n.kind === 'project' && PROJECT_PAGES_ENABLED && (
                     <Link
                       href={`/projects/${n.slug}`}
                       className="mt-3 inline-flex items-center gap-1 rounded-sm text-sm font-semibold text-link underline-offset-4 focus-ring hover:underline"
@@ -906,7 +912,7 @@ function CompactConstellation({
                         <ul className="mt-1.5 flex flex-wrap gap-1.5">
                           {where.map((n) => (
                             <li key={n.slug}>
-                              {n.kind === 'project' ? (
+                              {n.kind === 'project' && PROJECT_PAGES_ENABLED ? (
                                 <Link
                                   href={`/projects/${n.slug}`}
                                   className="inline-flex rounded-full bg-foreground/10 px-2.5 py-1 text-xs font-semibold text-foreground focus-ring transition-colors hover:bg-foreground/20"

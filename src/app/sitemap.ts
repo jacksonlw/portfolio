@@ -1,5 +1,5 @@
 import type { MetadataRoute } from 'next'
-import { PROFILE, PROJECTS } from '@/content/profile'
+import { PROFILE, PROJECT_PAGES_ENABLED, PROJECTS } from '@/content/profile'
 import { projectPath } from '@/lib/machine'
 
 export default function sitemap(): MetadataRoute.Sitemap {
@@ -7,7 +7,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
   const lastModified = new Date()
   return [
     { url: abs('/'), lastModified, priority: 1 },
-    ...PROJECTS.map((p) => ({
+    ...(PROJECT_PAGES_ENABLED ? PROJECTS : []).map((p) => ({
       url: abs(projectPath(p.slug)),
       lastModified,
       priority: 0.8

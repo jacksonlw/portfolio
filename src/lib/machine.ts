@@ -8,6 +8,7 @@ import {
   EDUCATION,
   EXPERIENCE,
   PROFILE,
+  PROJECT_PAGES_ENABLED,
   PROJECTS,
   SKILLS,
   WORK,
@@ -43,7 +44,7 @@ export function projectMarkdown(p: Project, level = 1): string {
     p.status && `- Status: ${statusLabel(p.status)}`,
     p.stack.length > 0 && `- Stack: ${p.stack.join(', ')}`,
     ...p.links.map((l) => `- ${l.label}: ${l.href}`),
-    `- Page: ${abs(projectPath(p.slug))}`
+    PROJECT_PAGES_ENABLED && `- Page: ${abs(projectPath(p.slug))}`
   ].filter(Boolean)
   lines.push(...(facts as string[]), '')
   if (p.highlights.length > 0) {
@@ -76,8 +77,11 @@ export function llmsTxt(): string {
     '',
     '## Projects',
     '',
-    ...PROJECTS.map(
-      (p) => `- [${p.title}](${abs(`${projectPath(p.slug)}.md`)}): ${p.summary}`
+    // Linked to each project's Markdown page while those are published; plain lines otherwise.
+    ...PROJECTS.map((p) =>
+      PROJECT_PAGES_ENABLED
+        ? `- [${p.title}](${abs(`${projectPath(p.slug)}.md`)}): ${p.summary}`
+        : `- ${p.title}: ${p.summary} (full details in ${abs('/llms-full.txt')})`
     ),
     '',
     '## Contact',
@@ -160,8 +164,12 @@ export function profileJson() {
     work: WORK,
     projects: PROJECTS.map((p) => ({
       ...p,
-      url: abs(projectPath(p.slug)),
-      markdown: abs(`${projectPath(p.slug)}.md`),
+      ...(PROJECT_PAGES_ENABLED
+        ? {
+            url: abs(projectPath(p.slug)),
+            markdown: abs(`${projectPath(p.slug)}.md`)
+          }
+        : {}),
       image: p.image && abs(p.image)
     }))
   }
@@ -200,7 +208,10 @@ function person() {
     hasOccupation: current && {
       '@type': 'Occupation',
       name: current.title,
-      occupationLocation: { '@type': 'City', name: current.location ?? PROFILE.location }
+      occupationLocation: {
+        '@type': 'City',
+        name: current.location ?? PROFILE.location
+      }
     },
     alumniOf: EDUCATION.map((e) => ({
       '@type': 'CollegeOrUniversity',
