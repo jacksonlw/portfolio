@@ -26,7 +26,11 @@ export function Container({
 }) {
   return (
     <div
-      className={cn('mx-auto w-full px-4 sm:px-6 lg:px-8', WIDTHS[size], className)}
+      className={cn(
+        'mx-auto w-full px-4 sm:px-6 lg:px-8',
+        WIDTHS[size],
+        className
+      )}
     >
       {children}
     </div>
@@ -103,7 +107,10 @@ export function Section({
     >
       <Container size={size}>
         {title && (
-          <div id={id ? `${id}-title` : undefined} className={children ? 'mb-12 sm:mb-16' : undefined}>
+          <div
+            id={id ? `${id}-title` : undefined}
+            className={children ? 'mb-12 sm:mb-16' : undefined}
+          >
             <SectionHeading title={title} description={description} />
           </div>
         )}

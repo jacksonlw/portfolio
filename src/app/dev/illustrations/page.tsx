@@ -24,15 +24,20 @@ export default function IllustrationGallery() {
       </div>
       <div className="grid grid-cols-3 gap-4">
         {Object.entries(ILLUSTRATIONS).map(([key, { component: Art }]) => (
-          <figure key={key} className="dark rounded-md bg-background p-4 text-foreground">
+          <figure
+            key={key}
+            className="dark rounded-md bg-background p-4 text-foreground"
+          >
             <Art surface="ink" />
           </figure>
         ))}
       </div>
       <div className="grid grid-cols-4 items-end gap-4">
-        {Object.entries(ILLUSTRATIONS).slice(0, 4).map(([key, { component: Art }]) => (
-          <Art key={key} size={56} />
-        ))}
+        {Object.entries(ILLUSTRATIONS)
+          .slice(0, 4)
+          .map(([key, { component: Art }]) => (
+            <Art key={key} size={56} />
+          ))}
       </div>
     </div>
   )

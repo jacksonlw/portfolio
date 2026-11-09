@@ -27,7 +27,10 @@ export function AnyFormBadge(props: IllustrationProps) {
           <Lines x={32} y={72} w={40} widths={[1, 0.6]} />
         </Shadowed>
         {/* The scout's cursor. */}
-        <path className="ill-f-paper ill-s" d="M80 72V92L85 87L89 95L93 93L89 85H96Z" />
+        <path
+          className="ill-f-paper ill-s"
+          d="M80 72V92L85 87L89 95L93 93L89 85H96Z"
+        />
         <circle className="ill-f-sky-tint ill-s" cx={108} cy={112} r={14} />
         <path className="ill-f-none ill-s ill-s-bold" d="M118 122L128 132" />
         <AgentBadge delay={450} />
@@ -45,15 +48,33 @@ export function CratestBadge(props: IllustrationProps) {
       <g {...animProps({ anim: 'float', delay: 1100 })}>
         <Shadowed>
           <circle className="ill-f-ink ill-s" cx={72} cy={72} r={32} />
-          <circle className="ill-f-none ill-s ill-s-paper" cx={72} cy={72} r={22} />
-          <circle className="ill-f-sun ill-s ill-s-ink-fixed" cx={72} cy={72} r={10} />
+          <circle
+            className="ill-f-none ill-s ill-s-paper"
+            cx={72}
+            cy={72}
+            r={22}
+          />
+          <circle
+            className="ill-f-sun ill-s ill-s-ink-fixed"
+            cx={72}
+            cy={72}
+            r={10}
+          />
           <circle className="ill-f-ink-fixed" cx={72} cy={72} r={2} />
           <Card x={24} y={84} w={96} h={40} tone="sun-tint" />
           <path className="ill-f-none ill-s ill-s-ink-fixed" d="M24 104H120" />
         </Shadowed>
         <g {...animProps({ anim: 'pop', delay: 450 })}>
-          <circle className="ill-f-sun ill-s" cx={STATUS.cx} cy={STATUS.cy} r={STATUS.r} />
-          <path className="ill-f-ink-fixed" d={sparklePath(STATUS.cx, STATUS.cy, 10, 0.32)} />
+          <circle
+            className="ill-f-sun ill-s"
+            cx={STATUS.cx}
+            cy={STATUS.cy}
+            r={STATUS.r}
+          />
+          <path
+            className="ill-f-ink-fixed"
+            d={sparklePath(STATUS.cx, STATUS.cy, 10, 0.32)}
+          />
         </g>
       </g>
       <FamilySparkles big="topLeft" small="bottomRight" />
@@ -88,11 +109,17 @@ export function KoiStreamBadge(props: IllustrationProps) {
     <IllustrationFrame kind="badge" {...props}>
       <FamilySwash accent="lavender" />
       <g {...animProps({ anim: 'float', delay: 1100 })}>
-        <path className="ill-f-none ill-s" d="M64 104L44 136M64 104L84 136M64 104V136" />
+        <path
+          className="ill-f-none ill-s"
+          d="M64 104L44 136M64 104L84 136M64 104V136"
+        />
         <Shadowed>
           <path className="ill-f-none ill-s ill-s-bold" d="M40 60V48H80V60" />
           <Card x={24} y={60} w={80} h={44} />
-          <path className="ill-f-lavender-tint ill-s" d="M104 72L128 64V100L104 92Z" />
+          <path
+            className="ill-f-lavender-tint ill-s"
+            d="M104 72L128 64V100L104 92Z"
+          />
           <circle className="ill-f-lavender ill-s" cx={48} cy={82} r={10} />
           <Lines x={68} y={76} w={24} widths={[1, 0.6]} />
         </Shadowed>
@@ -120,7 +147,14 @@ export function TedxBadge(props: IllustrationProps) {
             />
             <path className="ill-f-none ill-s ill-dash" d="M108 64V104" />
             <Lines x={32} y={76} w={60} widths={[1, 0.7, 0.4]} />
-            <rect className="ill-f-rose ill-s" x={116} y={76} width={16} height={16} rx={2} />
+            <rect
+              className="ill-f-rose ill-s"
+              x={116}
+              y={76}
+              width={16}
+              height={16}
+              rx={2}
+            />
           </Shadowed>
         </g>
       </g>
@@ -136,12 +170,40 @@ export function BranchBadge(props: IllustrationProps) {
       <FamilySwash accent="mint" />
       <g {...animProps({ anim: 'float', delay: 1100 })}>
         <Shadowed>
-          <rect className="ill-f-paper ill-s" x={28} y={72} width={88} height={52} rx={2} />
+          <rect
+            className="ill-f-paper ill-s"
+            x={28}
+            y={72}
+            width={88}
+            height={52}
+            rx={2}
+          />
           <path className="ill-f-paper ill-s" d="M20 72L72 40L124 72Z" />
           <circle className="ill-f-mint ill-s" cx={72} cy={60} r={6} />
-          <rect className="ill-f-mint-tint ill-s" x={36} y={84} width={16} height={16} rx={2} />
-          <rect className="ill-f-mint-tint ill-s" x={92} y={84} width={16} height={16} rx={2} />
-          <rect className="ill-f-paper ill-s" x={64} y={100} width={16} height={24} rx={2} />
+          <rect
+            className="ill-f-mint-tint ill-s"
+            x={36}
+            y={84}
+            width={16}
+            height={16}
+            rx={2}
+          />
+          <rect
+            className="ill-f-mint-tint ill-s"
+            x={92}
+            y={84}
+            width={16}
+            height={16}
+            rx={2}
+          />
+          <rect
+            className="ill-f-paper ill-s"
+            x={64}
+            y={100}
+            width={16}
+            height={24}
+            rx={2}
+          />
         </Shadowed>
         {/* A young tree beside the school: the branch. */}
         <path className="ill-f-none ill-s" d="M136 124V104" />
@@ -162,7 +224,14 @@ export function OracleBadge(props: IllustrationProps) {
           <path className="ill-f-none ill-s ill-s-bold" d="M56 60V48H88V60" />
           <Card x={20} y={60} w={104} h={64} />
           <path className="ill-f-none ill-s" d="M20 84H124" />
-          <rect className="ill-f-rose ill-s" x={64} y={76} width={16} height={16} rx={2} />
+          <rect
+            className="ill-f-rose ill-s"
+            x={64}
+            y={76}
+            width={16}
+            height={16}
+            rx={2}
+          />
         </Shadowed>
         <AgentBadge tone="rose" delay={450} />
       </g>
@@ -180,7 +249,10 @@ export function CareerFoundryBadge(props: IllustrationProps) {
         <path className="ill-f-none ill-s" d="M52 112L40 136M92 112L104 136" />
         <Shadowed>
           <Card x={20} y={40} w={104} h={72} tone="peach-tint" />
-          <path className="ill-f-none ill-s ill-s-bold ill-s-ink-fixed" d="M40 64L32 72L40 80M56 64L64 72L56 80" />
+          <path
+            className="ill-f-none ill-s ill-s-bold ill-s-ink-fixed"
+            d="M40 64L32 72L40 80M56 64L64 72L56 80"
+          />
           <Lines x={76} y={64} w={36} widths={[1, 0.7, 0.45]} onLight />
         </Shadowed>
         <CheckBadge cx={STATUS.cx + 8} cy={STATUS.cy - 12} r={14} delay={450} />

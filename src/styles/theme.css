@@ -8,9 +8,13 @@
 
 :root {
   /* Fonts. The app sets --font-flex and --font-code (next/font); a host sets these directly. */
-  --af-font-sans: var(--font-flex, ui-sans-serif), ui-sans-serif, system-ui, sans-serif;
-  --af-font-heading: var(--font-flex, ui-sans-serif), ui-sans-serif, system-ui, sans-serif;
-  --af-font-mono: var(--font-code, ui-monospace), ui-monospace, SFMono-Regular, Menlo, monospace;
+  --af-font-sans:
+    var(--font-flex, ui-sans-serif), ui-sans-serif, system-ui, sans-serif;
+  --af-font-heading:
+    var(--font-flex, ui-sans-serif), ui-sans-serif, system-ui, sans-serif;
+  --af-font-mono:
+    var(--font-code, ui-monospace), ui-monospace, SFMono-Regular, Menlo,
+    monospace;
 }
 
 :root,
@@ -57,8 +61,10 @@
   /* Elevation: surfaces are flat (shadow-card), a hover lift (shadow-card-hover), and the one
      shadow floating layers get (shadow-pop) */
   --shadow-card: none;
-  --shadow-card-hover: 0 1px 2px rgb(11 11 12 / 0.04), 0 6px 16px -6px rgb(11 11 12 / 0.12);
-  --shadow-pop: 0 1px 2px rgb(11 11 12 / 0.06), 0 12px 32px -8px rgb(11 11 12 / 0.18);
+  --shadow-card-hover:
+    0 1px 2px rgb(11 11 12 / 0.04), 0 6px 16px -6px rgb(11 11 12 / 0.12);
+  --shadow-pop:
+    0 1px 2px rgb(11 11 12 / 0.06), 0 12px 32px -8px rgb(11 11 12 / 0.18);
 }
 
 .dark {

@@ -5,32 +5,32 @@
  */
 
 :root {
-  --af-blue: #2B3BFF;
-  --af-ink: #0B0B0C;
-  --af-white: #FFFFFF;
-  --af-fog: #F4F5F7;
-  --af-sky: #CCDAFF;
-  --af-sky-tint: #F3F7FF;
-  --af-sky-deep: #1F19D9;
-  --af-mint: #93EDCB;
-  --af-mint-tint: #E1FAF0;
-  --af-mint-deep: #00654B;
-  --af-sun: #FDDB72;
-  --af-sun-tint: #FBF3DD;
+  --af-blue: #2b3bff;
+  --af-ink: #0b0b0c;
+  --af-white: #ffffff;
+  --af-fog: #f4f5f7;
+  --af-sky: #ccdaff;
+  --af-sky-tint: #f3f7ff;
+  --af-sky-deep: #1f19d9;
+  --af-mint: #93edcb;
+  --af-mint-tint: #e1faf0;
+  --af-mint-deep: #00654b;
+  --af-sun: #fddb72;
+  --af-sun-tint: #fbf3dd;
   --af-sun-deep: #685300;
-  --af-lavender: #D7C6FF;
-  --af-lavender-tint: #F5F1FF;
-  --af-lavender-deep: #5F4193;
+  --af-lavender: #d7c6ff;
+  --af-lavender-tint: #f5f1ff;
+  --af-lavender-deep: #5f4193;
   /* Portfolio additions, in the same pastel family: light red, blue and peach. */
-  --af-rose: #FFC4BD;
-  --af-rose-tint: #FFF0EE;
-  --af-rose-deep: #9A2B20;
-  --af-ocean: #A9DBFF;
-  --af-ocean-tint: #EAF6FF;
-  --af-ocean-deep: #0A4F86;
-  --af-peach: #FFD3A8;
-  --af-peach-tint: #FFF3E6;
-  --af-peach-deep: #8A4510;
+  --af-rose: #ffc4bd;
+  --af-rose-tint: #fff0ee;
+  --af-rose-deep: #9a2b20;
+  --af-ocean: #a9dbff;
+  --af-ocean-tint: #eaf6ff;
+  --af-ocean-deep: #0a4f86;
+  --af-peach: #ffd3a8;
+  --af-peach-tint: #fff3e6;
+  --af-peach-deep: #8a4510;
 }
 
 @theme inline {

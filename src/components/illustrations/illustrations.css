@@ -23,23 +23,43 @@
   overflow: visible;
 }
 
-.ill[data-surface="card"] {
+.ill[data-surface='card'] {
   --ill-disc: var(--af-fog, #e3e5e9);
 }
 
 /* Dark (and an ink band): line and paper swap, so paper objects read as light outlines filled with
    the background, and the hard shadow turns blue (a light one would glare). */
 .dark .ill,
-.ill[data-surface="ink"] {
+.ill[data-surface='ink'] {
   --ill-line: var(--af-white, #ffffff);
   --ill-paper: var(--af-ink, #0b0b0c);
-  --ill-disc: color-mix(in oklab, var(--af-white, #ffffff) 9%, var(--af-ink, #0b0b0c));
+  --ill-disc: color-mix(
+    in oklab,
+    var(--af-white, #ffffff) 9%,
+    var(--af-ink, #0b0b0c)
+  );
   --ill-shadow: var(--af-blue, #2b3bff);
 }
 
 /* Light fills keep their ink outline in the dark: a light one would vanish into them. */
-:is(.dark .ill, .ill[data-surface="ink"])
-  :is(.ill-f-sky, .ill-f-sky-tint, .ill-f-mint, .ill-f-mint-tint, .ill-f-sun, .ill-f-sun-tint, .ill-f-lavender, .ill-f-lavender-tint, .ill-f-rose, .ill-f-rose-tint, .ill-f-ocean, .ill-f-ocean-tint, .ill-f-peach, .ill-f-peach-tint, .ill-f-fog).ill-s {
+:is(.dark .ill, .ill[data-surface='ink'])
+  :is(
+    .ill-f-sky,
+    .ill-f-sky-tint,
+    .ill-f-mint,
+    .ill-f-mint-tint,
+    .ill-f-sun,
+    .ill-f-sun-tint,
+    .ill-f-lavender,
+    .ill-f-lavender-tint,
+    .ill-f-rose,
+    .ill-f-rose-tint,
+    .ill-f-ocean,
+    .ill-f-ocean-tint,
+    .ill-f-peach,
+    .ill-f-peach-tint,
+    .ill-f-fog
+  ).ill-s {
   stroke: var(--af-ink, #0b0b0c);
 }
 
@@ -49,32 +69,84 @@
   max-width: 100%;
 }
 
-.ill-f-none { fill: none; }
-.ill-f-paper { fill: var(--ill-paper); }
-.ill-f-ink { fill: var(--ill-line); }
-.ill-f-disc { fill: var(--ill-disc); }
-.ill-f-blue { fill: var(--af-blue, #2b3bff); }
-.ill-f-fog { fill: var(--af-fog, #e3e5e9); }
-.ill-f-sky { fill: var(--af-sky, #8fb4ff); }
-.ill-f-sky-tint { fill: var(--af-sky-tint, #e5edff); }
-.ill-f-mint { fill: var(--af-mint, #83e8c3); }
-.ill-f-mint-tint { fill: var(--af-mint-tint, #dcf8ec); }
-.ill-f-mint-deep { fill: var(--af-mint-deep, #0e7a55); }
-.ill-f-sun { fill: var(--af-sun, #ffd45c); }
-.ill-f-sun-tint { fill: var(--af-sun-tint, #fff3cc); }
-.ill-f-sun-deep { fill: var(--af-sun-deep, #8a6100); }
-.ill-f-lavender { fill: var(--af-lavender, #c4b5fd); }
-.ill-f-lavender-tint { fill: var(--af-lavender-tint, #eee9ff); }
-.ill-f-lavender-deep { fill: var(--af-lavender-deep, #5b3fd1); }
-.ill-f-rose { fill: var(--af-rose, #ffc4bd); }
-.ill-f-rose-tint { fill: var(--af-rose-tint, #fff0ee); }
-.ill-f-rose-deep { fill: var(--af-rose-deep, #9a2b20); }
-.ill-f-ocean { fill: var(--af-ocean, #a9dbff); }
-.ill-f-ocean-tint { fill: var(--af-ocean-tint, #eaf6ff); }
-.ill-f-ocean-deep { fill: var(--af-ocean-deep, #0a4f86); }
-.ill-f-peach { fill: var(--af-peach, #ffd3a8); }
-.ill-f-peach-tint { fill: var(--af-peach-tint, #fff3e6); }
-.ill-f-peach-deep { fill: var(--af-peach-deep, #8a4510); }
+.ill-f-none {
+  fill: none;
+}
+.ill-f-paper {
+  fill: var(--ill-paper);
+}
+.ill-f-ink {
+  fill: var(--ill-line);
+}
+.ill-f-disc {
+  fill: var(--ill-disc);
+}
+.ill-f-blue {
+  fill: var(--af-blue, #2b3bff);
+}
+.ill-f-fog {
+  fill: var(--af-fog, #e3e5e9);
+}
+.ill-f-sky {
+  fill: var(--af-sky, #8fb4ff);
+}
+.ill-f-sky-tint {
+  fill: var(--af-sky-tint, #e5edff);
+}
+.ill-f-mint {
+  fill: var(--af-mint, #83e8c3);
+}
+.ill-f-mint-tint {
+  fill: var(--af-mint-tint, #dcf8ec);
+}
+.ill-f-mint-deep {
+  fill: var(--af-mint-deep, #0e7a55);
+}
+.ill-f-sun {
+  fill: var(--af-sun, #ffd45c);
+}
+.ill-f-sun-tint {
+  fill: var(--af-sun-tint, #fff3cc);
+}
+.ill-f-sun-deep {
+  fill: var(--af-sun-deep, #8a6100);
+}
+.ill-f-lavender {
+  fill: var(--af-lavender, #c4b5fd);
+}
+.ill-f-lavender-tint {
+  fill: var(--af-lavender-tint, #eee9ff);
+}
+.ill-f-lavender-deep {
+  fill: var(--af-lavender-deep, #5b3fd1);
+}
+.ill-f-rose {
+  fill: var(--af-rose, #ffc4bd);
+}
+.ill-f-rose-tint {
+  fill: var(--af-rose-tint, #fff0ee);
+}
+.ill-f-rose-deep {
+  fill: var(--af-rose-deep, #9a2b20);
+}
+.ill-f-ocean {
+  fill: var(--af-ocean, #a9dbff);
+}
+.ill-f-ocean-tint {
+  fill: var(--af-ocean-tint, #eaf6ff);
+}
+.ill-f-ocean-deep {
+  fill: var(--af-ocean-deep, #0a4f86);
+}
+.ill-f-peach {
+  fill: var(--af-peach, #ffd3a8);
+}
+.ill-f-peach-tint {
+  fill: var(--af-peach-tint, #fff3e6);
+}
+.ill-f-peach-deep {
+  fill: var(--af-peach-deep, #8a4510);
+}
 
 /* The ink outline: 2 units at the base size (frame.tsx thickens it for small renders). */
 .ill-s {
@@ -83,14 +155,28 @@
   stroke-linejoin: round;
   stroke-linecap: round;
 }
-.ill-s-bold { stroke-width: calc(var(--ill-sw) * 1.5); }
-.ill-s-paper { stroke: var(--ill-paper); }
+.ill-s-bold {
+  stroke-width: calc(var(--ill-sw) * 1.5);
+}
+.ill-s-paper {
+  stroke: var(--ill-paper);
+}
 /* Marks drawn on an accent fill (a check, clock hands, a keyhole) stay ink on any surface. */
-.ill-s-ink-fixed { stroke: var(--af-ink, #0b0b0c); }
-.ill-f-ink-fixed { fill: var(--af-ink, #0b0b0c); }
-.ill-s-blue { stroke: var(--af-blue, #2b3bff); }
-.ill-s-fog { stroke: var(--af-fog, #e3e5e9); }
-.ill-dash { stroke-dasharray: 6 6; }
+.ill-s-ink-fixed {
+  stroke: var(--af-ink, #0b0b0c);
+}
+.ill-f-ink-fixed {
+  fill: var(--af-ink, #0b0b0c);
+}
+.ill-s-blue {
+  stroke: var(--af-blue, #2b3bff);
+}
+.ill-s-fog {
+  stroke: var(--af-fog, #e3e5e9);
+}
+.ill-dash {
+  stroke-dasharray: 6 6;
+}
 
 /* A hairline grid: one screen pixel at any size. */
 .ill-grid {
@@ -100,35 +186,71 @@
   stroke-width: 1;
   vector-effect: non-scaling-stroke;
 }
-.ill-grid-major { stroke-opacity: 0.2; }
+.ill-grid-major {
+  stroke-opacity: 0.2;
+}
 
 /* The hard offset shadow: a silhouette of the main object, drawn first. */
-.ill-shadow [class*="ill-f-"]:not(.ill-f-none) { fill: var(--ill-shadow) !important; }
-.ill-shadow .ill-s { stroke: var(--ill-shadow) !important; }
+.ill-shadow [class*='ill-f-']:not(.ill-f-none) {
+  fill: var(--ill-shadow) !important;
+}
+.ill-shadow .ill-s {
+  stroke: var(--ill-shadow) !important;
+}
 
 /* ---------- panels (panel.tsx) ---------- */
 
-.ill-tint { position: relative; isolation: isolate; }
-.ill-tint-sky { background-color: var(--af-sky-tint, #e5edff); }
-.ill-tint-mint { background-color: var(--af-mint-tint, #dcf8ec); }
-.ill-tint-sun { background-color: var(--af-sun-tint, #fff3cc); }
-.ill-tint-lavender { background-color: var(--af-lavender-tint, #eee9ff); }
-.ill-tint-rose { background-color: var(--af-rose-tint, #fff0ee); }
-.ill-tint-ocean { background-color: var(--af-ocean-tint, #eaf6ff); }
-.ill-tint-peach { background-color: var(--af-peach-tint, #fff3e6); }
+.ill-tint {
+  position: relative;
+  isolation: isolate;
+}
+.ill-tint-sky {
+  background-color: var(--af-sky-tint, #e5edff);
+}
+.ill-tint-mint {
+  background-color: var(--af-mint-tint, #dcf8ec);
+}
+.ill-tint-sun {
+  background-color: var(--af-sun-tint, #fff3cc);
+}
+.ill-tint-lavender {
+  background-color: var(--af-lavender-tint, #eee9ff);
+}
+.ill-tint-rose {
+  background-color: var(--af-rose-tint, #fff0ee);
+}
+.ill-tint-ocean {
+  background-color: var(--af-ocean-tint, #eaf6ff);
+}
+.ill-tint-peach {
+  background-color: var(--af-peach-tint, #fff3e6);
+}
 
 /* Paper grain: two offset stipple layers, CSS only. */
 .ill-grain {
   background-image:
-    radial-gradient(color-mix(in oklab, var(--af-ink, #0b0b0c) 7%, transparent) 0.6px, transparent 1px),
-    radial-gradient(color-mix(in oklab, var(--af-ink, #0b0b0c) 5%, transparent) 0.6px, transparent 1px);
-  background-size: 5px 5px, 7px 7px;
-  background-position: 0 0, 2px 3px;
+    radial-gradient(
+      color-mix(in oklab, var(--af-ink, #0b0b0c) 7%, transparent) 0.6px,
+      transparent 1px
+    ),
+    radial-gradient(
+      color-mix(in oklab, var(--af-ink, #0b0b0c) 5%, transparent) 0.6px,
+      transparent 1px
+    );
+  background-size:
+    5px 5px,
+    7px 7px;
+  background-position:
+    0 0,
+    2px 3px;
 }
 
-.ill-gridback { position: relative; isolation: isolate; }
+.ill-gridback {
+  position: relative;
+  isolation: isolate;
+}
 .ill-gridback::before {
-  content: "";
+  content: '';
   position: absolute;
   inset: 0;
   z-index: -1;
@@ -141,10 +263,18 @@
   mask-image: radial-gradient(ellipse at center, black 30%, transparent 75%);
 }
 
-.ill-cluster { position: relative; aspect-ratio: 4 / 3; }
-.ill-cluster > [data-anim] { position: absolute; }
+.ill-cluster {
+  position: relative;
+  aspect-ratio: 4 / 3;
+}
+.ill-cluster > [data-anim] {
+  position: absolute;
+}
 
-.ill-mark-slot { position: absolute; display: block; }
+.ill-mark-slot {
+  position: absolute;
+  display: block;
+}
 
 /* ---------- motion ---------- */
 
@@ -152,61 +282,131 @@
   transform-box: fill-box;
   transform-origin: center;
 }
-.ill [data-anim="spill"] { transform-origin: var(--ill-origin, center); }
+.ill [data-anim='spill'] {
+  transform-origin: var(--ill-origin, center);
+}
 
 @keyframes ill-draw {
-  from { stroke-dasharray: 1; stroke-dashoffset: 1; }
-  to { stroke-dasharray: 1; stroke-dashoffset: 0; }
+  from {
+    stroke-dasharray: 1;
+    stroke-dashoffset: 1;
+  }
+  to {
+    stroke-dasharray: 1;
+    stroke-dashoffset: 0;
+  }
 }
 @keyframes ill-spill {
-  0% { transform: scale(0.15, 0.5); }
-  65% { transform: scale(1.04, 1.06); }
-  100% { transform: scale(1); }
+  0% {
+    transform: scale(0.15, 0.5);
+  }
+  65% {
+    transform: scale(1.04, 1.06);
+  }
+  100% {
+    transform: scale(1);
+  }
 }
 @keyframes ill-float {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-4px); }
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-4px);
+  }
 }
 @keyframes ill-pulse {
-  from { stroke-dashoffset: 0; }
+  from {
+    stroke-dashoffset: 0;
+  }
   /* Four periods: a connector's fitted dash sets its own (--ill-dp), so the loop never jumps. */
-  to { stroke-dashoffset: calc(var(--ill-dp, 12px) * -4); }
+  to {
+    stroke-dashoffset: calc(var(--ill-dp, 12px) * -4);
+  }
 }
 @keyframes ill-pop {
-  0% { transform: scale(0); }
-  60% { transform: scale(1.12); }
-  100% { transform: scale(1); }
+  0% {
+    transform: scale(0);
+  }
+  60% {
+    transform: scale(1.12);
+  }
+  100% {
+    transform: scale(1);
+  }
 }
 @keyframes ill-twinkle {
-  0%, 100% { transform: scale(1) rotate(0deg); }
-  50% { transform: scale(0.45) rotate(45deg); }
+  0%,
+  100% {
+    transform: scale(1) rotate(0deg);
+  }
+  50% {
+    transform: scale(0.45) rotate(45deg);
+  }
 }
 @keyframes ill-rise {
-  from { opacity: 0; transform: translateY(8px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 @media (prefers-reduced-motion: no-preference) {
-  .ill.ill-in [data-anim="draw"] { animation: ill-draw 700ms cubic-bezier(0.65, 0, 0.35, 1) var(--ill-delay, 0ms) both; }
-  .ill.ill-in [data-anim="spill"] { animation: ill-spill 900ms cubic-bezier(0.34, 1.4, 0.64, 1) var(--ill-delay, 0ms) both; }
-  .ill.ill-in [data-anim="float"] { animation: ill-float 3.6s ease-in-out var(--ill-delay, 0ms) 3; }
-  .ill.ill-in [data-anim="pulse"] { animation: ill-pulse 1.2s linear var(--ill-delay, 0ms) 3; }
-  .ill.ill-in [data-anim="pop"] { animation: ill-pop 480ms cubic-bezier(0.34, 1.56, 0.64, 1) var(--ill-delay, 0ms) both; }
-  .ill.ill-in [data-anim="twinkle"] { animation: ill-twinkle 1.2s ease-in-out var(--ill-delay, 0ms) 2; }
-  .ill.ill-in [data-anim="rise"] {
-    animation: ill-rise 600ms cubic-bezier(0.22, 1, 0.36, 1) calc(var(--ill-delay, 0ms) + var(--ill-i, 0) * 90ms) both;
+  .ill.ill-in [data-anim='draw'] {
+    animation: ill-draw 700ms cubic-bezier(0.65, 0, 0.35, 1)
+      var(--ill-delay, 0ms) both;
+  }
+  .ill.ill-in [data-anim='spill'] {
+    animation: ill-spill 900ms cubic-bezier(0.34, 1.4, 0.64, 1)
+      var(--ill-delay, 0ms) both;
+  }
+  .ill.ill-in [data-anim='float'] {
+    animation: ill-float 3.6s ease-in-out var(--ill-delay, 0ms) 3;
+  }
+  .ill.ill-in [data-anim='pulse'] {
+    animation: ill-pulse 1.2s linear var(--ill-delay, 0ms) 3;
+  }
+  .ill.ill-in [data-anim='pop'] {
+    animation: ill-pop 480ms cubic-bezier(0.34, 1.56, 0.64, 1)
+      var(--ill-delay, 0ms) both;
+  }
+  .ill.ill-in [data-anim='twinkle'] {
+    animation: ill-twinkle 1.2s ease-in-out var(--ill-delay, 0ms) 2;
+  }
+  .ill.ill-in [data-anim='rise'] {
+    animation: ill-rise 600ms cubic-bezier(0.22, 1, 0.36, 1)
+      calc(var(--ill-delay, 0ms) + var(--ill-i, 0) * 90ms) both;
   }
   /* Off screen, whatever is still running waits. */
-  .ill.ill-in:not(.ill-live) [data-anim] { animation-play-state: paused; }
+  .ill.ill-in:not(.ill-live) [data-anim] {
+    animation-play-state: paused;
+  }
   /* The gallery's reduced-motion switch: the final frame, nothing moving. */
-  [data-ill-motion="off"] [data-anim] { animation: none !important; }
+  [data-ill-motion='off'] [data-anim] {
+    animation: none !important;
+  }
 }
 
 /* Start states: only for frames that will be revealed (data-autoplay), only with scripting, only
    when motion is welcome. Without any of those the final frame shows. */
 @media (prefers-reduced-motion: no-preference) and (scripting: enabled) {
-  .ill[data-autoplay]:not(.ill-in) [data-anim="draw"] { stroke-dasharray: 1; stroke-dashoffset: 1; }
-  .ill[data-autoplay]:not(.ill-in) [data-anim="spill"] { transform: scale(0.15, 0.5); }
-  .ill[data-autoplay]:not(.ill-in) [data-anim="pop"] { transform: scale(0); }
-  .ill[data-autoplay]:not(.ill-in) [data-anim="rise"] { opacity: 0; transform: translateY(8px); }
+  .ill[data-autoplay]:not(.ill-in) [data-anim='draw'] {
+    stroke-dasharray: 1;
+    stroke-dashoffset: 1;
+  }
+  .ill[data-autoplay]:not(.ill-in) [data-anim='spill'] {
+    transform: scale(0.15, 0.5);
+  }
+  .ill[data-autoplay]:not(.ill-in) [data-anim='pop'] {
+    transform: scale(0);
+  }
+  .ill[data-autoplay]:not(.ill-in) [data-anim='rise'] {
+    opacity: 0;
+    transform: translateY(8px);
+  }
 }

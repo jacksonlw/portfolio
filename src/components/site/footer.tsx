@@ -10,7 +10,7 @@ export function Footer() {
         </p>
         <a
           href={`mailto:${PROFILE.email}`}
-          className="rounded-sm text-link underline-offset-4 hover:underline focus-ring"
+          className="rounded-sm text-link underline-offset-4 focus-ring hover:underline"
         >
           {PROFILE.email}
         </a>

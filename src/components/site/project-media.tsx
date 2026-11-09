@@ -1,5 +1,8 @@
 import type { Project } from '@/content/profile'
-import { Illustration, hasIllustration } from '@/components/illustrations/registry'
+import {
+  Illustration,
+  hasIllustration
+} from '@/components/illustrations/registry'
 import { TINT_BG } from '@/lib/accent'
 import { cn } from '@/lib/cn'
 
@@ -27,7 +30,11 @@ export function ProjectMedia({
       )}
     >
       {hasIllustration(project.slug) ? (
-        <Illustration name={project.slug} size={size} className={cn('h-auto w-[44%]', artClassName)} />
+        <Illustration
+          name={project.slug}
+          size={size}
+          className={cn('h-auto w-[44%]', artClassName)}
+        />
       ) : (
         <span className="text-title text-foreground/40" aria-hidden>
           {project.title}

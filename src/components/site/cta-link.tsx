@@ -19,7 +19,8 @@ const SIZES = {
   lg: 'h-11 px-5 text-[15px]'
 } as const
 
-const isExternal = (href: string) => /^(https?:|mailto:)/.test(href) || href.endsWith('.pdf')
+const isExternal = (href: string) =>
+  /^(https?:|mailto:)/.test(href) || href.endsWith('.pdf')
 
 /**
  * A link styled as a pill button, after the AnyForm marketing CTA: next/link for site paths, a
@@ -77,7 +78,9 @@ export function CtaLink({
     <a
       href={href}
       className={classes}
-      {...(href.startsWith('mailto:') ? {} : { target: '_blank', rel: 'noopener noreferrer' })}
+      {...(href.startsWith('mailto:')
+        ? {}
+        : { target: '_blank', rel: 'noopener noreferrer' })}
     >
       {body}
     </a>
