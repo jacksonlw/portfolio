@@ -2346,7 +2346,8 @@ function Column({
 
 /**
  * The sheet that rises from the bottom on mobile: what's tapped, and its connections as chips that
- * open in place. Closes with its ✕, a tap above it or Escape.
+ * open in place. Closes with its ✕, a swipe down, a tap above it or Escape. The page behind is
+ * locked while it's up.
  */
 function Sheet({
   picked,
@@ -2366,6 +2367,8 @@ function Sheet({
   onClose: () => void
 }) {
   const close = useRef<HTMLButtonElement>(null)
+  const sheet = useRef<HTMLDivElement>(null)
+  const scrim = useRef<HTMLDivElement>(null)
   const open = picked !== null
   useEffect(() => {
     if (!open) return
@@ -2375,17 +2378,110 @@ function Sheet({
     return () => window.removeEventListener('keydown', onKey)
   }, [open, onClose])
 
+  // The page behind stays put while the sheet is up. iOS ignores overflow: hidden on the body for
+  // touch scrolling, so the body is pinned in place and the scroll position restored on close.
+  useEffect(() => {
+    if (!open) return
+    const { body } = document
+    const y = window.scrollY
+    const prev = body.style.cssText
+    Object.assign(body.style, {
+      position: 'fixed',
+      top: `-${y}px`,
+      left: '0',
+      right: '0',
+      overflow: 'hidden'
+    })
+    return () => {
+      body.style.cssText = prev
+      window.scrollTo({ top: y, behavior: 'instant' })
+    }
+  }, [open])
+
+  // Swipe down to dismiss, like a native sheet: once the content is scrolled to the top, pulling
+  // down drags the whole sheet with the finger (the scrim fading with it). Let go past a quarter of
+  // its height, or with a quick flick, and it closes; otherwise it springs back.
+  useEffect(() => {
+    const el = sheet.current
+    if (!el || !open) return
+    let startY = 0
+    let startT = 0
+    let offset = 0
+    let dragging = false
+    const set = (px: number) => {
+      offset = px
+      el.style.translate = `0 ${px}px`
+      if (scrim.current)
+        scrim.current.style.opacity = String(1 - px / el.offsetHeight)
+    }
+    const reset = () => {
+      el.style.transition = ''
+      el.style.translate = ''
+      if (scrim.current) {
+        scrim.current.style.transition = ''
+        scrim.current.style.opacity = ''
+      }
+    }
+    const onStart = (e: TouchEvent) => {
+      startY = e.touches[0].clientY
+      startT = e.timeStamp
+      dragging = false
+      offset = 0
+    }
+    const onMove = (e: TouchEvent) => {
+      const y = e.touches[0].clientY
+      if (!dragging) {
+        if (y <= startY || el.scrollTop > 0) return
+        // Start the drag from here, so a scroll that reached the top doesn't jump the sheet.
+        dragging = true
+        startY = y
+        startT = e.timeStamp
+        el.style.transition = 'none'
+        if (scrim.current) scrim.current.style.transition = 'none'
+      }
+      e.preventDefault()
+      set(Math.max(0, y - startY))
+    }
+    const onEnd = (e: TouchEvent) => {
+      if (!dragging) return
+      dragging = false
+      const speed = offset / Math.max(1, e.timeStamp - startT)
+      const dismiss =
+        offset > el.offsetHeight * 0.25 || (speed > 0.5 && offset > 12)
+      reset()
+      if (dismiss) onClose()
+    }
+    el.addEventListener('touchstart', onStart, { passive: true })
+    el.addEventListener('touchmove', onMove, { passive: false })
+    el.addEventListener('touchend', onEnd)
+    el.addEventListener('touchcancel', onEnd)
+    return () => {
+      el.removeEventListener('touchstart', onStart)
+      el.removeEventListener('touchmove', onMove)
+      el.removeEventListener('touchend', onEnd)
+      el.removeEventListener('touchcancel', onEnd)
+      reset()
+    }
+  }, [open, onClose])
+
+  // A new pick starts at the top of the sheet.
+  useEffect(() => {
+    sheet.current?.scrollTo({ top: 0 })
+  }, [picked])
+
   return (
     <>
       <div
+        ref={scrim}
         aria-hidden
         onClick={onClose}
         className={cn(
-          'fixed inset-0 z-40 bg-[rgb(12_13_16/0.35)] transition-opacity duration-300 lg:hidden',
+          'fixed inset-0 z-40 touch-none bg-[rgb(12_13_16/0.35)] transition-opacity duration-300 lg:hidden',
           open ? 'opacity-100' : 'pointer-events-none opacity-0'
         )}
       />
       <div
+        ref={sheet}
         role="dialog"
         aria-modal="true"
         aria-label={
@@ -2395,7 +2491,7 @@ function Sheet({
         }
         inert={!open}
         className={cn(
-          'dark ink-pop fixed inset-x-0 bottom-0 z-50 max-h-[70dvh] overflow-y-auto rounded-t-2xl bg-background px-5 pt-3 pb-[max(1.5rem,env(safe-area-inset-bottom))] text-foreground shadow-pop transition-transform duration-300 ease-out lg:hidden',
+          'dark ink-pop fixed inset-x-0 bottom-0 z-50 max-h-[70dvh] overflow-y-auto overscroll-contain rounded-t-2xl bg-background px-5 pt-3 pb-[max(1.5rem,env(safe-area-inset-bottom))] text-foreground shadow-pop transition-transform duration-300 ease-out lg:hidden',
           open ? 'translate-y-0' : 'translate-y-full'
         )}
       >
