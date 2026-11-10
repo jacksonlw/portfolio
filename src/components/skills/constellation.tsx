@@ -373,17 +373,17 @@ function useHoverIntent(setActive: (a: Active) => void) {
 const FLOAT_PX = 5
 
 /** How far a star can be pulled toward the cursor (px): less than its reach, so stars never collide. */
-const STAR_TRAVEL = 12
+const STAR_TRAVEL = 5
 
 /** How much of a node's reach it will travel to meet the cursor (a little less than all of it). */
 const MEET = 0.85
 /** How far a node leans toward a cursor on it, as a share of its radius, and at most (px). */
-const LEAN = 0.14
-const LEAN_MAX = 7
+const LEAN = 0.06
+const LEAN_MAX = 3
 /** How far past its reach the pull fades out (px, before the node's weight). */
-const PULL_FADE = 140
+const PULL_FADE = 90
 /** How quickly a node glides to where gravity wants it, per frame (0–1; lower is smoother). */
-const GLIDE = 0.09
+const GLIDE = 0.07
 
 /** 0 below `a`, 1 above `b`, and an S-curve between: for pulls that fade without a seam. */
 const smoothstep = (a: number, b: number, x: number) => {
@@ -864,9 +864,11 @@ function Explain({
   return null
 }
 
-/** Where a bubble's click goes when project pages are off: its first link (source, site), if any. */
+/** Where a bubble's click goes when project pages are off: its first link that isn't source code (a live site), if any. */
 const outLink = (b: Bubble) =>
-  b.kind === 'project' && 'links' in b ? (b.links[0] ?? null) : null
+  b.kind === 'project' && 'links' in b
+    ? (b.links.find((l) => !/source/i.test(l.label)) ?? null)
+    : null
 
 /** The popover's eyebrow for a bubble: work or project, and when (or the tagline, if no date). */
 const eyebrow = (b: Bubble, withTagline: boolean) =>
@@ -1108,21 +1110,43 @@ function Board({
   }, [cracks, intro.buildup])
   const introTotal =
     blast + intro.spread + intro.ms * (1.1 + 0.35 * intro.chaos) + 394
-  const [played, setPlayed] = useState(false)
-  useEffect(() => {
-    const t = window.setTimeout(() => setPlayed(true), introTotal)
-    return () => window.clearTimeout(t)
-  }, [introTotal])
-  const live = !played
-
   // Hover comes back as soon as the nodes are out on the board (mostly flown, still settling), long
   // before the rest of the intro is done.
   const readyAt = blast + intro.spread * 0.5 + intro.ms * 0.4
+  const [played, setPlayed] = useState(false)
   const [ready, setReady] = useState(readyAt <= 0)
+  const live = !played
+
+  // The intro doubles as the loader. Until the page has loaded (scripts, fonts, your photo), the
+  // board waits: only a small core shows, churning softly, with everything else held at its first
+  // frame (globals.css, .intro-wait). Once loaded (or after a few seconds at most), the whole
+  // supernova plays from the start, and its timers start with it, so the burst is never lost to a
+  // busy page.
+  const [waiting, setWaiting] = useState(true)
   useEffect(() => {
-    const t = window.setTimeout(() => setReady(true), readyAt)
-    return () => window.clearTimeout(t)
-  }, [readyAt])
+    if (!waiting) return
+    let raf = 0
+    const go = () => {
+      window.removeEventListener('load', go)
+      raf = requestAnimationFrame(() => setWaiting(false))
+    }
+    if (document.readyState === 'complete') go()
+    else window.addEventListener('load', go)
+    const cap = window.setTimeout(go, 4000)
+    return () => {
+      window.removeEventListener('load', go)
+      window.clearTimeout(cap)
+      cancelAnimationFrame(raf)
+    }
+  }, [waiting])
+  useEffect(() => {
+    if (waiting) return
+    const timers = [
+      window.setTimeout(() => setReady(true), readyAt),
+      window.setTimeout(() => setPlayed(true), introTotal)
+    ]
+    return () => timers.forEach((t) => window.clearTimeout(t))
+  }, [waiting, readyAt, introTotal])
   const on = (cls: string) => (live ? cls : '')
 
   // The intro: each node is thrown out from the Me node (by `burst`), nearer ones first, and with
@@ -1229,7 +1253,7 @@ function Board({
       r: 72 * scale,
       reach: REACH.me,
       pullReach: 30,
-      travel: 8
+      travel: 3
     }
     for (const s of satellites) {
       const [x, y] = satPos[s.kind]
@@ -1241,7 +1265,7 @@ function Board({
         reach: REACH.satellite,
         // The same long, soft approach as a star, moving a little less.
         pullReach: 30,
-        travel: 10
+        travel: 4
       }
     }
     for (const s of stars)
@@ -1263,7 +1287,7 @@ function Board({
         reach: REACH.project,
         // Heavier than a star: pulled from as far, but moving a little less.
         pullReach: 30,
-        travel: 10
+        travel: 4
       }
     // Dust is light: it floats a little more than a star and the cursor pulls it from farther off.
     if (size.w)
@@ -1340,6 +1364,8 @@ function Board({
       className={cn(
         'relative hidden h-dvh min-h-[46rem] w-full overflow-x-clip lg:block',
         live && intro.shake > 0 && 'intro-shake',
+        // Held at its first frame until the page has loaded (see `waiting`).
+        live && waiting && 'intro-wait',
         // Nothing on the board can be hovered or clicked until it has landed.
         !ready && '[&_*]:pointer-events-none'
       )}
@@ -1991,6 +2017,10 @@ function Board({
       {/* The page's own controls (this hint, the replay button and the theme switch, which sit
           outside the board) stay hidden through the build-up and fade in with the area titles, so
           the screen is clear while the supernova grows. Full-screen board only. */}
+      {/* Without JavaScript nothing would ever end the wait, so let the intro play as it is. */}
+      <noscript>
+        <style>{`.intro-wait, .intro-wait *, .intro-chrome { animation-play-state: running !important; }`}</style>
+      </noscript>
       {live && intro.buildup > 0 && (
         <style>{`@media (min-width: 64rem) and (prefers-reduced-motion: no-preference) { .intro-chrome { animation: intro-fade ${Math.round(intro.ms * 0.6)}ms ease-out ${chromeDelay}ms backwards; } }`}</style>
       )}

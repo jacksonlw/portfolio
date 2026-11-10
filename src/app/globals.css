@@ -230,7 +230,7 @@ html.dark .chrome-rim {
       #e8ebef 88%,
       #b9bfc8 100%
     );
-  box-shadow: inset 0 0 18px rgb(15 16 20 / 0.45);
+  /* No inner shadow: at the core's tiny starting size it reads as a dark rim. */
 }
 
 /* The rainbow sheen over the chrome orb: it shifts hue as the light churns (never spins). */
@@ -622,12 +622,41 @@ html.dark .chrome-rim {
   }
 }
 
+/* Waiting for the page to load (.intro-wait on the board): everything is held at its first
+   frame except the core, which idles as a small churning orb, the loader. The page's own controls
+   wait too. When the class goes, every intro animation starts from the beginning. */
+@media (prefers-reduced-motion: no-preference) {
+  .intro-wait,
+  .intro-wait *,
+  html:has(.intro-wait) .intro-chrome {
+    animation-play-state: paused !important;
+  }
+  .intro-wait .intro-core {
+    animation: core-idle 900ms ease-in-out infinite alternate !important;
+  }
+  .intro-wait .core-blob,
+  .intro-wait .core-heart,
+  .intro-wait .core-orb::after {
+    animation-play-state: running !important;
+  }
+}
+@keyframes core-idle {
+  from {
+    opacity: 0.85;
+    scale: 0.1;
+  }
+  to {
+    opacity: 1;
+    scale: 0.13;
+  }
+}
+
 /* The gradient core: a calm dot that swells, trembles, pulls in at the collapse and bursts. The
    collapse lands at the blast (about 85% of the way through). */
 @keyframes intro-core {
   from {
-    opacity: 0;
-    scale: 0.08;
+    opacity: 1;
+    scale: 0.12;
   }
   12% {
     opacity: 1;
@@ -1180,7 +1209,11 @@ html.dark {
       transparent 55%,
       color-mix(in oklab, var(--brand) 20%, transparent) 100%
     ),
-    linear-gradient(160deg, color-mix(in oklab, #dfe6ff 35%, transparent), transparent 60%);
+    linear-gradient(
+      160deg,
+      color-mix(in oklab, #dfe6ff 35%, transparent),
+      transparent 60%
+    );
   mix-blend-mode: soft-light;
 }
 html.dark .portrait-photo {
@@ -1193,6 +1226,10 @@ html.dark .portrait-grade {
       transparent 50%,
       color-mix(in oklab, #0b0b0c 65%, transparent) 100%
     ),
-    linear-gradient(150deg, color-mix(in oklab, #5b8cff 30%, transparent), transparent 40%);
+    linear-gradient(
+      150deg,
+      color-mix(in oklab, #5b8cff 30%, transparent),
+      transparent 40%
+    );
   mix-blend-mode: soft-light;
 }
