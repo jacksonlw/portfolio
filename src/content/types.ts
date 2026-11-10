@@ -122,7 +122,7 @@ export type Press = {
 
 /** A small body orbiting the Me node that takes the visitor somewhere. */
 export type Satellite = {
-  kind: 'resume' | 'email' | 'github' | 'press'
+  kind: 'resume' | 'email' | 'github' | 'linkedin' | 'press'
   /** Its short name under the drawing. */
   label: string
   href: string

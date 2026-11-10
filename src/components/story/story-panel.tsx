@@ -14,6 +14,7 @@ import {
   useLayoutEffect,
   useRef,
   useState,
+  type CSSProperties,
   type ReactNode
 } from 'react'
 import { Illustration } from '@/components/illustrations/registry'
@@ -542,11 +543,13 @@ function Recap({
 function Clip({
   item,
   playing,
-  className
+  className,
+  style
 }: {
   item: GalleryItem
   playing: boolean
   className?: string
+  style?: CSSProperties
 }) {
   const video = useRef<HTMLVideoElement>(null)
   const reduce = useReducedMotion()
@@ -558,7 +561,7 @@ function Clip({
     else v.pause()
   }, [playing, reduce, started])
   return (
-    <span className="relative block h-full w-fit max-w-full">
+    <span className="relative block w-fit max-w-full">
       <video
         ref={video}
         src={item.src}
@@ -570,6 +573,7 @@ function Clip({
         preload={item.poster ? 'none' : 'metadata'}
         aria-label={item.caption}
         className={className}
+        style={style}
       />
       {reduce && !started && (
         <button
@@ -593,16 +597,30 @@ function Framed({
 }: {
   item: GalleryItem
   playing: boolean
-  /** In the gallery every slide fits its height; inline, it's sized by width. */
+  /** In the gallery every slide fits inside its slide; inline, it's sized by width. */
   fit: 'height' | 'width'
 }) {
-  const sized =
+  // In the gallery the picture is as large as fits its slide, whatever its shape, and its frame
+  // hugs it. The slide is a size container (Gallery), so the limits are the slide's own width and
+  // height less the frame's chrome: a wide screenshot on a phone is bounded by width, a phone
+  // screenshot by height, and neither is stretched or letterboxed inside its frame.
+  const chrome =
+    item.frame === 'phone'
+      ? ['10px', '10px']
+      : item.frame === 'browser'
+        ? ['2px', 'calc(1.5rem + 2px)']
+        : ['0px', '0px']
+  const sized = fit === 'height' ? 'block h-auto w-auto' : 'block h-auto w-full'
+  const limits =
     fit === 'height'
-      ? 'block h-full w-auto max-w-full object-contain'
-      : 'block h-auto w-full'
+      ? {
+          maxWidth: `calc(100cqw - ${chrome[0]})`,
+          maxHeight: `calc(100cqh - ${chrome[1]})`
+        }
+      : undefined
   const inner =
     item.kind === 'video' ? (
-      <Clip item={item} playing={playing} className={sized} />
+      <Clip item={item} playing={playing} className={sized} style={limits} />
     ) : (
       // eslint-disable-next-line @next/next/no-img-element
       <img
@@ -612,6 +630,7 @@ function Framed({
         decoding="async"
         draggable={false}
         className={sized}
+        style={limits}
       />
     )
   if (item.frame === 'phone')
@@ -619,7 +638,7 @@ function Framed({
       <span
         className={cn(
           'block overflow-hidden rounded-[1.75rem] border-[5px] border-foreground/85 bg-foreground shadow-pop',
-          fit === 'height' ? 'h-full w-fit' : 'mx-auto w-full max-w-[13rem]'
+          fit === 'height' ? 'w-fit' : 'mx-auto w-full max-w-[13rem]'
         )}
       >
         {inner}
@@ -630,7 +649,7 @@ function Framed({
       <span
         className={cn(
           'flex flex-col overflow-hidden rounded-lg border border-border bg-card shadow-pop',
-          fit === 'height' && 'h-full w-fit max-w-full'
+          fit === 'height' && 'w-fit'
         )}
       >
         <span
@@ -641,16 +660,10 @@ function Framed({
           <span className="size-2 rounded-full bg-foreground/20" />
           <span className="size-2 rounded-full bg-foreground/20" />
         </span>
-        <span className={cn('block min-h-0', fit === 'height' && 'flex-1')}>
-          {inner}
-        </span>
+        <span className="block">{inner}</span>
       </span>
     )
-  return fit === 'height' ? (
-    <span className="block h-full">{inner}</span>
-  ) : (
-    inner
-  )
+  return inner
 }
 
 /** A gallery item pulled in among a beat's paragraphs, playing while it's on screen. */
@@ -701,6 +714,9 @@ function Gallery({
 }) {
   const track = useRef<HTMLDivElement>(null)
   const [index, setIndex] = useState(0)
+  // Phone screenshots need the height. A gallery of only wide pictures is shorter on a narrow
+  // screen, where they're bounded by width and a tall slide would be mostly empty.
+  const tall = items.some((g) => g.frame === 'phone')
   // A clip plays only once the panel has opened (decoding video while it grows costs frames), and
   // only while the gallery is on screen, not while you're reading further down.
   const seen = useInView(track)
@@ -768,7 +784,12 @@ function Gallery({
       <div
         ref={track}
         data-swipe-x
-        className="flex h-[min(30rem,62dvh)] snap-x snap-mandatory [scrollbar-width:none] overflow-x-auto overscroll-x-contain [&::-webkit-scrollbar]:hidden"
+        className={cn(
+          'flex snap-x snap-mandatory [scrollbar-width:none] overflow-x-auto overscroll-x-contain [&::-webkit-scrollbar]:hidden',
+          tall
+            ? 'h-[min(30rem,62dvh)]'
+            : 'h-[min(17rem,62dvh)] sm:h-[min(30rem,62dvh)]'
+        )}
       >
         {items.map((g, i) => (
           <div
@@ -776,13 +797,15 @@ function Gallery({
             role="group"
             aria-roledescription="slide"
             aria-label={`${i + 1} of ${items.length}`}
-            className="flex h-full w-full shrink-0 snap-center items-center justify-center px-6 py-6 sm:px-14"
+            className="flex h-full w-full shrink-0 snap-center items-center justify-center px-4 py-5 sm:px-14 sm:py-6"
           >
-            <Framed
-              item={g}
-              playing={settled && seen && i === index}
-              fit="height"
-            />
+            <div className="[container-type:size] flex size-full items-center justify-center">
+              <Framed
+                item={g}
+                playing={settled && seen && i === index}
+                fit="height"
+              />
+            </div>
           </div>
         ))}
       </div>

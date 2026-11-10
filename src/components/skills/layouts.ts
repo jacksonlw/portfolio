@@ -39,12 +39,14 @@ export const LAYOUT: Layout = {
   me: [50, 46],
   reference: [1440, 900],
   satellites: {
-    // About a quarter turn apart, each angled into a gap between the bubbles around you. Press,
-    // below you, sits a little further out to clear your name.
-    email: { r: 235, deg: 35 },
-    press: { r: 229, deg: 110 },
-    resume: { r: 194, deg: 185 },
-    github: { r: 175, deg: 302 }
+    // By importance: the resume and the press piece above you, LinkedIn, GitHub and email below, each
+    // angled into a gap between the bubbles around you.
+    // Deliberately uneven (no two at the same height or distance), so they read as orbiting.
+    resume: { r: 185, deg: -152 },
+    press: { r: 190, deg: -42 },
+    github: { r: 215, deg: 158 },
+    linkedin: { r: 215, deg: 100 },
+    email: { r: 250, deg: 42 }
   },
   areas: {
     'AI & agents': [13, 24],
@@ -53,19 +55,20 @@ export const LAYOUT: Layout = {
     Cloud: [85, 73]
   },
   ring: 1,
-  // Spread evenly around you, roughly every 45°, each at its own distance so it reads as a loose
-  // scatter, not a ring. Balanced on you, and well clear of the screen's edges.
+  // By time: what I'm working on now across the top, then down the sides, with the oldest work
+  // along the bottom. Each at its own distance so it reads as a loose scatter, not a ring.
   bubbles: {
-    waltz: { r: 319, deg: -100, size: 'lg' },
-    cratest: { r: 363, deg: -52, size: 'lg' },
-    oracle: { r: 310, deg: -5, size: 'lg' },
-    tedx: { r: 370, deg: 44, size: 'sm' },
-    careerfoundry: { r: 352, deg: 75, size: 'md' },
+    anyform: { r: 363, deg: -145, size: 'lg' },
+    waltz: { r: 325, deg: -105, size: 'lg' },
+    cratest: { r: 365, deg: -62, size: 'lg' },
+    oracle: { r: 330, deg: -22, size: 'lg' },
+    trailblaze: { r: 335, deg: 172, size: 'lg' },
+    careerfoundry: { r: 330, deg: 12, size: 'md' },
     koistream: { r: 350, deg: 128, size: 'md' },
-    trailblaze: { r: 332, deg: 170, size: 'lg' },
-    anyform: { r: 363, deg: -145, size: 'lg' }
+    branch: { r: 365, deg: 94, size: 'sm' },
+    tedx: { r: 350, deg: 60, size: 'sm' }
   }
 }
 
 /** Projects left off the constellation (they stay in the content and the machine-readable views). */
-export const OFF_BOARD = ['branch']
+export const OFF_BOARD: string[] = []

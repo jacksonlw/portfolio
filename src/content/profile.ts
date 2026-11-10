@@ -59,7 +59,10 @@ export const PROFILE = {
       'Before that I co-founded Trailblaze, growing it past 10,000 users in its first year, and taught developers at CareerFoundry.'
     ]
   },
-  links: [{ label: 'Code', href: 'https://github.com/jacksonlw' }] as Link[]
+  links: [
+    { label: 'Code', href: 'https://github.com/jacksonlw' },
+    { label: 'LinkedIn', href: 'https://www.linkedin.com/in/jackson-lawrence' }
+  ] as Link[]
 }
 
 export const EXPERIENCE: Experience[] = [
@@ -398,12 +401,7 @@ export const PROJECTS: Project[] = [
     role: 'Director & Full-Stack Developer',
     dates: { start: 'March 2020', end: 'June 2021' },
     stack: ['FFmpeg', 'AWS MediaLive', 'Amazon CloudFront'],
-    links: [
-      {
-        label: 'Source code',
-        href: 'https://github.com/jacksonlw/koistream'
-      }
-    ],
+    links: [],
     highlights: [
       'Built a live streaming platform with viewing, chatting and moderation',
       'Delivered HD video through FFmpeg, AWS MediaLive and Amazon CloudFront',
@@ -421,12 +419,7 @@ export const PROJECTS: Project[] = [
     role: null,
     dates: { start: '2019', end: '2019', label: '2019' },
     stack: [],
-    links: [
-      {
-        label: 'Source code',
-        href: 'https://github.com/jacksonlw/ticketing-tedxdesigntech'
-      }
-    ],
+    links: [],
     highlights: []
   },
   {
@@ -438,11 +431,9 @@ export const PROJECTS: Project[] = [
       'A smart school prototype that made a classroom safer in an emergency and easier to run day to day. We presented it at Oracle OpenWorld 2019.',
     status: 'archived',
     role: null,
-    dates: null,
+    dates: { start: '2019', end: '2019', label: '2019' },
     stack: [],
-    links: [
-      { label: 'Source code', href: 'https://github.com/jacksonlw/Branch' }
-    ],
+    links: [],
     highlights: ['Presented at Oracle OpenWorld 2019']
   }
 ]
@@ -514,6 +505,7 @@ export const formatDates = (d: DateRange) =>
   d.label ?? `${d.start} – ${d.end ?? 'Present'}`
 
 const github = PROFILE.links.find((l) => l.href.includes('github.com'))
+const linkedin = PROFILE.links.find((l) => l.href.includes('linkedin.com'))
 
 const pressDate = (iso: string) =>
   new Date(`${iso}T12:00:00Z`).toLocaleDateString('en-US', {
@@ -523,7 +515,7 @@ const pressDate = (iso: string) =>
     timeZone: 'UTC'
   })
 
-/** The satellites around the Me node, derived from the profile and the press list. */
+/** The satellites around the Me node, most important first: resume, press, LinkedIn, GitHub, email. */
 export const SATELLITES: Satellite[] = [
   {
     kind: 'resume',
@@ -533,14 +525,26 @@ export const SATELLITES: Satellite[] = [
     detail: 'Open as a PDF',
     covers: []
   },
-  {
-    kind: 'email',
-    label: 'Email',
-    href: `mailto:${PROFILE.email}`,
-    title: 'Email',
-    detail: PROFILE.email,
-    covers: []
-  },
+  ...PRESS.map((a) => ({
+    kind: 'press' as const,
+    label: 'Press',
+    href: a.url,
+    title: a.title,
+    detail: `${a.publisher} · ${pressDate(a.date)}`,
+    covers: a.covers
+  })),
+  ...(linkedin
+    ? [
+        {
+          kind: 'linkedin' as const,
+          label: 'LinkedIn',
+          href: linkedin.href,
+          title: 'LinkedIn',
+          detail: linkedin.href.replace(/^https:\/\/www\.linkedin\.com\//, ''),
+          covers: []
+        }
+      ]
+    : []),
   ...(github
     ? [
         {
@@ -553,12 +557,12 @@ export const SATELLITES: Satellite[] = [
         }
       ]
     : []),
-  ...PRESS.map((a) => ({
-    kind: 'press' as const,
-    label: 'Press',
-    href: a.url,
-    title: a.title,
-    detail: `${a.publisher} · ${pressDate(a.date)}`,
-    covers: a.covers
-  }))
+  {
+    kind: 'email',
+    label: 'Email',
+    href: `mailto:${PROFILE.email}`,
+    title: 'Email',
+    detail: PROFILE.email,
+    covers: []
+  }
 ]

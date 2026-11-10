@@ -35,7 +35,7 @@ import {
   useBodyLock,
   useSwipeToClose
 } from '@/components/site/overlay'
-import { ACCENT_BG } from '@/lib/accent'
+import { ACCENT_BG, ACCENT_STROKE, ACCENT_TEXT } from '@/lib/accent'
 import { cn } from '@/lib/cn'
 import { discAccent } from './disc'
 import { INTRO, type Intro } from './intro'
@@ -67,12 +67,16 @@ import photo from '../../../public/profile-picture.jpg'
 
 /* ---------- layout ---------- */
 
-/** Each area wears its own pastel. Where things sit comes from the layout (layouts.ts). */
+/**
+ * Each area has its own colour, worn by its stars, the lines of its figure and its title: violet,
+ * green, yellow and blue, far enough apart to tell at a glance. Where things sit comes from the
+ * layout (layouts.ts).
+ */
 const AREAS: Record<Skill['area'], { accent: Accent }> = {
-  'AI & agents': { accent: 'sky' },
+  'AI & agents': { accent: 'lavender' },
   'Product & frontend': { accent: 'mint' },
   'Backend & data': { accent: 'sun' },
-  Cloud: { accent: 'peach' }
+  Cloud: { accent: 'ocean' }
 }
 
 /** The debris's colours: --spark-<tone> in globals.css (deep shades in light mode, pastels in dark). */
@@ -92,11 +96,18 @@ const SPARK_TONES = [
 /** The rainbow that plays across chrome (--iri-* in globals.css), for the supernova's light. */
 const IRI = ['magenta', 'violet', 'cyan', 'mint', 'gold', 'coral']
 
-/** Disc diameter (rem) and label size. */
-const BUBBLE_STYLE: Record<BubbleSize, { disc: number; label: string }> = {
-  lg: { disc: 7, label: 'text-sm' },
-  md: { disc: 6, label: 'text-sm' },
-  sm: { disc: 5, label: 'text-xs' }
+/**
+ * Disc diameter (rem), the illustration's width inside it (rem) and label size. The discs are a
+ * little smaller than their drawings once implied (drawing = 60% of the disc), to leave more room
+ * between bubbles; the drawings and text kept their size.
+ */
+const BUBBLE_STYLE: Record<
+  BubbleSize,
+  { disc: number; art: number; label: string }
+> = {
+  lg: { disc: 6.25, art: 4.2, label: 'text-sm' },
+  md: { disc: 5.4, art: 3.6, label: 'text-sm' },
+  sm: { disc: 4.5, art: 3, label: 'text-xs' }
 }
 
 type Star = Skill & {
@@ -834,10 +845,13 @@ function BubbleDisc({
   rem,
   lit,
   hit,
+  art,
   className
 }: {
   bubble: Bubble
   rem: number
+  /** The illustration's width (rem); 60% of the disc unless given. */
+  art?: number
   lit?: boolean
   hit?: string
   className?: string
@@ -863,7 +877,7 @@ function BubbleDisc({
         name={bubble.slug}
         decorative
         className="h-auto"
-        style={{ width: `${rem * 0.6}rem` }}
+        style={{ width: `${art ?? rem * 0.6}rem` }}
       />
     </span>
   )
@@ -874,12 +888,15 @@ function SatelliteDisc({
   satellite,
   lit,
   hit,
-  className
+  className,
+  artClassName = 'w-[58%]'
 }: {
   satellite: Satellite
   lit?: boolean
   hit?: string
   className?: string
+  /** The illustration's width, as a class. */
+  artClassName?: string
 }) {
   return (
     <span
@@ -892,7 +909,7 @@ function SatelliteDisc({
       data-lit={lit || undefined}
       style={discAccent(satellite.kind)}
     >
-      <Illustration name={satellite.kind} decorative className="w-[58%]" />
+      <Illustration name={satellite.kind} decorative className={artClassName} />
     </span>
   )
 }
@@ -1065,7 +1082,7 @@ const FigureLines = memo(function FigureLines({
   h,
   arriveAt
 }: {
-  lines: { a: string; b: string }[]
+  lines: { a: string; b: string; accent: Accent }[]
   nodes: Record<string, MotionNode>
   w: number
   h: number
@@ -1087,7 +1104,7 @@ const FigureLines = memo(function FigureLines({
         className={cn(
           'board-line transition-opacity duration-300',
           arriveAt !== null && 'intro-line',
-          l.a === ME_ID ? 'stroke-foreground/20' : 'stroke-foreground/15'
+          ACCENT_STROKE[l.accent]
         )}
         style={
           arriveAt !== null
@@ -1265,6 +1282,7 @@ const BubbleNode = memo(function BubbleNode({
           <BubbleDisc
             bubble={b}
             rem={style.disc}
+            art={style.art}
             lit={lit}
             hit={`project:${b.slug}`}
           />
@@ -1360,7 +1378,7 @@ const StarNode = memo(function StarNode({
             className={cn(
               'text-[13px] leading-tight font-medium whitespace-nowrap',
               lit
-                ? 'font-semibold lit-text'
+                ? 'lit-text font-semibold'
                 : 'text-muted-foreground group-hover:text-foreground'
             )}
           >
@@ -1414,7 +1432,7 @@ const SatelliteNode = memo(function SatelliteNode({
         <a
           href={s.href}
           data-sat={s.kind}
-          {...(s.kind === 'github' || s.kind === 'press'
+          {...(s.kind !== 'resume' && s.kind !== 'email'
             ? { target: '_blank', rel: 'noopener noreferrer' }
             : {})}
           onFocus={() => open({ kind: 'satellite', id: s.kind })}
@@ -1435,14 +1453,12 @@ const SatelliteNode = memo(function SatelliteNode({
             satellite={s}
             lit={isActive}
             hit={`satellite:${s.kind}`}
-            className="size-16"
+            className="size-[3.6rem]"
+            artClassName="w-[2.3rem]"
           />
           <span
             data-hit={`satellite:${s.kind}`}
-            className={cn(
-              'mt-1 text-xs font-semibold',
-              isActive && 'lit-text'
-            )}
+            className={cn('mt-1 text-xs font-semibold', isActive && 'lit-text')}
           >
             {s.label}
           </span>
@@ -1498,13 +1514,7 @@ const MeNode = memo(function MeNode({
             transformOrigin: '50% 4.5rem'
           }}
         >
-          <Portrait
-            hit="me"
-            className={cn(
-              'size-36',
-              meOpen && LIT_RING
-            )}
-          />
+          <Portrait hit="me" className={cn('size-36', meOpen && LIT_RING)} />
           <p
             data-hit="me"
             className="mt-4 text-2xl font-semibold tracking-tight whitespace-nowrap"
@@ -2127,13 +2137,14 @@ const Board = memo(function Board({
   }
 
   // The lines: each area's figure always; the active node's links on hover.
-  const fixedLines = useMemo<{ a: string; b: string }[]>(
+  const fixedLines = useMemo<{ a: string; b: string; accent: Accent }[]>(
     () =>
       Object.keys(AREAS).flatMap((area) => {
         const list = stars.filter((s) => s.area === area)
         return figure(list, w && h ? w / h : 1.6).map(([a, b]) => ({
           a: starId(list[a].name),
-          b: starId(list[b].name)
+          b: starId(list[b].name),
+          accent: AREAS[area as Skill['area']].accent
         }))
       }),
     [stars, w, h]
@@ -2456,9 +2467,8 @@ const Board = memo(function Board({
           className={cn(
             on('intro-label'),
             'pointer-events-none absolute -translate-x-1/2 -translate-y-1/2 text-xs font-semibold tracking-wide whitespace-nowrap uppercase transition-[opacity,color] duration-300',
-            litAreas.has(area)
-              ? 'text-foreground'
-              : cn('text-muted-foreground', active && 'opacity-40')
+            ACCENT_TEXT[AREAS[area as Skill['area']].accent],
+            !litAreas.has(area) && active && 'opacity-40'
           )}
           style={
             {
@@ -2581,35 +2591,26 @@ const Board = memo(function Board({
 
 /* ---------- below lg: the column ---------- */
 
-/** Down the page in the board's order: Jackson's own projects first. */
+/** Down the page by time: what Jackson is working on now first, the oldest work last. */
 const ORDER = [
   'waltz',
   'anyform',
   'cratest',
   'oracle',
   'trailblaze',
-  'koistream',
   'careerfoundry',
+  'koistream',
   'tedx',
   'branch'
 ]
 const rank = (slug: string) =>
   ORDER.includes(slug) ? ORDER.indexOf(slug) : ORDER.length
 
-/**
- * Where each bubble sits in the honeycomb: a 6-column grid where each bubble spans 2, in rows of
- * three and two, the rows of two shifted half a step so they nest between the rows of three.
- */
-function honeycombColumn(i: number) {
-  const cycle = i % 5
-  return cycle < 3 ? 1 + cycle * 2 : 2 + (cycle - 3) * 2
-}
-
 type Picked = { kind: 'me' } | { kind: 'star'; name: string }
 
 /**
  * The constellation for phones and small tablets, made to be tapped, not hovered. Your photo, name
- * and role up top with the satellites; then work and projects packed in a honeycomb; then each skill
+ * and role up top with the satellites; then work and projects as a list, newest first; then each skill
  * area as a cluster of stars. Tap a bubble and its Story opens; tap your photo or a star and a
  * sheet rises from the bottom with what it is and what it connects to (a star's bubbles as chips
  * that open their Stories); the page behind lights up whatever's related. Gentle drift only.
@@ -2640,66 +2641,63 @@ const Column = memo(function Column({
 
   return (
     <div className="px-5 pt-10 pb-28 lg:hidden">
-      {/* You. */}
-      <div className="flex flex-col items-center text-center">
+      {/* You: everything on this page lines up on the left edge. */}
+      <div className="flex items-center gap-4">
         <button
           type="button"
           onClick={() => setPicked({ kind: 'me' })}
           aria-label={`About ${PROFILE.name}`}
-          className="constellation-drift rounded-full focus-ring"
+          className="constellation-drift shrink-0 rounded-full focus-ring"
         >
           <Portrait
             className={cn(
-              'size-28 border-[3px]',
+              'size-20 border-[3px]',
               picked?.kind === 'me' && LIT_RING
             )}
           />
         </button>
-        <p className="mt-3 text-2xl font-semibold tracking-tight">
-          {PROFILE.name}
-        </p>
-        <p className="mt-0.5 text-sm text-muted-foreground">
-          {PROFILE.role} · {PROFILE.location}
-        </p>
-        <ul className="mt-5 flex justify-center gap-5">
-          {satellites.map((s) => (
-            <li key={s.kind}>
-              <a
-                href={s.href}
-                {...(s.kind === 'github' || s.kind === 'press'
-                  ? { target: '_blank', rel: 'noopener noreferrer' }
-                  : {})}
-                aria-label={
-                  s.kind === 'press'
-                    ? `Press: ${s.title}, ${s.detail}`
-                    : `${s.title}: ${s.detail}`
-                }
-                className="flex flex-col items-center rounded-lg p-1 focus-ring"
-              >
-                <SatelliteDisc satellite={s} className="size-14" />
-                <span className="mt-1 text-xs font-semibold">{s.label}</span>
-              </a>
-            </li>
-          ))}
-        </ul>
-        <p className="mt-4 text-xs text-muted-foreground">
-          Tap anything to see how it connects.
-        </p>
+        <div className="min-w-0">
+          <p className="text-2xl leading-tight font-semibold tracking-tight">
+            {PROFILE.name}
+          </p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            {PROFILE.role} · {PROFILE.location}
+          </p>
+        </div>
       </div>
+      <ul className="mt-5 flex flex-wrap gap-1.5">
+        {satellites.map((s) => (
+          <li key={s.kind}>
+            <a
+              href={s.href}
+              {...(s.kind !== 'resume' && s.kind !== 'email'
+                ? { target: '_blank', rel: 'noopener noreferrer' }
+                : {})}
+              aria-label={
+                s.kind === 'press'
+                  ? `Press: ${s.title}, ${s.detail}`
+                  : `${s.title}: ${s.detail}`
+              }
+              className="flex items-center gap-2 rounded-full border border-border bg-card/70 py-1 pr-3.5 pl-1 text-sm font-semibold focus-ring"
+            >
+              <SatelliteDisc satellite={s} className="size-8" />
+              {s.label}
+            </a>
+          </li>
+        ))}
+      </ul>
 
-      {/* Work and projects, packed in a honeycomb. */}
-      <h2 className="mt-10 text-center text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+      {/* Work and projects, newest first: a disc with its name, what it is and when. */}
+      <h2 className="mt-10 text-xs font-semibold tracking-wide text-muted-foreground uppercase">
         Work & projects
       </h2>
-      <ul className="mx-auto mt-4 grid max-w-sm grid-cols-6 gap-x-1 gap-y-3">
-        {ranked.map((b, i) => {
+      {/* As many columns as fit, three at most (one on the narrowest phones, two on most, three
+          from sm), read across then down. */}
+      <ul className="mt-3 grid grid-cols-1 gap-x-2 gap-y-1 min-[22.5rem]:grid-cols-2 sm:grid-cols-3">
+        {ranked.map((b) => {
           const on = litBubbles.has(b.slug)
           return (
-            <li
-              key={b.slug}
-              className="col-span-2"
-              style={{ gridColumnStart: honeycombColumn(i) }}
-            >
+            <li key={b.slug}>
               <a
                 href={storyPath(b.slug)}
                 onClick={(e) => {
@@ -2707,29 +2705,30 @@ const Column = memo(function Column({
                   onOpenStory(b.slug)
                 }}
                 className={cn(
-                  'flex w-full flex-col items-center rounded-xl p-1 text-center focus-ring transition-opacity duration-300',
+                  '-mx-1.5 flex items-center gap-2.5 rounded-xl p-1.5 focus-ring transition-opacity duration-300',
                   picked && !on && 'opacity-45'
                 )}
               >
-                <BubbleDisc
-                  bubble={b}
-                  rem={4.5}
-                  lit={on}
-                  className="constellation-drift"
-                />
-                <span
-                  className={cn(
-                    'mt-1.5 text-xs leading-tight font-semibold',
-                    on && 'text-link'
-                  )}
-                >
-                  {b.title}
-                </span>
-                {bubbleWhen(b) && (
-                  <span className="mt-0.5 text-[0.6875rem] leading-tight text-muted-foreground">
-                    {bubbleWhen(b)}
+                <BubbleDisc bubble={b} rem={2.75} lit={on} />
+                <span className="min-w-0">
+                  <span
+                    className={cn(
+                      'block text-sm leading-tight font-semibold tracking-tight',
+                      on && 'lit-text'
+                    )}
+                  >
+                    {b.title}
                   </span>
-                )}
+                  {/* What it is shows once a column is wide enough to hold it on one line. */}
+                  <span className="mt-0.5 hidden text-sm leading-tight text-muted-foreground sm:block">
+                    {b.tagline}
+                  </span>
+                  {bubbleWhen(b) && (
+                    <span className="mt-0.5 block text-sm leading-tight text-muted-foreground">
+                      {bubbleWhen(b)}
+                    </span>
+                  )}
+                </span>
               </a>
             </li>
           )
@@ -2742,7 +2741,12 @@ const Column = memo(function Column({
           const list = stars.filter((s) => s.area === area)
           return (
             <section key={area}>
-              <h2 className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+              <h2
+                className={cn(
+                  'text-xs font-semibold tracking-wide uppercase',
+                  ACCENT_TEXT[accent]
+                )}
+              >
                 {area}
               </h2>
               <ul className="mt-2.5 flex flex-wrap gap-1.5">

@@ -175,6 +175,39 @@ export const DRAWINGS: Record<string, Drawing> = {
     ]
   },
 
+  linkedin: {
+    label: 'A name badge on a lanyard, with a portrait and a name line',
+    accent: 'ocean',
+    shapes: [
+      // The lanyard comes down to a clip; the badge hangs from it.
+      {
+        t: 'line',
+        pts: [
+          [16.5, 2.5],
+          [24, 9.5],
+          [31.5, 2.5]
+        ]
+      },
+      { t: 'box', x: 9, y: 12, w: 30, h: 32, r: 3, fill: 'paper' },
+      { t: 'box', x: 20.5, y: 8.5, w: 7, h: 5, r: 1.2, fill: 'ink' },
+      // Head and shoulders.
+      { t: 'dot', cx: 24, cy: 22.5, r: 4.4, fill: 'accent' },
+      {
+        t: 'line',
+        closed: true,
+        fill: 'accent',
+        pts: arc(24, 36, 8.5, 7.2, Math.PI, Math.PI * 2)
+      },
+      {
+        t: 'line',
+        pts: [
+          [15.5, 40],
+          [32.5, 40]
+        ]
+      }
+    ]
+  },
+
   press: {
     label: 'A newspaper front page: nameplate, headline, photo and columns',
     accent: 'peach',
