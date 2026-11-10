@@ -13,10 +13,7 @@ import {
   type CSSProperties,
   type ReactNode
 } from 'react'
-import {
-  ILLUSTRATIONS,
-  Illustration
-} from '@/components/illustrations/registry'
+import { Illustration } from '@/components/illustrations/registry'
 import { RichText } from '@/components/site/rich-text'
 import {
   PROFILE,
@@ -686,18 +683,11 @@ const LIT_RING =
   'border-brand shadow-[0_0_0_5px_color-mix(in_oklab,var(--brand)_16%,transparent)]'
 
 /**
- * The disc's colour: every disc is lit by a soft radial glow of its drawing's colour, on white in
- * light mode and on near-black in dark (globals.css, .node-disc), a step brighter while it's
- * hovered or lit.
+ * A disc's chrome rim, lit from `light` (degrees on screen, from where the light comes): its bright
+ * arc faces the light, the way the glyph inside it does (globals.css, .node-chrome).
  */
-function discAccent(key: string): CSSProperties {
-  const accent = ILLUSTRATIONS[key]?.accent
-  return accent
-    ? ({
-        '--disc-accent': `var(--af-${accent})`,
-        '--disc-deep': `var(--af-${accent}-deep)`
-      } as CSSProperties)
-    : {}
+function discLight(light: number): CSSProperties {
+  return { '--light': `${Math.round(light + 90)}deg` } as CSSProperties
 }
 
 /** A bubble's disc with its illustration. */
@@ -706,11 +696,14 @@ function BubbleDisc({
   rem,
   lit,
   hit,
+  light = -90,
   className
 }: {
   bubble: Bubble
   rem: number
   lit?: boolean
+  /** Where the light comes from (degrees on screen): from you, on the board. */
+  light?: number
   hit?: string
   className?: string
 }) {
@@ -719,7 +712,7 @@ function BubbleDisc({
       data-hit={hit}
       data-shape="circle"
       className={cn(
-        'node-disc flex shrink-0 items-center justify-center rounded-full border-2 transition-[border-color,box-shadow,background-color] duration-200',
+        'node-chrome flex shrink-0 items-center justify-center rounded-full border-2 transition-[border-color,box-shadow,background-color] duration-200',
         lit && LIT_RING,
         className
       )}
@@ -727,11 +720,12 @@ function BubbleDisc({
       style={{
         width: `${rem}rem`,
         height: `${rem}rem`,
-        ...discAccent(bubble.slug)
+        ...discLight(light)
       }}
     >
       <Illustration
         name={bubble.slug}
+        light={light}
         decorative
         className="h-auto"
         style={{ width: `${rem * 0.6}rem` }}
@@ -745,10 +739,13 @@ function SatelliteDisc({
   satellite,
   lit,
   hit,
+  light = -90,
   className
 }: {
   satellite: Satellite
   lit?: boolean
+  /** Where the light comes from (degrees on screen): from you, on the board. */
+  light?: number
   hit?: string
   className?: string
 }) {
@@ -757,14 +754,19 @@ function SatelliteDisc({
       data-hit={hit}
       data-shape="circle"
       className={cn(
-        'node-disc flex items-center justify-center rounded-full border-2 transition-[border-color,box-shadow,background-color] duration-200',
+        'node-chrome flex items-center justify-center rounded-full border-2 transition-[border-color,box-shadow,background-color] duration-200',
         lit && LIT_RING,
         className
       )}
       data-lit={lit || undefined}
-      style={discAccent(satellite.kind)}
+      style={discLight(light)}
     >
-      <Illustration name={satellite.kind} decorative className="w-[58%]" />
+      <Illustration
+        name={satellite.kind}
+        light={light}
+        decorative
+        className="w-[58%]"
+      />
     </span>
   )
 }
@@ -941,7 +943,7 @@ export function Constellation({
           onClick={() => setReplays((n) => n + 1)}
           aria-label="Replay the opening animation"
           title="Replay"
-          className="chrome-rim fixed right-[4.25rem] bottom-4 z-40 hidden size-10 items-center justify-center rounded-full border-2 text-foreground shadow-card-hover focus-ring transition-colors hover:border-foreground/40 lg:flex"
+          className="intro-chrome chrome-rim fixed right-[4.25rem] bottom-4 z-40 hidden size-10 items-center justify-center rounded-full border-2 text-foreground shadow-card-hover focus-ring transition-colors hover:border-foreground/40 lg:flex"
         >
           <PlayIcon weight="fill" className="size-4" aria-hidden />
         </button>
@@ -1012,6 +1014,64 @@ function Board({
   // (resizing across the breakpoint, a re-render) can ever replay it.
   // The moment it blows: after the build-up and the core's brief collapse.
   const blast = intro.buildup + intro.kick
+  // The cracks that split the core during the build-up: none at first, then more and more, each
+  // a jagged line from near the centre to the rim.
+  const cracks = useMemo(() => {
+    const n = 16
+    return Array.from({ length: n }, (_, i) => {
+      const r = (k: string) => hash(`crack${i}/${k}`)
+      const deg = r('a') * 360
+      const t = (deg * Math.PI) / 180
+      // Jagged: four hops outward, each knocked off line.
+      let rad = 4 + r('r0') * 14
+      let ang = t
+      const pts: string[] = []
+      for (let step = 0; step <= 4; step++) {
+        pts.push(
+          `${(50 + Math.sin(ang) * rad).toFixed(1)} ${(50 - Math.cos(ang) * rad).toFixed(1)}`
+        )
+        rad +=
+          ((52 - rad) / (4 - Math.min(step, 3))) * (0.7 + r(`s${step}`) * 0.3)
+        ang = t + (r(`j${step}`) - 0.5) * 0.5
+      }
+      // Sparse early, a flurry at the end: the √ crowds the later ones together.
+      const at = Math.round(
+        intro.buildup * (0.2 + 0.78 * Math.sqrt(i / (n - 1))) +
+          (r('w') - 0.5) * 40
+      )
+      return {
+        deg: Math.round(deg),
+        path: `M${pts.join('L')}`,
+        at,
+        width: +(1 + r('w2') ** 2 * 2.5).toFixed(1),
+        color: IRI[Math.floor(r('c') * IRI.length)]
+      }
+    })
+  }, [intro.buildup])
+  // Light breaking out through the cracks: beams that fire out of the core at random angles, race
+  // far out and vanish, then fire again on their own uneven beat. None at first, then more and
+  // more often, until the blast.
+  const beams = useMemo(() => {
+    const n = 48
+    return Array.from({ length: n }, (_, i) => {
+      const r = (k: string) => hash(`beam${i}/${k}`)
+      return {
+        // Some fire straight out of a crack, the rest anywhere.
+        deg: Math.round(
+          i < cracks.length && r('x') < 0.6
+            ? cracks[i].deg + (r('a') - 0.5) * 12
+            : r('a') * 360
+        ),
+        at: Math.round(intro.buildup * (0.25 + 0.75 * Math.sqrt(r('w')))),
+        // One firing is the first part of this; the rest is dark, so each beam is sporadic.
+        cycle: Math.round(160 + r('t') ** 1.5 * 520),
+        width: +(1.2 + r('b') ** 3 * 4).toFixed(1),
+        length: Math.round(50 + r('h') ** 2 * 240),
+        reach: Math.round(160 + r('d') * 520),
+        color: IRI[Math.floor(r('c') * IRI.length)]
+      }
+    })
+  }, [cracks, intro.buildup])
   const introTotal =
     blast + intro.spread + intro.ms * (1.1 + 0.35 * intro.chaos) + 394
   const [played, setPlayed] = useState(false)
@@ -1080,6 +1140,8 @@ function Board({
   // An area's title starts fading in as its stars arrive and finishes as they settle.
   const titleDelay = (x: number, y: number) =>
     Math.round(blast + delayAt(x, y) + intro.ms * 0.3)
+  // The page's controls fade in alongside the titles (at a typical title's moment).
+  const chromeDelay = Math.round(blast + intro.spread * 0.5 + intro.ms * 0.3)
 
   // The debris: each spark's own direction, distance, size, colour, speed, start, how bright it
   // stays as dust and how fast it twinkles. Seeded, so it's the same everywhere.
@@ -1392,26 +1454,32 @@ function Board({
             className="intro-core pointer-events-none absolute z-30 size-36 -translate-x-1/2 -translate-y-1/2"
             style={{ left: `${ME[0]}%`, top: `${ME[1]}%` }}
           >
-            {/* Light leaking out: thin rays at random angles, each flickering on its own beat. */}
-            {Array.from({ length: 18 }, (_, i) => {
-              const r = (k: string) => hash(`ray${i}/${k}`)
-              return (
+            {/* The light around the orb: none while it's sealed, flaring as it cracks (an opacity
+                fade, so it stays smooth). */}
+            <span className="core-glow absolute -inset-1/2 rounded-full" />
+            {/* Light breaking out: nothing at first, then beams fire out of the core at random,
+                racing far out and vanishing, more and more often toward the blast. */}
+            {beams.map((b, i) => (
+              <span
+                key={`beam${i}`}
+                className="absolute top-1/2 left-1/2"
+                style={{ rotate: `${b.deg}deg` }}
+              >
                 <span
-                  key={`ray${i}`}
-                  className="core-ray absolute top-1/2 left-1/2"
+                  className="core-beam absolute"
                   style={
                     {
-                      width: `${(1.5 + r('w') * 3.5).toFixed(1)}px`,
-                      height: `${Math.round(80 + r('h') ** 1.4 * 190)}px`,
-                      rotate: `${Math.round(i * 20 + r('a') * 30)}deg`,
-                      '--ray-color': `var(--iri-${IRI[Math.floor(r('c') * IRI.length)]})`,
-                      animationDuration: `${Math.round(96 + r('t') * 175)}ms`,
-                      animationDelay: `${-Math.round(r('d') * 263)}ms`
+                      width: `${b.width}px`,
+                      height: `${b.length}px`,
+                      '--ray-color': `var(--iri-${b.color})`,
+                      '--reach': `${-b.reach}px`,
+                      animationDuration: `${b.cycle}ms`,
+                      animationDelay: `${b.at}ms`
                     } as CSSProperties
                   }
                 />
-              )
-            })}
+              </span>
+            ))}
             {/* The orb: polished chrome with blobs of light lurching around inside it. */}
             <span className="core-orb absolute inset-0 overflow-hidden rounded-full">
               {[
@@ -1478,6 +1546,30 @@ function Board({
               })}
               {/* The white-hot centre, pulsing. */}
               <span className="core-heart absolute inset-[30%] rounded-full bg-[radial-gradient(circle,#fbfcfd_0%,color-mix(in_oklab,#fbfcfd_60%,transparent)_40%,transparent_70%)] blur-sm" />
+              {/* The cracks themselves: jagged white-hot lines splitting the shell, each one opening
+                  at its own moment. */}
+              <svg
+                viewBox="0 0 100 100"
+                className="absolute inset-0 size-full overflow-visible"
+              >
+                {cracks
+                  .filter((_, i) => i % 2 === 0)
+                  .map((c, i) => (
+                    <path
+                      key={i}
+                      d={c.path}
+                      pathLength={1}
+                      className="core-crack"
+                      style={
+                        {
+                          '--crack-color': `var(--iri-${c.color})`,
+                          strokeWidth: 0.6 + c.width * 0.25,
+                          animationDelay: `${c.at}ms`
+                        } as CSSProperties
+                      }
+                    />
+                  ))}
+              </svg>
             </span>
           </span>
           <span
@@ -1608,6 +1700,7 @@ function Board({
                   rem={style.disc}
                   lit={lit}
                   hit={`project:${b.slug}`}
+                  light={b.deg + 180}
                 />
                 <span
                   data-hit={`project:${b.slug}`}
@@ -1734,6 +1827,7 @@ function Board({
                   satellite={s}
                   lit={isActive}
                   hit={`satellite:${s.kind}`}
+                  light={layout.satellites[s.kind].deg + 180}
                   className="size-16"
                 />
                 <span
@@ -1854,7 +1948,13 @@ function Board({
         </div>
       )}
 
-      <p className="pointer-events-none absolute bottom-4 left-5 text-xs text-muted-foreground/80">
+      {/* The page's own controls (this hint, the replay button and the theme switch, which sit
+          outside the board) stay hidden through the build-up and fade in with the area titles, so
+          the screen is clear while the supernova grows. Full-screen board only. */}
+      {live && intro.buildup > 0 && (
+        <style>{`@media (min-width: 64rem) and (prefers-reduced-motion: no-preference) { .intro-chrome { animation: intro-fade ${Math.round(intro.ms * 0.6)}ms ease-out ${chromeDelay}ms backwards; } }`}</style>
+      )}
+      <p className="intro-chrome pointer-events-none absolute bottom-4 left-5 text-xs text-muted-foreground/80">
         Hover anything to see how it connects.
       </p>
     </div>

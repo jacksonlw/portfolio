@@ -67,7 +67,7 @@ export function ThemeToggle() {
       onClick={flip}
       aria-label={dark ? 'Switch to light mode' : 'Switch to dark mode'}
       title={dark ? 'Light mode' : 'Dark mode'}
-      className="chrome-rim fixed right-5 bottom-4 z-40 flex size-10 items-center justify-center rounded-full border-2 text-foreground shadow-card-hover focus-ring transition-colors hover:border-foreground/40"
+      className="intro-chrome chrome-rim fixed right-5 bottom-4 z-40 flex size-10 items-center justify-center rounded-full border-2 text-foreground shadow-card-hover focus-ring transition-colors hover:border-foreground/40"
     >
       {dark === null ? null : dark ? (
         <SunIcon weight="bold" className="size-5" aria-hidden />

@@ -3,17 +3,22 @@ import { join } from 'node:path'
 import { ImageResponse } from 'next/og'
 import { PROFILE } from '@/content/profile'
 
-// The share card for links to the site: photo, name, role and three pastel tags, in the brand's
-// ink-on-white with a hard offset shadow. Rendered once at build.
+/*
+ * The share card for links to the site, in the site's dark theme: your photo in the same
+ * iridescent chrome rim it has on the page, then your name, role and the address. Rendered once
+ * at build.
+ */
 export const alt = `${PROFILE.name}, ${PROFILE.role}`
 export const size = { width: 1200, height: 630 }
 export const contentType = 'image/png'
 
-const TAGS = [
-  { label: 'AI agents in production', bg: '#E5EDFF', fg: '#1608AE' },
-  { label: 'RAG and orchestration', bg: '#F5F1FF', fg: '#5F4193' },
-  { label: 'Full-stack', bg: '#E1FAF0', fg: '#00654B' }
-]
+/** The photo's diameter, and the chrome rim's width around it. */
+const PHOTO = 300
+const RIM = 9
+
+/** The chrome rim (globals.css --chrome-rim, as a linear sweep: satori has no conic gradients). */
+const CHROME =
+  'linear-gradient(135deg, #f8f9fb, #b9a6ff 20%, #eceef2 38%, #7fd6f0 56%, #f3c1e6 72%, #f6e7a6 86%, #8b919b)'
 
 export default async function OpenGraphImage() {
   const photo = await readFile(join(process.cwd(), 'public', PROFILE.photo))
@@ -26,92 +31,63 @@ export default async function OpenGraphImage() {
         height: '100%',
         display: 'flex',
         alignItems: 'center',
-        gap: 64,
-        padding: '0 88px',
-        background: '#FFFFFF',
-        color: '#0B0B0C',
+        gap: 72,
+        padding: '0 110px',
+        // The page's dark background: lit softly behind the photo, falling off to night.
+        backgroundImage:
+          'radial-gradient(ellipse 110% 100% at 32% 50%, #1c1e24 0%, #121317 40%, #0c0d10 75%, #08090b 100%)',
+        color: '#e6e8ec',
         fontFamily: 'sans-serif'
       }}
     >
       <div
         style={{
-          position: 'relative',
           display: 'flex',
-          width: 340,
-          height: 340
+          padding: RIM,
+          borderRadius: 9999,
+          backgroundImage: CHROME
         }}
       >
-        <div
-          style={{
-            position: 'absolute',
-            left: 12,
-            top: 12,
-            width: 340,
-            height: 340,
-            borderRadius: 9999,
-            background: '#0B0B0C'
-          }}
-        />
         <img
           src={src}
           alt=""
-          width={340}
-          height={340}
+          width={PHOTO}
+          height={PHOTO}
           style={{
-            position: 'absolute',
-            left: 0,
-            top: 0,
             borderRadius: 9999,
-            border: '5px solid #0B0B0C',
+            border: '3px solid #0c0d10',
             objectFit: 'cover',
             objectPosition: '62% 22%'
           }}
         />
       </div>
-      <div style={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
+      <div style={{ display: 'flex', flexDirection: 'column' }}>
         <div
           style={{
-            fontSize: 76,
+            fontSize: 72,
             fontWeight: 700,
-            letterSpacing: -3,
-            lineHeight: 1
+            letterSpacing: -2.5,
+            lineHeight: 1,
+            whiteSpace: 'nowrap'
           }}
         >
           {PROFILE.name}
         </div>
-        <div style={{ marginTop: 18, fontSize: 30, color: '#5B6270' }}>
-          {`${PROFILE.role} · ${PROFILE.location}`}
-        </div>
-        <div
-          style={{ display: 'flex', flexWrap: 'wrap', gap: 12, marginTop: 40 }}
-        >
-          {TAGS.map((t) => (
-            <div
-              key={t.label}
-              style={{
-                display: 'flex',
-                padding: '10px 22px',
-                borderRadius: 9999,
-                border: '2px solid #0B0B0C',
-                background: t.bg,
-                color: t.fg,
-                fontSize: 26,
-                fontWeight: 600
-              }}
-            >
-              {t.label}
-            </div>
-          ))}
+        <div style={{ marginTop: 20, fontSize: 32, color: '#9aa0aa' }}>
+          {`${PROFILE.role} · ${PROFILE.location.split(',')[0]}`}
         </div>
         <div
           style={{
-            marginTop: 40,
-            fontSize: 26,
-            color: '#2B3BFF',
-            fontWeight: 600
+            display: 'flex',
+            marginTop: 44,
+            fontSize: 28,
+            fontWeight: 600,
+            backgroundImage: CHROME,
+            backgroundClip: 'text',
+            color: 'transparent'
           }}
         >
-          jlawrence.io
+          {PROFILE.url.replace('https://', '')}
         </div>
       </div>
     </div>,
