@@ -351,7 +351,7 @@ export const PROJECTS: Project[] = [
     title: 'AnyForm',
     tagline: 'AI session replays',
     summary:
-      'AnyForm plays each visit to your app back as a trace a model can read, and models write findings from those traces about what got in your users’ way. Scouts, AI users you describe, try the app before real users do. I’m building it with a Go API and a Next.js dashboard.',
+      'AnyForm shows you where people get stuck in your app. It records every visit and finds the trouble spots for you, and it can send AI users through the app before real ones arrive.',
     status: 'in-development',
     role: null,
     dates: { start: 'October 2026', end: null },
@@ -365,7 +365,7 @@ export const PROJECTS: Project[] = [
     title: 'The Cratest',
     tagline: 'Music reviews',
     summary:
-      'A social platform for reviewing songs, albums and artists. I’m building the iOS app in SwiftUI and UIKit, with two music games, Crate Digger and Cover Story, and a Go API behind it.',
+      'A Letterboxd for music. It’s an iPhone app where you rate songs and albums, keep them in your Crate and see what your friends think, with four daily music games to come back for.',
     status: 'in-development',
     role: null,
     dates: { start: 'September 2026', end: null },
@@ -379,7 +379,7 @@ export const PROJECTS: Project[] = [
     title: 'Waltz',
     tagline: 'Agent software factory',
     summary:
-      'A desktop app where a team of agents does the work and a human steers the why. I’m building it in Rust inside Tauri, with its own client for the Anthropic API.',
+      'A desktop app that runs a team of coding agents for you. The agents do the work and decide how, and you set the why. It has landed about 60 changes to its own code.',
     status: 'in-development',
     role: null,
     dates: { start: 'October 2026', end: null },
@@ -393,7 +393,7 @@ export const PROJECTS: Project[] = [
     title: 'KoiStream',
     tagline: 'Livestreaming',
     summary:
-      'A livestream platform for my high school’s students, staff and families, with viewing, chat and moderation. I built it during COVID, along with the school’s broadcast studio.',
+      'A livestream platform that kept my high school connected through COVID. A crew of ten students ran live broadcasts on it every week of my senior year, from a studio we built on campus.',
     status: 'archived',
     role: 'Director & Full-Stack Developer',
     dates: { start: 'March 2020', end: 'June 2021' },
@@ -416,7 +416,7 @@ export const PROJECTS: Project[] = [
     title: 'TEDx Design Tech',
     tagline: 'Event ticketing',
     summary:
-      'A site for selling and managing tickets to my high school’s TEDx event.',
+      'A ticketing site built for my high school’s TEDx event, with a seat map of the 360-seat hall for buyers and a dashboard for the organizers.',
     status: 'archived',
     role: null,
     dates: { start: '2019', end: '2019', label: '2019' },
@@ -434,7 +434,8 @@ export const PROJECTS: Project[] = [
     accent: 'mint',
     title: 'Branch',
     tagline: 'Smart school',
-    summary: 'Smart school prototype presented at Oracle OpenWorld 2019.',
+    summary:
+      'A smart school prototype that made a classroom safer in an emergency and easier to run day to day. We presented it at Oracle OpenWorld 2019.',
     status: 'archived',
     role: null,
     dates: null,
@@ -456,7 +457,7 @@ export const WORK: WorkNode[] = [
     dates: { start: 'June 2025', end: null },
     accent: 'rose',
     summary:
-      'Software engineer on a small R&D team, after two summer internships. I architected an agentic workflow builder that handles thousands of Gen AI chats a day, built an OCR and RAG pipeline that took in over 2 million documents in under a month, and worked with other teams on handing chats from AI agents to people.',
+      'I build AI agents that run in production, on a small R&D team. The largest is a workflow builder that handles thousands of Gen AI chats a day.',
     links: []
   },
   {
@@ -467,7 +468,7 @@ export const WORK: WorkNode[] = [
     dates: { start: 'July 2022', end: 'May 2023' },
     accent: 'peach',
     summary:
-      'I taught new developers to build full-stack web apps, and gave them feedback on their projects within 24 hours.',
+      'I taught people new to the industry to build full-stack web apps, and got feedback on their projects back to them within 24 hours.',
     links: []
   },
   {
@@ -478,7 +479,7 @@ export const WORK: WorkNode[] = [
     dates: { start: 'January 2021', end: 'April 2024' },
     accent: 'ocean',
     summary:
-      'I built the screens, services and database of our job-recruiting app in React Native, and it passed 10,000 users in under a year. I designed and built the company website in Next.js too.',
+      'A job app that helped students and young adults land their first jobs. I co-founded it and led the engineering, and it grew past 10,000 users in under a year.',
     links: []
   }
 ]
