@@ -574,12 +574,13 @@ html.dark .chrome-rim {
     opacity: 0.35;
   }
 }
+/* Starts from rest (no offset), so the dust never jumps when the blast's own animation hands over. */
 @keyframes dust-float {
   from {
-    transform: translate3d(-4px, -3px, 0);
+    transform: translate3d(0, 0, 0);
   }
   to {
-    transform: translate3d(4px, 4px, 0);
+    transform: translate3d(var(--fx, 6px), var(--fy, 5px), 0);
   }
 }
 

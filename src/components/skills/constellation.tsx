@@ -1162,9 +1162,12 @@ const Dust = memo(function Dust({
         className="dust-group pointer-events-none absolute inset-0"
         style={
           {
+            // Each group drifts its own way and at its own pace, from where the blast left it:
+            // no head start, so nothing moves at the moment it settles.
             '--float': `${11 + g * 3}s`,
             '--twinkle': `${2.6 + g * 1.1}s`,
-            animationDelay: `${-g * 2.3}s, ${-g * 0.9}s`
+            '--fx': `${[6, -5, 4][g % 3]}px`,
+            '--fy': `${[5, 4, -6][g % 3]}px`
           } as CSSProperties
         }
       >
