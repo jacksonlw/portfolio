@@ -62,9 +62,11 @@ export const viewport: Viewport = {
 
 /**
  * Picks light or dark before the page paints, so there's no flash: the visitor's own choice if
- * they've switched before, else their system's.
+ * they've switched before, else their system's. It also marks low-end devices (4 cores or fewer,
+ * 4GB of memory or less, or data saver on; or ?lite=1 to try it) with .lite, which lightens the
+ * intro and the motion (globals.css).
  */
-const THEME_SCRIPT = `try{var t=localStorage.getItem('theme'),d=t?t==='dark':matchMedia('(prefers-color-scheme: dark)').matches,e=document.documentElement;e.classList.toggle('dark',d);e.style.colorScheme=d?'dark':'light'}catch(_){}`
+const THEME_SCRIPT = `try{var t=localStorage.getItem('theme'),d=t?t==='dark':matchMedia('(prefers-color-scheme: dark)').matches,e=document.documentElement;e.classList.toggle('dark',d);e.style.colorScheme=d?'dark':'light'}catch(_){}try{var n=navigator,c=n.connection;if((n.hardwareConcurrency||8)<=4||(n.deviceMemory||8)<=4||(c&&c.saveData)||/[?&]lite=1/.test(location.search))document.documentElement.classList.add('lite')}catch(_){}`
 
 export default function RootLayout({
   children

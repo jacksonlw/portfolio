@@ -385,6 +385,27 @@ const PULL_FADE = 90
 /** How quickly a node glides to where gravity wants it, per frame (0–1; lower is smoother). */
 const GLIDE = 0.07
 
+/**
+ * Where in the core's intro animation (0–1 of its run) it reaches `size` (its scale), from the
+ * keyframes of intro-core in globals.css, so the intro can carry on from a core that grew while
+ * waiting. Capped before the collapse, so the burst always plays.
+ */
+function coreTimeAt(size: number) {
+  const keys: [number, number][] = [
+    [0, 0.12],
+    [0.08, 0.16],
+    [0.31, 0.55],
+    [0.455, 1]
+  ]
+  if (size <= keys[0][1]) return 0
+  for (let k = 1; k < keys.length; k++) {
+    const [t0, s0] = keys[k - 1]
+    const [t1, s1] = keys[k]
+    if (size <= s1) return t0 + ((size - s0) / (s1 - s0)) * (t1 - t0)
+  }
+  return keys[keys.length - 1][0]
+}
+
 /** 0 below `a`, 1 above `b`, and an S-curve between: for pulls that fade without a seam. */
 const smoothstep = (a: number, b: number, x: number) => {
   const t = Math.min(1, Math.max(0, (x - a) / (b - a)))
@@ -401,12 +422,14 @@ const smoothstep = (a: number, b: number, x: number) => {
 function useCursorGravity(
   board: React.RefObject<HTMLDivElement | null>,
   nodes: Record<string, MotionNode>,
-  active: string | null
+  active: string | null,
+  /** False until the supernova has burst: no pull before then. */
+  ready: boolean
 ) {
-  const state = useRef({ nodes, active })
+  const state = useRef({ nodes, active, ready })
   useLayoutEffect(() => {
-    state.current = { nodes, active }
-  }, [nodes, active])
+    state.current = { nodes, active, ready }
+  }, [nodes, active, ready])
 
   useEffect(() => {
     const el = board.current
@@ -429,9 +452,21 @@ function useCursorGravity(
     el.addEventListener('pointermove', onMove)
     el.addEventListener('pointerleave', onLeave)
 
+    // Low-end devices (.lite, set in app/layout.tsx) skip the idle float.
+    const lite = document.documentElement.classList.contains('lite')
+    // The elements are looked up again only now and then, and each is written only when its
+    // position has changed by a visible amount, so an idle board costs next to nothing.
+    let nodeEls: HTMLElement[] = []
+    let lineEls: SVGLineElement[] = []
+    let frame = 0
+    const written = new WeakMap<Element, string>()
     let raf = 0
     const tick = (now: number) => {
-      const { nodes, active } = state.current
+      const { nodes, active, ready } = state.current
+      if (frame++ % 30 === 0) {
+        nodeEls = [...el.querySelectorAll<HTMLElement>('[data-node]')]
+        lineEls = [...el.querySelectorAll<SVGLineElement>('line[data-a]')]
+      }
       const t = now / 1000
       const w = el.clientWidth
       const h = el.clientHeight
@@ -443,7 +478,7 @@ function useCursorGravity(
         // how far the cursor is from its edge, so there's no jump anywhere as the cursor moves.
         let tx = 0
         let ty = 0
-        if (pointer.inside && n.weight > 0) {
+        if (ready && pointer.inside && n.weight > 0) {
           const dx = pointer.x - (n.x / 100) * w
           const dy = pointer.y - (n.y / 100) * h
           const d = Math.hypot(dx, dy)
@@ -485,28 +520,42 @@ function useCursorGravity(
         const r = hash(id)
         const period = 9 + r * 6
         const phase = r * Math.PI * 2
-        const amp = FLOAT_PX * n.weight * g
+        const amp = lite ? 0 : FLOAT_PX * n.weight * g
         at.set(id, {
           x: o.x + Math.sin((t / period) * Math.PI * 2 + phase) * amp,
           y: o.y + Math.cos((t / period) * Math.PI * 2 + phase) * amp * 0.7
         })
       }
 
-      for (const node of el.querySelectorAll<HTMLElement>('[data-node]')) {
+      for (const node of nodeEls) {
         const o = at.get(node.dataset.node!)
-        if (o)
-          node.style.transform = `translate3d(${o.x.toFixed(2)}px, ${o.y.toFixed(2)}px, 0)`
+        if (!o) continue
+        // Quarter-pixel steps: smooth to the eye, and far fewer writes than every tiny change.
+        const q = (n: number) => Math.round(n * 4) / 4
+        const v = `translate3d(${q(o.x)}px, ${q(o.y)}px, 0)`
+        if (written.get(node) === v) continue
+        written.set(node, v)
+        node.style.transform = v
       }
-      for (const line of el.querySelectorAll<SVGLineElement>('line[data-a]')) {
+      for (const line of lineEls) {
+        if (!line.isConnected) continue
         const A = nodes[line.dataset.a!]
         const B = nodes[line.dataset.b!]
         const oa = at.get(line.dataset.a!) ?? { x: 0, y: 0 }
         const ob = at.get(line.dataset.b!) ?? { x: 0, y: 0 }
         if (!A || !B) continue
-        line.setAttribute('x1', ((A.x / 100) * w + oa.x).toFixed(1))
-        line.setAttribute('y1', ((A.y / 100) * h + oa.y).toFixed(1))
-        line.setAttribute('x2', ((B.x / 100) * w + ob.x).toFixed(1))
-        line.setAttribute('y2', ((B.y / 100) * h + ob.y).toFixed(1))
+        const half = (n: number) => String(Math.round(n * 2) / 2)
+        const x1 = half((A.x / 100) * w + oa.x)
+        const y1 = half((A.y / 100) * h + oa.y)
+        const x2 = half((B.x / 100) * w + ob.x)
+        const y2 = half((B.y / 100) * h + ob.y)
+        const v = `${x1} ${y1} ${x2} ${y2}`
+        if (written.get(line) === v) continue
+        written.set(line, v)
+        line.setAttribute('x1', x1)
+        line.setAttribute('y1', y1)
+        line.setAttribute('x2', x2)
+        line.setAttribute('y2', y2)
       }
       raf = requestAnimationFrame(tick)
     }
@@ -1088,7 +1137,7 @@ function Board({
   // far out and vanish, then fire again on their own uneven beat. None at first, then more and
   // more often, until the blast.
   const beams = useMemo(() => {
-    const n = 48
+    const n = 36
     return Array.from({ length: n }, (_, i) => {
       const r = (k: string) => hash(`beam${i}/${k}`)
       return {
@@ -1123,29 +1172,52 @@ function Board({
   // supernova plays from the start, and its timers start with it, so the burst is never lost to a
   // busy page.
   const [waiting, setWaiting] = useState(true)
+  // How far into the intro to pick up when the wait ends (ms): the core keeps swelling while it
+  // waits (globals.css, core-grow), so the intro carries on from the size it has reached instead of
+  // shrinking back to the start.
+  const startAt = useRef(0)
   useEffect(() => {
     if (!waiting) return
     let raf = 0
     const go = () => {
       window.removeEventListener('load', go)
+      const core = board.current?.querySelector<HTMLElement>('.intro-core')
+      const size = core ? parseFloat(getComputedStyle(core).scale) || 0 : 0
+      startAt.current = Math.round(
+        coreTimeAt(size) * (intro.buildup + intro.kick + 450)
+      )
       raf = requestAnimationFrame(() => setWaiting(false))
     }
     if (document.readyState === 'complete') go()
     else window.addEventListener('load', go)
-    const cap = window.setTimeout(go, 4000)
+    const cap = window.setTimeout(go, 6000)
     return () => {
       window.removeEventListener('load', go)
       window.clearTimeout(cap)
       cancelAnimationFrame(raf)
     }
-  }, [waiting])
-  useEffect(() => {
+  }, [waiting, intro.buildup, intro.kick])
+  // The wait is over: every intro animation (on the board, and the page's controls) jumps to where
+  // the core had got to, and the timers start from there too.
+  useLayoutEffect(() => {
     if (waiting) return
+    const el = board.current
+    const t = startAt.current
+    if (el && t > 0)
+      for (const a of document.getAnimations()) {
+        const target = (a.effect as KeyframeEffect | null)?.target
+        if (
+          a instanceof CSSAnimation &&
+          target &&
+          (el.contains(target) || target.classList.contains('intro-chrome'))
+        )
+          a.currentTime = t
+      }
     const timers = [
-      window.setTimeout(() => setReady(true), readyAt),
-      window.setTimeout(() => setPlayed(true), introTotal)
+      window.setTimeout(() => setReady(true), Math.max(0, readyAt - t)),
+      window.setTimeout(() => setPlayed(true), Math.max(0, introTotal - t))
     ]
-    return () => timers.forEach((t) => window.clearTimeout(t))
+    return () => timers.forEach((x) => window.clearTimeout(x))
   }, [waiting, readyAt, introTotal])
   const on = (cls: string) => (live ? cls : '')
 
@@ -1323,7 +1395,7 @@ function Board({
     [linked, motionNodes]
   )
 
-  useCursorGravity(board, motionNodes, activeId)
+  useCursorGravity(board, motionNodes, activeId, ready)
   useIntentHover(board, active, setActive, ready)
   const { w, h } = size
   const px = (id: string) => {
@@ -1367,7 +1439,7 @@ function Board({
         // Held at its first frame until the page has loaded (see `waiting`).
         live && waiting && 'intro-wait',
         // Nothing on the board can be hovered or clicked until it has landed.
-        !ready && '[&_*]:pointer-events-none'
+        !ready && 'intro-lock [&_*]:pointer-events-none'
       )}
       style={
         {
@@ -1466,10 +1538,11 @@ function Board({
           off every edge of the screen. All gone in well under a second. */}
       {/* Debris: sparks thrown out by the blast that stay on as faint, twinkling dust, floating and
           pulled by the cursor like everything else. */}
-      {sparks.map((sp) => (
+      {sparks.map((sp, i) => (
         <span
           key={sp.id}
           aria-hidden
+          data-extra={i % 2 === 1 || undefined}
           className="pointer-events-none absolute"
           style={{
             left: `calc(${ME[0]}% + ${sp.dx}px)`,
@@ -1522,6 +1595,8 @@ function Board({
             {beams.map((b, i) => (
               <span
                 key={`beam${i}`}
+                // Every other beam is left out on low-end devices (.lite).
+                data-extra={i % 2 === 1 || undefined}
                 className="absolute top-1/2 left-1/2"
                 style={{ rotate: `${b.deg}deg` }}
               >
@@ -1587,7 +1662,9 @@ function Board({
                 return (
                   <span
                     key={i}
-                    className="core-blob absolute inset-[-25%] blur-[6px]"
+                    // A soft gradient, no blur filter: blurring nine moving layers is costly.
+                    data-extra={i > 4 || undefined}
+                    className="core-blob absolute inset-[-25%]"
                     style={
                       {
                         background: bg,
@@ -1610,7 +1687,8 @@ function Board({
                   at its own moment. */}
               <svg
                 viewBox="0 0 100 100"
-                className="absolute inset-0 size-full overflow-visible"
+                data-extra
+                className="core-cracks absolute inset-0 size-full overflow-visible"
               >
                 {cracks
                   .filter((_, i) => i % 2 === 0)
@@ -1677,7 +1755,7 @@ function Board({
           aria-hidden
           className="intro-bloom pointer-events-none absolute inset-0"
           style={{
-            background: `radial-gradient(circle at ${ME[0]}% ${ME[1]}%, color-mix(in oklab, var(--brand) 26%, white) 0%, color-mix(in oklab, var(--brand) 12%, transparent) 28%, transparent 62%)`
+            background: `radial-gradient(circle at ${ME[0]}% ${ME[1]}%, color-mix(in oklab, var(--brand) 30%, white) 0%, color-mix(in oklab, var(--brand) 22%, transparent) 26%, color-mix(in oklab, var(--brand) 8%, transparent) 50%, transparent 78%)`
           }}
         />
       )}
@@ -1689,11 +1767,19 @@ function Board({
         />
       )}
       {live && intro.shockwave && (
-        <span
-          aria-hidden
-          className="intro-shock pointer-events-none absolute size-40 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-brand/50"
-          style={{ left: `${ME[0]}%`, top: `${ME[1]}%` }}
-        />
+        <>
+          <span
+            aria-hidden
+            className="intro-shock pointer-events-none absolute size-40 -translate-x-1/2 -translate-y-1/2 rounded-full border-[3px] border-brand/70"
+            style={{ left: `${ME[0]}%`, top: `${ME[1]}%` }}
+          />
+          <span
+            aria-hidden
+            data-extra
+            className="intro-shock intro-shock-2 pointer-events-none absolute size-40 -translate-x-1/2 -translate-y-1/2 rounded-full border border-brand/40"
+            style={{ left: `${ME[0]}%`, top: `${ME[1]}%` }}
+          />
+        </>
       )}
 
       {/* Area labels: plain text at each cluster's heart. An area with a lit star stays bright

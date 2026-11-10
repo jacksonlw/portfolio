@@ -201,16 +201,14 @@ html.dark .chrome-rim {
     color-mix(in oklab, var(--ray-color, #4fd8ff) 35%, #fbfcfd) 85%,
     #fbfcfd 100%
   );
-  filter: drop-shadow(
-    0 0 3px color-mix(in oklab, var(--ray-color, #4fd8ff) 80%, transparent)
-  );
   will-change: transform, opacity;
 }
 /* The orb's polished chrome shell, with a specular streak across the top. */
 .intro-shock {
   box-shadow:
-    0 0 10px 1px color-mix(in oklab, var(--iri-cyan) 55%, transparent),
-    inset 0 0 10px 1px color-mix(in oklab, var(--iri-magenta) 45%, transparent);
+    0 0 18px 3px color-mix(in oklab, var(--iri-cyan) 70%, transparent),
+    0 0 48px 10px color-mix(in oklab, var(--iri-violet) 35%, transparent),
+    inset 0 0 16px 2px color-mix(in oklab, var(--iri-magenta) 55%, transparent);
 }
 
 .core-orb {
@@ -256,6 +254,14 @@ html.dark .chrome-rim {
   pointer-events: none;
 }
 
+/* The big scaling and fading layers get their own GPU layer, so the swell and the flash are
+   scaled there instead of being repainted every frame. */
+.intro-core,
+.intro-flash,
+.intro-bloom {
+  will-change: scale, opacity;
+}
+
 .intro-bloom,
 .intro-flash,
 .intro-shock,
@@ -296,7 +302,7 @@ html.dark .chrome-rim {
   /* The core before the blast: a chrome orb with light churning inside it and rays leaking out,
      starting as a calm dot, swelling and trembling, pulling in for a beat, then bursting. */
   .intro-core {
-    animation: intro-core calc(var(--intro-blast, 0ms) + 123ms)
+    animation: intro-core calc(var(--intro-blast, 0ms) + 450ms)
       cubic-bezier(0.45, 0, 0.75, 0.6);
   }
   .core-blob {
@@ -313,6 +319,10 @@ html.dark .chrome-rim {
   }
   /* The core cracking open: each crack draws in fast, its ray shoots out a beat after, the shell
      wears thin and the glow around the orb climbs, all leading to the blast. */
+  /* The cracks go at the blast, before the core swells out behind the shockwave. */
+  .core-cracks {
+    animation: crack-fade 80ms linear var(--intro-blast, 0ms) forwards;
+  }
   .core-crack {
     animation: crack-open 90ms cubic-bezier(0.2, 0.9, 0.3, 1) forwards;
   }
@@ -340,18 +350,25 @@ html.dark .chrome-rim {
     animation-delay: var(--intro-label-delay, 0ms);
   }
   .intro-bloom {
-    animation: intro-bloom calc(var(--intro-ms, 0ms) * 0.7) ease-out;
+    animation: intro-bloom calc(var(--intro-ms, 0ms) * 1.8)
+      cubic-bezier(0.1, 0.7, 0.2, 1);
     animation-delay: var(--intro-blast, 0ms);
   }
   .intro-flash {
-    animation: intro-flash calc(var(--intro-ms, 0ms) * 0.9) ease-out;
+    animation: intro-flash calc(var(--intro-ms, 0ms) * 1.5)
+      cubic-bezier(0.1, 0.7, 0.2, 1);
     animation-delay: var(--intro-blast, 0ms);
   }
   /* No backwards fill: the ring stays hidden through the build-up and appears only at the blast. */
   .intro-shock {
-    animation: intro-shock calc(var(--intro-ms, 0ms) * 1.3)
-      cubic-bezier(0.2, 0.7, 0.3, 1);
+    animation: intro-shock calc(var(--intro-ms, 0ms) * 1.7)
+      cubic-bezier(0.15, 0.75, 0.25, 1);
     animation-delay: var(--intro-blast, 0ms);
+  }
+  /* A second, fainter wave a beat behind the first. */
+  .intro-shock-2 {
+    animation-duration: calc(var(--intro-ms, 0ms) * 2.1);
+    animation-delay: calc(var(--intro-blast, 0ms) + 90ms);
   }
   /* A rumble that builds, then the jolt: a hard hit that dies away fast. */
   .intro-shake {
@@ -631,7 +648,7 @@ html.dark .chrome-rim {
 }
 
 /* Waiting for the page to load (.intro-wait on the board): everything is held at its first
-   frame except the core, which idles as a small churning orb, the loader. The page's own controls
+   frame except the core, which slowly swells as a churning orb, the loader. The page's own controls
    wait too. When the class goes, every intro animation starts from the beginning. */
 @media (prefers-reduced-motion: no-preference) {
   .intro-wait,
@@ -639,8 +656,10 @@ html.dark .chrome-rim {
   html:has(.intro-wait) .intro-chrome {
     animation-play-state: paused !important;
   }
+  /* The core keeps swelling while it waits, fast at first and then ever more slowly, so a slow
+     load reads as the build-up taking its time; the intro carries on from wherever it got to. */
   .intro-wait .intro-core {
-    animation: core-idle 900ms ease-in-out infinite alternate !important;
+    animation: core-grow 7s cubic-bezier(0.2, 0.55, 0.3, 1) forwards !important;
   }
   .intro-wait .core-blob,
   .intro-wait .core-heart,
@@ -648,53 +667,65 @@ html.dark .chrome-rim {
     animation-play-state: running !important;
   }
 }
-@keyframes core-idle {
+@keyframes core-grow {
   from {
-    opacity: 0.85;
-    scale: 0.1;
+    opacity: 1;
+    scale: 0.12;
   }
   to {
     opacity: 1;
-    scale: 0.13;
+    scale: 0.6;
   }
 }
+/* Until the supernova has burst, the page's own controls can't be hovered or clicked either. */
+html:has(.intro-lock) .intro-chrome {
+  pointer-events: none;
+}
 
-/* The gradient core: a calm dot that swells, trembles, pulls in at the collapse and bursts. The
-   collapse lands at the blast (about 85% of the way through). */
+/* The gradient core: a calm dot that swells, trembles, pulls in at the collapse and bursts,
+   carrying on outward behind the shockwave. The collapse lands at the blast (58.5% of the way
+   through; the run is the build-up plus 450ms). */
 @keyframes intro-core {
   from {
     opacity: 1;
     scale: 0.12;
   }
-  12% {
+  8% {
     opacity: 1;
     scale: 0.16;
   }
-  45% {
-    scale: 0.45;
+  31% {
+    scale: 0.55;
     translate: -50% -50%;
   }
-  66% {
-    scale: 0.78;
+  45.5% {
+    scale: 1;
     translate: calc(-50% + 1px) calc(-50% - 1px);
   }
-  70% {
+  48% {
     translate: calc(-50% - 2px) calc(-50% + 1px);
   }
-  74% {
-    scale: 0.92;
+  51% {
+    scale: 1.18;
     translate: calc(-50% + 2px) calc(-50% + 1px);
   }
-  78% {
-    translate: calc(-50% - 2px) calc(-50% - 2px);
+  54% {
+    translate: calc(-50% - 3px) calc(-50% - 2px);
   }
-  85% {
-    scale: 0.7;
+  /* The collapse, right at the blast. */
+  58.5% {
+    scale: 0.85;
     opacity: 1;
     translate: -50% -50%;
   }
+  /* Then it tears outward with the shockwave, swelling hard and burning off as it goes. */
+  66% {
+    scale: 3.2;
+    opacity: 0.85;
+    translate: -50% -50%;
+  }
   to {
-    scale: 1.7;
+    scale: 8;
     opacity: 0;
     translate: -50% -50%;
   }
@@ -747,6 +778,12 @@ html.dark .chrome-rim {
   to {
     scale: 1.25;
     opacity: 1;
+  }
+}
+
+@keyframes crack-fade {
+  to {
+    opacity: 0;
   }
 }
 
@@ -882,33 +919,42 @@ html.dark .chrome-rim {
   from {
     opacity: var(--glow, 1);
   }
+  15% {
+    opacity: var(--glow, 1);
+  }
   to {
     opacity: 0;
   }
 }
 
+/* The flash: blows out hard and wide, then burns off slowly. */
 @keyframes intro-flash {
   from {
     opacity: var(--glow, 1);
     scale: 0.1;
   }
-  35% {
+  18% {
     opacity: var(--glow, 1);
+    scale: 1.3;
   }
   to {
     opacity: 0;
-    scale: 2.6;
+    scale: 3.8;
   }
 }
 
+/* The shockwave: a bright, thick ring that tears outward past the edges of the screen and fades. */
 @keyframes intro-shock {
   from {
-    opacity: 0.8;
-    scale: 0.2;
+    opacity: 0.85;
+    scale: 0.25;
+  }
+  25% {
+    opacity: 0.75;
   }
   to {
     opacity: 0;
-    scale: 11;
+    scale: 15;
   }
 }
 
@@ -1127,10 +1173,14 @@ html.dark .node-disc[data-lit] {
 }
 
 /* On the dark page the supernova's white-hot core would glare: it burns dimmer and bluer. */
+.intro-bloom,
+.intro-flash {
+  --glow: 0.7;
+}
 html.dark .intro-bloom,
 html.dark .intro-flash,
 html.dark .intro-halo {
-  --glow: 0.5;
+  --glow: 0.55;
 }
 
 html.dark .intro-flash {
@@ -1240,4 +1290,16 @@ html.dark .portrait-grade {
       transparent 40%
     );
   mix-blend-mode: soft-light;
+}
+
+/* Low-end devices (.lite on <html>, set before paint in app/layout.tsx): the same intro with about
+   half the pieces, and no effects that repaint every frame. */
+.lite [data-extra] {
+  display: none !important;
+}
+.lite .core-orb::after {
+  animation: none !important;
+}
+.lite .intro-shock {
+  box-shadow: 0 0 14px 2px color-mix(in oklab, var(--iri-cyan) 60%, transparent);
 }
