@@ -401,8 +401,10 @@ const LEAN = 0.06
 const LEAN_MAX = 3
 /** How far past its reach the pull fades out (px, before the node's weight). */
 const PULL_FADE = 90
-/** How quickly a node glides to where gravity wants it, per frame (0–1; lower is smoother). */
+/** How quickly a node glides to where gravity wants it, per 60Hz frame (0–1; lower is smoother). */
 const GLIDE = 0.07
+/** How often the idle float is stepped while the cursor isn't moving anything (ms). */
+const IDLE_MS = 48
 
 /**
  * Where in the core's intro animation (0–1 of its run) it reaches `size` (its scale), from the
@@ -442,13 +444,18 @@ function useCursorGravity(
   board: React.RefObject<HTMLDivElement | null>,
   nodes: Record<string, MotionNode>,
   active: string | null,
-  /** False until the supernova has burst: no pull before then. */
-  ready: boolean
+  /** False until the supernova has burst: no pull before then, and the loop doesn't run at all. */
+  ready: boolean,
+  /** False until the intro is over: no idle float before then (it eases in afterwards). */
+  settled: boolean
 ) {
-  const state = useRef({ nodes, active, ready })
+  const state = useRef({ nodes, active, ready, settled })
+  /** Starts the loop if it should be running (set by the effect below). */
+  const wake = useRef<() => void>(() => {})
   useLayoutEffect(() => {
-    state.current = { nodes, active, ready }
-  }, [nodes, active, ready])
+    state.current = { nodes, active, ready, settled }
+    wake.current()
+  }, [nodes, active, ready, settled])
   /** Puts every line's ends on its nodes right now (set by the loop below). */
   const placeLines = useRef<() => void>(() => {})
 
@@ -459,7 +466,7 @@ function useCursorGravity(
 
     // The pointer as the browser reports it; the board's own corner is read once a frame (in
     // tick), not on every pointer event.
-    const pointer = { cx: 0, cy: 0, x: 0, y: 0, inside: false }
+    const pointer = { cx: 0, cy: 0, x: 0, y: 0, inside: false, at: 0 }
     // What the loop keeps for each node between frames: its glide toward the cursor, how calm its
     // float is (eased to a stop while it's the open one, so its popover stays put), where it is
     // this frame, and its own period and phase (worked out once, not every frame).
@@ -494,9 +501,13 @@ function useCursorGravity(
       pointer.cx = e.clientX
       pointer.cy = e.clientY
       pointer.inside = true
+      pointer.at = performance.now()
+      run()
     }
     const onLeave = () => {
       pointer.inside = false
+      pointer.at = performance.now()
+      kick()
     }
     el.addEventListener('pointermove', onMove)
     el.addEventListener('pointerleave', onLeave)
@@ -531,13 +542,23 @@ function useCursorGravity(
     const q = (n: number) => Math.round(n * 4) / 4
     const half = (n: number) => String(Math.round(n * 2) / 2)
     let raf = 0
+    let timer = 0
     // The loop only runs while there's a board to move: from `lg` up (below that the board isn't
     // drawn at all) and while no Story covers the page. The time it spent stopped is left out of
     // the float's clock, so every node carries on from exactly where it was.
     const wide = window.matchMedia('(min-width: 64rem)')
-    const wanted = () => wide.matches && !pageCovered()
+    // Nor during the supernova: the nodes are flying under CSS then, and a loop writing to them
+    // would have the browser restyle and repaint the board on every frame of the blast.
+    const wanted = () => state.current.ready && wide.matches && !pageCovered()
     let stoppedAt = 0
     let held = 0
+    // The idle float eases in once the intro is over (0 to 1), so nothing jumps when it starts.
+    let rise = state.current.settled ? 1 : 0
+    // While the cursor is at work (moving, or a node still gliding or calming) every frame is
+    // drawn. Otherwise only the float is left, which creeps a few px a second: it's stepped at
+    // IDLE_MS, a fraction of the frames for the same motion to the eye.
+    let lively = 0
+    let lastRun = 0
     const writeLines = (w: number, h: number) => {
       const { nodes } = state.current
       for (const line of lineEls) {
@@ -574,7 +595,17 @@ function useCursorGravity(
         stoppedAt = now
         return
       }
-      const { nodes, active, ready } = state.current
+      const { nodes, active, ready, settled } = state.current
+      raf = 0
+      // How many 60Hz frames this step stands for, so glides take as long at any frame rate.
+      const steps = lastRun
+        ? Math.min(6, Math.max(0.5, (now - lastRun) / 16.7))
+        : 1
+      const ease = (k: number) => 1 - (1 - k) ** steps
+      lastRun = now
+      rise += ((settled ? 1 : 0) - rise) * ease(0.03)
+      if (settled && rise > 0.99) rise = 1
+      let moving = rise > 0 && rise < 1
       // Looked up again now and then, and at once when what's lit changes, so new hover lines
       // follow their nodes from their first frame.
       if (frame++ % 30 === 0 || active !== lastActive) {
@@ -621,14 +652,18 @@ function useCursorGravity(
         }
         // Glide there (and home again once the cursor moves on): a plain ease, no spring, so it
         // never overshoots or wobbles.
-        o.ox += (tx - o.ox) * GLIDE
-        o.oy += (ty - o.oy) * GLIDE
+        o.ox += (tx - o.ox) * ease(GLIDE)
+        o.oy += (ty - o.oy) * ease(GLIDE)
         if (!tx && !ty && Math.abs(o.ox) + Math.abs(o.oy) < 0.02)
           o.ox = o.oy = 0
+        if (tx || ty || o.ox || o.oy) moving = true
 
         // The idle float: each node traces its own small, slow ellipse, never a real orbit.
-        o.calm += ((id === active ? 0 : 1) - o.calm) * 0.08
-        const amp = lite ? 0 : FLOAT_PX * n.weight * o.calm
+        const calmTo = id === active ? 0 : 1
+        o.calm += (calmTo - o.calm) * ease(0.08)
+        if (Math.abs(calmTo - o.calm) < 0.002) o.calm = calmTo
+        else moving = true
+        const amp = lite ? 0 : FLOAT_PX * n.weight * o.calm * rise
         const turn = (t / o.period) * Math.PI * 2 + o.phase
         o.x = o.ox + Math.sin(turn) * amp
         o.y = o.oy + Math.cos(turn) * amp * 0.7
@@ -644,19 +679,37 @@ function useCursorGravity(
         node.style.transform = v
       }
       writeLines(w, h)
+      if (moving) lively = now + 120
+      // Nothing but the float left to draw: the next step can wait, with no frame asked for in
+      // between (a pointer move or a new hover cuts the wait short).
+      // And while the intro is still playing out there's no float yet: with the cursor away the
+      // loop stops altogether, until the pointer comes in or the intro ends (run).
+      if (!settled && !moving && !pointer.inside) stoppedAt = now
+      else if (now > lively && now - pointer.at > 250)
+        timer = window.setTimeout(kick, IDLE_MS)
+      else raf = requestAnimationFrame(tick)
+    }
+    function kick() {
+      if (!timer) return
+      window.clearTimeout(timer)
+      timer = 0
       raf = requestAnimationFrame(tick)
     }
-    const run = () => {
+    function run() {
+      kick()
       if (raf || !wanted()) return
       if (stoppedAt) held += performance.now() - stoppedAt
       stoppedAt = 0
       raf = requestAnimationFrame(tick)
     }
     run()
+    wake.current = run
     wide.addEventListener('change', run)
     const offCovered = onPageCovered(run)
     return () => {
+      wake.current = () => {}
       cancelAnimationFrame(raf)
+      window.clearTimeout(timer)
       ro.disconnect()
       window.removeEventListener('resize', measure)
       window.removeEventListener('scroll', measure)
@@ -1137,95 +1190,222 @@ const DUST_GROUPS = 3
 
 /**
  * Debris: sparks thrown out by the blast that stay on as faint, twinkling dust. During the blast
- * each speck flies its own way. Once settled they're plain dots in a few groups, and each group
+ * each speck flies its own way (drawn by IntroFx). Once settled they're plain dots in a few groups, and each group
  * floats and twinkles as one layer on the compositor: 32 specks each on their own layer, moved
  * from script every frame, were about 40% of the whole board's per-frame work.
  */
 const Dust = memo(function Dust({
   sparks,
+  me
+}: {
+  sparks: Spark[]
+  me: readonly [number, number]
+}) {
+  return Array.from({ length: DUST_GROUPS }, (_, g) => (
+    <span
+      key={g}
+      aria-hidden
+      className="dust-group pointer-events-none absolute inset-0"
+      style={
+        {
+          // Each group drifts its own way and at its own pace, from where the blast left it:
+          // no head start, so nothing moves at the moment it settles.
+          '--float': `${11 + g * 3}s`,
+          '--twinkle': `${2.6 + g * 1.1}s`,
+          '--fx': `${[6, -5, 4][g % 3]}px`,
+          '--fy': `${[5, 4, -6][g % 3]}px`
+        } as CSSProperties
+      }
+    >
+      {sparks.map(
+        (sp, i) =>
+          i % DUST_GROUPS === g && (
+            <span
+              key={sp.id}
+              data-extra={i % 2 === 1 || undefined}
+              className="absolute rounded-full"
+              style={{
+                left: `calc(${me[0]}% + ${sp.dx}px)`,
+                top: `calc(${me[1]}% + ${sp.dy}px)`,
+                width: sp.size,
+                height: sp.size,
+                marginLeft: -sp.size / 2,
+                marginTop: -sp.size / 2,
+                background: `var(--spark-${sp.tone})`,
+                opacity: sp.rest
+              }}
+            />
+          )
+      )}
+    </span>
+  ))
+})
+
+type Mote = {
+  mx: number
+  my: number
+  size: number
+  tone: string
+  dur: number
+  delay: number
+}
+const NO_MOTES: Mote[] = []
+
+/** A CSS cubic-bezier() timing function, for drawing what a CSS animation would have shown. */
+function bezier(x1: number, y1: number, x2: number, y2: number) {
+  const at = (a: number, b: number, u: number) =>
+    3 * a * u * (1 - u) ** 2 + 3 * b * u * u * (1 - u) + u ** 3
+  return (x: number) => {
+    if (x <= 0) return 0
+    if (x >= 1) return 1
+    let lo = 0
+    let hi = 1
+    for (let k = 0; k < 24; k++) {
+      const mid = (lo + hi) / 2
+      if (at(x1, x2, mid) < x) lo = mid
+      else hi = mid
+    }
+    return at(y1, y2, (lo + hi) / 2)
+  }
+}
+const SPARK_EASE = bezier(0.05, 0.75, 0.3, 1)
+const MOTE_EASE = bezier(0.6, 0, 1, 0.6)
+
+/**
+ * The blast's small pieces, drawn on one canvas while the intro plays: the specks that fall into
+ * the core during the build-up, and the debris thrown out by the blast. As an element each they
+ * were 48 layers and 48 animations, and the browser works out the style of every animated
+ * element again on every frame; here they're 48 dots drawn into one layer. Each is drawn exactly
+ * where its CSS animation had it, and when the intro is over the sparks are handed to Dust as
+ * plain dots in the same spots.
+ *
+ * The clock is a CSS animation on the canvas itself (intro-clock), so the canvas waits while the
+ * page loads, picks up where the core had got to and stays in step with everything else, all by
+ * the same means as the rest of the intro.
+ */
+const IntroFx = memo(function IntroFx({
+  sparks,
+  motes,
   me,
-  live,
   ms,
   blast
 }: {
   sparks: Spark[]
+  motes: Mote[]
   me: readonly [number, number]
-  live: boolean
   ms: number
   blast: number
 }) {
-  if (!live)
-    return Array.from({ length: DUST_GROUPS }, (_, g) => (
-      <span
-        key={g}
-        aria-hidden
-        className="dust-group pointer-events-none absolute inset-0"
-        style={
-          {
-            // Each group drifts its own way and at its own pace, from where the blast left it:
-            // no head start, so nothing moves at the moment it settles.
-            '--float': `${11 + g * 3}s`,
-            '--twinkle': `${2.6 + g * 1.1}s`,
-            '--fx': `${[6, -5, 4][g % 3]}px`,
-            '--fy': `${[5, 4, -6][g % 3]}px`
-          } as CSSProperties
-        }
-      >
-        {sparks.map(
-          (sp, i) =>
-            i % DUST_GROUPS === g && (
-              <span
-                key={sp.id}
-                data-extra={i % 2 === 1 || undefined}
-                className="absolute rounded-full"
-                style={{
-                  left: `calc(${me[0]}% + ${sp.dx}px)`,
-                  top: `calc(${me[1]}% + ${sp.dy}px)`,
-                  width: sp.size,
-                  height: sp.size,
-                  marginLeft: -sp.size / 2,
-                  marginTop: -sp.size / 2,
-                  background: `var(--spark-${sp.tone})`,
-                  opacity: sp.rest
-                }}
-              />
-            )
-        )}
-      </span>
-    ))
-  return sparks.map((sp, i) => (
-    <span
-      key={sp.id}
+  const ref = useRef<HTMLCanvasElement>(null)
+  useEffect(() => {
+    const cv = ref.current
+    const ctx = cv?.getContext('2d')
+    if (!cv || !ctx) return
+    // Low-end devices (.lite) get every other spark, as the dust does.
+    const lite = document.documentElement.classList.contains('lite')
+    const css = getComputedStyle(cv)
+    const tones = new Map<string, string>()
+    const tone = (t: string) => {
+      let c = tones.get(t)
+      if (!c) tones.set(t, (c = css.getPropertyValue(`--spark-${t}`).trim()))
+      return c
+    }
+    const flights = sparks.map((sp) => ({
+      start: Math.round(blast + sp.wait),
+      dur: Math.round(ms * sp.speed)
+    }))
+    const end = Math.max(0, ...flights.map((f) => f.start + f.dur)) + 34
+    let w = 0
+    let h = 0
+    const dot = (x: number, y: number, r: number, c: string, o: number) => {
+      if (o <= 0) return
+      ctx.globalAlpha = o
+      ctx.fillStyle = c
+      ctx.beginPath()
+      ctx.arc(x, y, r, 0, Math.PI * 2)
+      ctx.fill()
+    }
+    const paint = (t: number) => {
+      // Sharp up to 2x; past that a dot a few px wide looks the same, for far fewer pixels.
+      const k = Math.min(2, window.devicePixelRatio || 1)
+      ctx.setTransform(k, 0, 0, k, 0, 0)
+      ctx.clearRect(0, 0, w, h)
+      const cx = (me[0] / 100) * w
+      const cy = (me[1] / 100) * h
+      sparks.forEach((sp, i) => {
+        if (lite && i % 2 === 1) return
+        const f = flights[i]
+        const p = Math.min(1, Math.max(0, (t - f.start) / f.dur))
+        const e = SPARK_EASE(p)
+        // Bright as it flies, fading to its resting glow over the last stretch.
+        const o =
+          p < 0.55
+            ? 1 - 0.1 * SPARK_EASE(p / 0.55)
+            : 0.9 + (sp.rest - 0.9) * SPARK_EASE((p - 0.55) / 0.45)
+        dot(
+          cx + sp.dx * e,
+          cy + sp.dy * e,
+          (sp.size / 2) * (1.6 - 0.6 * e),
+          tone(sp.tone),
+          o
+        )
+      })
+      for (const m of motes) {
+        const p = (t - m.delay) / m.dur
+        if (p < 0 || p >= 1) continue
+        const e = MOTE_EASE(p)
+        const o =
+          p < 0.3
+            ? 0.9 * MOTE_EASE(p / 0.3)
+            : 0.9 * (1 - MOTE_EASE((p - 0.3) / 0.7))
+        dot(
+          cx + m.mx * (1 - e),
+          cy + m.my * (1 - e),
+          (m.size / 2) * (0.6 + 0.7 * e),
+          tone(m.tone),
+          o
+        )
+      }
+    }
+    // Where the intro has got to (ms). With no clock (reduced motion) everything is at rest.
+    // Looked up once: asking for an element's animations makes the browser bring every style on
+    // the page up to date first, which is no thing to do on each frame of the blast.
+    const clock: Animation | undefined = cv.getAnimations()[0]
+    const now = () => (clock ? Number(clock.currentTime ?? 0) : Infinity)
+    let raf = 0
+    let last = -1
+    const frame = () => {
+      raf = 0
+      const t = now()
+      if (t !== last) paint((last = t))
+      // Once the last spark has landed there's nothing left to draw.
+      if (t < end) raf = requestAnimationFrame(frame)
+    }
+    const fit = () => {
+      const k = Math.min(2, window.devicePixelRatio || 1)
+      w = cv.clientWidth
+      h = cv.clientHeight
+      cv.width = Math.round(w * k)
+      cv.height = Math.round(h * k)
+      last = -1
+      if (raf) paint((last = now()))
+      else frame()
+    }
+    const ro = new ResizeObserver(fit)
+    ro.observe(cv)
+    fit()
+    return () => {
+      ro.disconnect()
+      cancelAnimationFrame(raf)
+    }
+  }, [sparks, motes, me, ms, blast])
+  return (
+    <canvas
+      ref={ref}
       aria-hidden
-      data-extra={i % 2 === 1 || undefined}
-      className="pointer-events-none absolute"
-      style={{
-        left: `calc(${me[0]}% + ${sp.dx}px)`,
-        top: `calc(${me[1]}% + ${sp.dy}px)`
-      }}
-    >
-      <span className="block">
-        <span
-          className="intro-spark block rounded-full"
-          style={
-            {
-              width: sp.size,
-              height: sp.size,
-              marginLeft: -sp.size / 2,
-              marginTop: -sp.size / 2,
-              background: `var(--spark-${sp.tone})`,
-              opacity: sp.rest,
-              '--dx': `${sp.dx}px`,
-              '--dy': `${sp.dy}px`,
-              '--rest': sp.rest,
-              animationDuration: `${Math.round(ms * sp.speed)}ms`,
-              animationDelay: `${Math.round(blast + sp.wait)}ms`
-            } as CSSProperties
-          }
-        />
-      </span>
-    </span>
-  ))
+      className="intro-fx pointer-events-none absolute inset-0 size-full"
+    />
+  )
 })
 
 /** A bubble on the board: its disc, title, tagline and dates, linking to its Story. */
@@ -1955,7 +2135,7 @@ const Board = memo(function Board({
 
   // The intro: each node is thrown out from the Me node (by `burst`), nearer ones first, and with
   // `chaos` each one goes its own way: its own speed and start, a spin, a curve off the straight
-  // line, a different size at the start and a harder or softer overshoot. Seeded by the node's id,
+  // line, and a different size at the start. Seeded by the node's id,
   // so it's the same on the server and in the browser.
   const delayAt = useCallback(
     (x: number, y: number) =>
@@ -1988,7 +2168,6 @@ const Board = memo(function Board({
           0.9,
           intro.scale * (1 + (r('size') + 0.5) * 4 * c)
         ).toFixed(2),
-        '--ov': (intro.overshoot * (1 + r('kick') * 1.2 * c)).toFixed(2),
         '--dur': `${Math.round(intro.ms * (1.1 + r('speed') * 0.7 * c))}ms`,
         '--intro-delay': `${Math.max(0, Math.round(blast + delayAt(at[0], at[1]) + r('start') * 123 * c))}ms`
       }
@@ -2039,6 +2218,27 @@ const Board = memo(function Board({
         }
       }),
     [intro.debris]
+  )
+
+  // The specks that fall into the core during the build-up, each landing just before (or right
+  // at) the collapse.
+  const motes = useMemo(
+    () =>
+      Array.from({ length: 16 }, (_, i): Mote => {
+        const r = (k: string) => hash(`mote${i}/${k}`)
+        const a = (i / 16) * Math.PI * 2 + r('a')
+        const dist = 140 + r('d') * 220
+        const dur = intro.buildup * (0.45 + r('t') * 0.45)
+        return {
+          mx: Math.round(Math.cos(a) * dist),
+          my: Math.round(Math.sin(a) * dist * 0.75),
+          size: 2 + r('s') * 3,
+          tone: SPARK_TONES[i % SPARK_TONES.length],
+          dur: Math.round(dur),
+          delay: Math.round(blast - dur - r('w') * 105)
+        }
+      }),
+    [intro.buildup, blast]
   )
 
   // A satellite's offset from the photo (px), from the layout, scaled with the board.
@@ -2131,7 +2331,13 @@ const Board = memo(function Board({
     [linked, motionNodes]
   )
 
-  const placeLines = useCursorGravity(board, motionNodes, activeId, ready)
+  const placeLines = useCursorGravity(
+    board,
+    motionNodes,
+    activeId,
+    ready,
+    played
+  )
   useIntentHover(board, active, setActive, ready)
   const { w, h } = size
   const px = (id: string) => {
@@ -2176,6 +2382,8 @@ const Board = memo(function Board({
       ref={board}
       className={cn(
         'relative hidden h-dvh min-h-[46rem] w-full overflow-x-clip lg:block',
+        // While the intro plays: the page around the board clips what it throws past its edges.
+        live && 'intro-live',
         live && intro.shake > 0 && 'intro-shake',
         // Held at its first frame until the page has loaded (see `waiting`).
         live && waiting && 'intro-wait',
@@ -2192,7 +2400,6 @@ const Board = memo(function Board({
           '--intro-blast': `${blast}ms`,
           '--intro-ms': `${intro.ms}ms`,
           '--intro-scale': intro.scale,
-          '--intro-overshoot': intro.overshoot,
           '--shake': intro.shake
         } as CSSProperties
       }
@@ -2257,7 +2464,7 @@ const Board = memo(function Board({
           off every edge of the screen. All gone in well under a second. */}
       {/* Debris: sparks thrown out by the blast that stay on as faint, twinkling dust, floating and
           pulled by the cursor like everything else. */}
-      <Dust sparks={sparks} me={ME} live={live} ms={intro.ms} blast={blast} />
+      {!live && <Dust sparks={sparks} me={ME} />}
       {/* The build-up: a churning ball of colour where your photo will be, light gathering
           around it and specks falling into it. At the blast it bursts and your photo is there. */}
       {live && intro.buildup > 0 && (
@@ -2395,40 +2602,18 @@ const Board = memo(function Board({
             className="intro-halo pointer-events-none absolute size-[28rem] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[radial-gradient(circle,color-mix(in_oklab,var(--iri-violet)_35%,white)_0%,color-mix(in_oklab,var(--iri-cyan)_26%,transparent)_30%,color-mix(in_oklab,var(--iri-magenta)_16%,transparent)_48%,transparent_68%)]"
             style={{ left: `${ME[0]}%`, top: `${ME[1]}%` }}
           />
-          <span
-            aria-hidden
-            className="pointer-events-none absolute"
-            style={{ left: `${ME[0]}%`, top: `${ME[1]}%` }}
-          >
-            {Array.from({ length: 16 }, (_, i) => {
-              const r = (k: string) => hash(`mote${i}/${k}`)
-              const a = (i / 16) * Math.PI * 2 + r('a')
-              const dist = 140 + r('d') * 220
-              const dur = intro.buildup * (0.45 + r('t') * 0.45)
-              const size = 2 + r('s') * 3
-              return (
-                <span
-                  key={i}
-                  className="intro-mote absolute rounded-full"
-                  style={
-                    {
-                      width: size,
-                      height: size,
-                      marginLeft: -size / 2,
-                      marginTop: -size / 2,
-                      background: `var(--spark-${SPARK_TONES[i % SPARK_TONES.length]})`,
-                      '--mx': `${Math.round(Math.cos(a) * dist)}px`,
-                      '--my': `${Math.round(Math.sin(a) * dist * 0.75)}px`,
-                      animationDuration: `${Math.round(dur)}ms`,
-                      // Each lands in the core just before (or right at) the collapse.
-                      animationDelay: `${Math.round(blast - dur - r('w') * 105)}ms`
-                    } as CSSProperties
-                  }
-                />
-              )
-            })}
-          </span>
         </>
+      )}
+      {/* The specks falling in and the debris thrown out, on one canvas (over the halo, under the
+          core, as they were). */}
+      {live && (
+        <IntroFx
+          sparks={sparks}
+          motes={intro.buildup > 0 ? motes : NO_MOTES}
+          me={ME}
+          ms={intro.ms}
+          blast={blast}
+        />
       )}
       {live && intro.bloom && (
         <span

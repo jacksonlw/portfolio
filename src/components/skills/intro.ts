@@ -20,8 +20,6 @@ export type Intro = {
   burst: number
   /** The size each node starts at (1 = full size). */
   scale: number
-  /** How far nodes overshoot their spot before settling back (0 = none, 1 = a lot). */
-  overshoot: number
   /** A burst of light from the Me node as the nodes fly out. */
   flash: boolean
   /** A screen-wide bloom of light at the moment of the blast. */
@@ -52,7 +50,6 @@ export const INTRO: Intro = {
   spread: 150,
   burst: 1,
   scale: 0.1,
-  overshoot: 0,
   flash: true,
   bloom: true,
   shockwave: true,

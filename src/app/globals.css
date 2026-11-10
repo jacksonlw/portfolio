@@ -175,7 +175,7 @@ html.dark .chrome-rim {
 /* The constellation (components/skills). The intro (intro.ts sets it through --intro-* variables):
    a calm build-up (the core swells, light gathers, specks fall in, a rumble grows), then the core
    collapses and blows: a bloom, a flash, a shockwave ring, a jolt of screen shake, debris, and
-   nodes that fly out, overshoot and settle. About a second and a half in all. Active links flow, and below lg things drift gently. All of it only when motion is
+   nodes that fly out and settle. About a second and a half in all. Active links flow, and below lg things drift gently. All of it only when motion is
    welcome; otherwise everything is simply there, and the flash and shockwave never show. */
 /* A crack in the core's shell: a white-hot jagged line, glowing in its colour. Drawn in when it
    opens (hidden until then). */
@@ -278,7 +278,6 @@ html.dark .chrome-rim {
 .intro-flash,
 .intro-shock,
 .intro-halo,
-.intro-mote,
 .intro-core {
   opacity: 0;
 }
@@ -286,19 +285,63 @@ html.dark .chrome-rim {
 @media (prefers-reduced-motion: no-preference) {
   /* Nodes shoot straight out from the core and ease into their spots. */
   .intro-piece {
-    animation: intro-arrive var(--dur, var(--intro-ms, 0ms)) linear backwards;
+    animation-name: intro-arrive, intro-grow, intro-show;
+    animation-duration: var(--dur, var(--intro-ms, 0ms));
     animation-delay: var(--intro-delay, 0ms);
+    animation-fill-mode: backwards;
+    /* Close curves for browsers without linear(), then the sampled path itself. */
+    animation-timing-function:
+      cubic-bezier(0.25, 1, 0.5, 1), cubic-bezier(0.33, 1, 0.68, 1), linear;
+    animation-timing-function:
+      linear(
+        0,
+        0.0776 2%,
+        0.1507 4%,
+        0.2519 7%,
+        0.3439 10%,
+        0.453 14%,
+        0.5479 18%,
+        0.6485 23%,
+        0.7313 28%,
+        0.8103 34%,
+        0.8788 41%,
+        0.9323 49%,
+        0.9689 58%,
+        0.9895 68%,
+        0.9981 79%,
+        0.9999 90%,
+        1
+      ),
+      linear(
+        0,
+        0.0588 2%,
+        0.1153 4%,
+        0.1956 7%,
+        0.271 10%,
+        0.3639 14%,
+        0.4486 18%,
+        0.5435 23%,
+        0.6268 28%,
+        0.7125 34%,
+        0.7946 41%,
+        0.8673 49%,
+        0.9259 58%,
+        0.9672 68%,
+        0.9907 79%,
+        0.999 90%,
+        1
+      ),
+      linear;
   }
   /* Each line of a figure catches on at its own moment. */
   .intro-line {
     animation: intro-fade 210ms ease-out backwards;
     animation-delay: var(--line-delay, 0ms);
   }
-  /* Debris: sparks thrown out from the core, each its own way, settling as faint dust. */
-  .intro-spark {
-    animation-name: intro-spark;
-    animation-timing-function: cubic-bezier(0.05, 0.75, 0.3, 1);
-    animation-fill-mode: both;
+  /* The clock for the canvas that draws the debris and the specks (IntroFx): it shows nothing
+     itself; the canvas reads how far it has run. */
+  .intro-fx {
+    animation: intro-clock 60s linear both;
   }
   /* The settled dust, a group at a time: a slow float and an uneven twinkle, both on the
      compositor (transform and opacity only), each group at its own pace. */
@@ -315,9 +358,13 @@ html.dark .chrome-rim {
   }
   /* The core before the blast: a chrome orb with light churning inside it and rays leaking out,
      starting as a calm dot, swelling and trembling, pulling in for a beat, then bursting. */
+  /* Once it has burnt off it's taken out altogether (intro-gone), which also stops the blobs,
+     beams and sheen still churning inside it, unseen, for the rest of the intro. */
   .intro-core {
-    animation: intro-core calc(var(--intro-blast, 0ms) + 450ms)
-      cubic-bezier(0.45, 0, 0.75, 0.6);
+    animation:
+      intro-core calc(var(--intro-blast, 0ms) + 450ms)
+        cubic-bezier(0.45, 0, 0.75, 0.6),
+      intro-gone 1ms linear calc(var(--intro-blast, 0ms) + 450ms) forwards;
   }
   .core-blob {
     animation-name: core-churn;
@@ -352,12 +399,6 @@ html.dark .chrome-rim {
   /* The build-up's light: gathers around the core, then is sucked in at the collapse. */
   .intro-halo {
     animation: intro-halo var(--intro-blast, 0ms) cubic-bezier(0.5, 0, 0.9, 0.5);
-  }
-  /* Specks falling into the core, faster as they go. */
-  .intro-mote {
-    animation-name: intro-mote;
-    animation-timing-function: cubic-bezier(0.6, 0, 1, 0.6);
-    animation-fill-mode: none;
   }
   .intro-label {
     animation: intro-fade calc(var(--intro-ms, 0ms) * 0.55) ease-out backwards;
@@ -402,167 +443,52 @@ html.dark .chrome-rim {
   }
 }
 
-/* A node shot out of the core, sampled from one smooth path so it never kinks or snaps: it leaves
-   the centre (--fx/--fy in % of the board, or --gx/--gy in px) fast, small (--s0) and a little
-   turned (--spin), flies dead straight along the line from the centre to its spot, and spends
-   most of its time slowing into place. Generated: travel left (1-t)^4, size left (1-t)^3, and a
-   small optional coast past its spot (--ov), a fading sine over the last 70%. */
+/* A node shot out of the core: it leaves the centre (--fx/--fy in % of the board, or --gx/--gy
+   in px) fast, small (--s0) and a little turned (--spin), flies dead straight along the line from
+   the centre to its spot, and spends most of its time slowing into place. Its path is the easing
+   (.intro-piece: travel left (1-t)^4, size left (1-t)^3, sampled), not the keyframes, so each
+   frame is one plain blend between two values. It was 17 keyframes of nested calc() for each
+   of some 76 nodes, worked out again on every frame of the blast. */
 @keyframes intro-arrive {
-  0% {
-    translate: calc(var(--fx, 0) * calc(1.0 + 0.04 * var(--ov, 0) * 0.0) * 1vw + var(--gx, 0) * calc(1.0 + 0.04 * var(--ov, 0) * 0.0) * 1px)
-      calc(
-        var(--fy, 0) * calc(1.0 + 0.04 * var(--ov, 0) * 0.0) * max(1dvh, 0.46rem) + var(--gy, 0) * calc(1.0 + 0.04 * var(--ov, 0) * 0.0) * 1px
-      );
-    scale: calc(1 - (1 - var(--s0, 1)) * 1.0);
-    rotate: calc(var(--spin, 0deg) * 1.0);
-    opacity: 0;
-  }
-  2% {
-    translate: calc(var(--fx, 0) * calc(0.9224 + 0.04 * var(--ov, 0) * 0.0) * 1vw + var(--gx, 0) * calc(0.9224 + 0.04 * var(--ov, 0) * 0.0) * 1px)
-      calc(
-        var(--fy, 0) * calc(0.9224 + 0.04 * var(--ov, 0) * 0.0) * max(1dvh, 0.46rem) + var(--gy, 0) * calc(0.9224 + 0.04 * var(--ov, 0) * 0.0) * 1px
-      );
-    scale: calc(1 - (1 - var(--s0, 1)) * 0.9412);
-    rotate: calc(var(--spin, 0deg) * 0.9224);
-  }
-  4% {
-    translate: calc(var(--fx, 0) * calc(0.8493 + 0.04 * var(--ov, 0) * 0.0) * 1vw + var(--gx, 0) * calc(0.8493 + 0.04 * var(--ov, 0) * 0.0) * 1px)
-      calc(
-        var(--fy, 0) * calc(0.8493 + 0.04 * var(--ov, 0) * 0.0) * max(1dvh, 0.46rem) + var(--gy, 0) * calc(0.8493 + 0.04 * var(--ov, 0) * 0.0) * 1px
-      );
-    scale: calc(1 - (1 - var(--s0, 1)) * 0.8847);
-    rotate: calc(var(--spin, 0deg) * 0.8493);
-    opacity: 1;
-  }
-  7% {
-    translate: calc(var(--fx, 0) * calc(0.7481 + 0.04 * var(--ov, 0) * 0.0) * 1vw + var(--gx, 0) * calc(0.7481 + 0.04 * var(--ov, 0) * 0.0) * 1px)
-      calc(
-        var(--fy, 0) * calc(0.7481 + 0.04 * var(--ov, 0) * 0.0) * max(1dvh, 0.46rem) + var(--gy, 0) * calc(0.7481 + 0.04 * var(--ov, 0) * 0.0) * 1px
-      );
-    scale: calc(1 - (1 - var(--s0, 1)) * 0.8044);
-    rotate: calc(var(--spin, 0deg) * 0.7481);
-  }
-  10% {
-    translate: calc(var(--fx, 0) * calc(0.6561 + 0.04 * var(--ov, 0) * 0.0) * 1vw + var(--gx, 0) * calc(0.6561 + 0.04 * var(--ov, 0) * 0.0) * 1px)
-      calc(
-        var(--fy, 0) * calc(0.6561 + 0.04 * var(--ov, 0) * 0.0) * max(1dvh, 0.46rem) + var(--gy, 0) * calc(0.6561 + 0.04 * var(--ov, 0) * 0.0) * 1px
-      );
-    scale: calc(1 - (1 - var(--s0, 1)) * 0.729);
-    rotate: calc(var(--spin, 0deg) * 0.6561);
-  }
-  14% {
-    translate: calc(var(--fx, 0) * calc(0.547 + 0.04 * var(--ov, 0) * 0.0) * 1vw + var(--gx, 0) * calc(0.547 + 0.04 * var(--ov, 0) * 0.0) * 1px)
-      calc(
-        var(--fy, 0) * calc(0.547 + 0.04 * var(--ov, 0) * 0.0) * max(1dvh, 0.46rem) + var(--gy, 0) * calc(0.547 + 0.04 * var(--ov, 0) * 0.0) * 1px
-      );
-    scale: calc(1 - (1 - var(--s0, 1)) * 0.6361);
-    rotate: calc(var(--spin, 0deg) * 0.547);
-  }
-  18% {
-    translate: calc(var(--fx, 0) * calc(0.4521 + 0.04 * var(--ov, 0) * 0.0) * 1vw + var(--gx, 0) * calc(0.4521 + 0.04 * var(--ov, 0) * 0.0) * 1px)
-      calc(
-        var(--fy, 0) * calc(0.4521 + 0.04 * var(--ov, 0) * 0.0) * max(1dvh, 0.46rem) + var(--gy, 0) * calc(0.4521 + 0.04 * var(--ov, 0) * 0.0) * 1px
-      );
-    scale: calc(1 - (1 - var(--s0, 1)) * 0.5514);
-    rotate: calc(var(--spin, 0deg) * 0.4521);
-  }
-  23% {
-    translate: calc(var(--fx, 0) * calc(0.3515 + 0.04 * var(--ov, 0) * 0.0) * 1vw + var(--gx, 0) * calc(0.3515 + 0.04 * var(--ov, 0) * 0.0) * 1px)
-      calc(
-        var(--fy, 0) * calc(0.3515 + 0.04 * var(--ov, 0) * 0.0) * max(1dvh, 0.46rem) + var(--gy, 0) * calc(0.3515 + 0.04 * var(--ov, 0) * 0.0) * 1px
-      );
-    scale: calc(1 - (1 - var(--s0, 1)) * 0.4565);
-    rotate: calc(var(--spin, 0deg) * 0.3515);
-  }
-  28% {
-    translate: calc(var(--fx, 0) * calc(0.2687 + 0.04 * var(--ov, 0) * 0.0) * 1vw + var(--gx, 0) * calc(0.2687 + 0.04 * var(--ov, 0) * 0.0) * 1px)
-      calc(
-        var(--fy, 0) * calc(0.2687 + 0.04 * var(--ov, 0) * 0.0) * max(1dvh, 0.46rem) + var(--gy, 0) * calc(0.2687 + 0.04 * var(--ov, 0) * 0.0) * 1px
-      );
-    scale: calc(1 - (1 - var(--s0, 1)) * 0.3732);
-    rotate: calc(var(--spin, 0deg) * 0.2687);
-  }
-  34% {
-    translate: calc(var(--fx, 0) * calc(0.1897 + 0.04 * var(--ov, 0) * -0.1684) * 1vw + var(--gx, 0) * calc(0.1897 + 0.04 * var(--ov, 0) * -0.1684) * 1px)
-      calc(
-        var(--fy, 0) * calc(0.1897 + 0.04 * var(--ov, 0) * -0.1684) * max(1dvh, 0.46rem) + var(--gy, 0) * calc(0.1897 + 0.04 * var(--ov, 0) * -0.1684) * 1px
-      );
-    scale: calc(1 - (1 - var(--s0, 1)) * 0.2875);
-    rotate: calc(var(--spin, 0deg) * 0.1897);
-  }
-  41% {
-    translate: calc(var(--fx, 0) * calc(0.1212 + 0.04 * var(--ov, 0) * -0.3994) * 1vw + var(--gx, 0) * calc(0.1212 + 0.04 * var(--ov, 0) * -0.3994) * 1px)
-      calc(
-        var(--fy, 0) * calc(0.1212 + 0.04 * var(--ov, 0) * -0.3994) * max(1dvh, 0.46rem) + var(--gy, 0) * calc(0.1212 + 0.04 * var(--ov, 0) * -0.3994) * 1px
-      );
-    scale: calc(1 - (1 - var(--s0, 1)) * 0.2054);
-    rotate: calc(var(--spin, 0deg) * 0.1212);
-  }
-  49% {
-    translate: calc(var(--fx, 0) * calc(0.0677 + 0.04 * var(--ov, 0) * -0.5487) * 1vw + var(--gx, 0) * calc(0.0677 + 0.04 * var(--ov, 0) * -0.5487) * 1px)
-      calc(
-        var(--fy, 0) * calc(0.0677 + 0.04 * var(--ov, 0) * -0.5487) * max(1dvh, 0.46rem) + var(--gy, 0) * calc(0.0677 + 0.04 * var(--ov, 0) * -0.5487) * 1px
-      );
-    scale: calc(1 - (1 - var(--s0, 1)) * 0.1327);
-    rotate: calc(var(--spin, 0deg) * 0.0677);
-  }
-  58% {
-    translate: calc(var(--fx, 0) * calc(0.0311 + 0.04 * var(--ov, 0) * -0.5706) * 1vw + var(--gx, 0) * calc(0.0311 + 0.04 * var(--ov, 0) * -0.5706) * 1px)
-      calc(
-        var(--fy, 0) * calc(0.0311 + 0.04 * var(--ov, 0) * -0.5706) * max(1dvh, 0.46rem) + var(--gy, 0) * calc(0.0311 + 0.04 * var(--ov, 0) * -0.5706) * 1px
-      );
-    scale: calc(1 - (1 - var(--s0, 1)) * 0.0741);
-    rotate: calc(var(--spin, 0deg) * 0.0311);
-  }
-  68% {
-    translate: calc(var(--fx, 0) * calc(0.0105 + 0.04 * var(--ov, 0) * -0.453) * 1vw + var(--gx, 0) * calc(0.0105 + 0.04 * var(--ov, 0) * -0.453) * 1px)
-      calc(
-        var(--fy, 0) * calc(0.0105 + 0.04 * var(--ov, 0) * -0.453) * max(1dvh, 0.46rem) + var(--gy, 0) * calc(0.0105 + 0.04 * var(--ov, 0) * -0.453) * 1px
-      );
-    scale: calc(1 - (1 - var(--s0, 1)) * 0.0328);
-    rotate: calc(var(--spin, 0deg) * 0.0105);
-  }
-  79% {
-    translate: calc(var(--fx, 0) * calc(0.0019 + 0.04 * var(--ov, 0) * -0.2427) * 1vw + var(--gx, 0) * calc(0.0019 + 0.04 * var(--ov, 0) * -0.2427) * 1px)
-      calc(
-        var(--fy, 0) * calc(0.0019 + 0.04 * var(--ov, 0) * -0.2427) * max(1dvh, 0.46rem) + var(--gy, 0) * calc(0.0019 + 0.04 * var(--ov, 0) * -0.2427) * 1px
-      );
-    scale: calc(1 - (1 - var(--s0, 1)) * 0.0093);
-    rotate: calc(var(--spin, 0deg) * 0.0019);
-  }
-  90% {
-    translate: calc(var(--fx, 0) * calc(0.0001 + 0.04 * var(--ov, 0) * -0.062) * 1vw + var(--gx, 0) * calc(0.0001 + 0.04 * var(--ov, 0) * -0.062) * 1px)
-      calc(
-        var(--fy, 0) * calc(0.0001 + 0.04 * var(--ov, 0) * -0.062) * max(1dvh, 0.46rem) + var(--gy, 0) * calc(0.0001 + 0.04 * var(--ov, 0) * -0.062) * 1px
-      );
-    scale: calc(1 - (1 - var(--s0, 1)) * 0.001);
-    rotate: calc(var(--spin, 0deg) * 0.0001);
-  }
-  100% {
-    translate: calc(var(--fx, 0) * calc(0.0 + 0.04 * var(--ov, 0) * -0.0) * 1vw + var(--gx, 0) * calc(0.0 + 0.04 * var(--ov, 0) * -0.0) * 1px)
-      calc(
-        var(--fy, 0) * calc(0.0 + 0.04 * var(--ov, 0) * -0.0) * max(1dvh, 0.46rem) + var(--gy, 0) * calc(0.0 + 0.04 * var(--ov, 0) * -0.0) * 1px
-      );
-    scale: calc(1 - (1 - var(--s0, 1)) * 0.0);
-    rotate: calc(var(--spin, 0deg) * 0.0);
-  }
-}
-
-/* A spark flies out from the core and settles where it lands as faint dust (--rest). */
-@keyframes intro-spark {
   from {
-    translate: calc(var(--dx) * -1) calc(var(--dy) * -1);
-    scale: 1.6;
-    opacity: 1;
-  }
-  55% {
-    opacity: 0.9;
+    translate: calc(var(--fx, 0) * 1vw + var(--gx, 0) * 1px)
+      calc(var(--fy, 0) * max(1dvh, 0.46rem) + var(--gy, 0) * 1px);
+    rotate: var(--spin, 0deg);
   }
   to {
     translate: 0 0;
-    scale: 1;
-    opacity: var(--rest, 0.3);
+    rotate: 0deg;
   }
+}
+@keyframes intro-grow {
+  from {
+    scale: var(--s0, 1);
+  }
+  to {
+    scale: 1;
+  }
+}
+@keyframes intro-show {
+  from {
+    opacity: 0;
+  }
+  4% {
+    opacity: 1;
+  }
+}
+
+/* Runs for as long as the intro could; only its clock is used. */
+@keyframes intro-clock {
+  to {
+    order: 1;
+  }
+}
+
+/* The shockwave and the bursting core swell far past the board. Clipped by the page around the
+   board (which doesn't shake), so they never stretch the page itself: that made it many screens
+   tall for the length of the blast, laid out again on every frame. */
+main:has(.intro-live) {
+  overflow: clip;
 }
 
 /* The dust, afterwards: a slow, uneven twinkle. */
@@ -665,6 +591,13 @@ html:has(.intro-lock) .intro-chrome {
     scale: 8;
     opacity: 0;
     translate: -50% -50%;
+  }
+}
+
+@keyframes intro-gone {
+  from,
+  to {
+    display: none;
   }
 }
 
@@ -771,12 +704,10 @@ html:has(.intro-lock) .intro-chrome {
   from {
     scale: 0.6;
     opacity: 0;
-    filter: blur(8px);
   }
   30% {
     scale: 1.1;
     opacity: 1;
-    filter: blur(0);
   }
   62% {
     scale: 0.97;
@@ -798,22 +729,6 @@ html:has(.intro-lock) .intro-chrome {
   to {
     opacity: var(--glow, 1);
     scale: 0.4;
-  }
-}
-
-@keyframes intro-mote {
-  from {
-    translate: var(--mx) var(--my);
-    scale: 0.6;
-    opacity: 0;
-  }
-  30% {
-    opacity: 0.9;
-  }
-  to {
-    translate: 0 0;
-    scale: 1.3;
-    opacity: 0;
   }
 }
 
@@ -1311,8 +1226,7 @@ html.dark .hover-line-light {
 .star-lit {
   border-color: #4a4f58;
   background: #fbfcfd;
-  box-shadow:
-    0 0 0 3px color-mix(in oklab, var(--iri-cyan) 30%, transparent);
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--iri-cyan) 30%, transparent);
 }
 html.dark .star-lit {
   border-color: #fbfcfd;
