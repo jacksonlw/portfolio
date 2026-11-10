@@ -438,6 +438,8 @@ function useCursorGravity(
   useLayoutEffect(() => {
     state.current = { nodes, active, ready }
   }, [nodes, active, ready])
+  /** Puts every line's ends on its nodes right now (set by the loop below). */
+  const placeLines = useRef<() => void>(() => {})
 
   useEffect(() => {
     const el = board.current
@@ -488,6 +490,23 @@ function useCursorGravity(
     el.addEventListener('pointermove', onMove)
     el.addEventListener('pointerleave', onLeave)
 
+    // The board's size and corner, measured when they can change and never inside the loop: a
+    // read there would make the browser work out styles twice a frame (once for the read, once
+    // more after the loop's own writes).
+    const geo = { w: 0, h: 0, left: 0, top: 0 }
+    const measure = () => {
+      const r = el.getBoundingClientRect()
+      geo.w = el.clientWidth
+      geo.h = el.clientHeight
+      geo.left = r.left
+      geo.top = r.top
+    }
+    measure()
+    const ro = new ResizeObserver(measure)
+    ro.observe(el)
+    window.addEventListener('resize', measure)
+    window.addEventListener('scroll', measure, { passive: true })
+
     // Low-end devices (.lite, set in app/layout.tsx) skip the idle float.
     const lite = document.documentElement.classList.contains('lite')
     // The elements are looked up again only now and then, and each is written only when its
@@ -495,6 +514,7 @@ function useCursorGravity(
     let nodeEls: HTMLElement[] = []
     let lineEls: SVGLineElement[] = []
     let frame = 0
+    let lastActive: string | null = null
     const written = new WeakMap<Element, string>()
     // Quarter-pixel steps: smooth to the eye, and far fewer writes than every tiny change.
     const q = (n: number) => Math.round(n * 4) / 4
@@ -507,6 +527,36 @@ function useCursorGravity(
     const wanted = () => wide.matches && !pageCovered()
     let stoppedAt = 0
     let held = 0
+    const writeLines = (w: number, h: number) => {
+      const { nodes } = state.current
+      for (const line of lineEls) {
+        if (!line.isConnected) continue
+        const A = nodes[line.dataset.a!]
+        const B = nodes[line.dataset.b!]
+        if (!A || !B) continue
+        const oa = kept.get(line.dataset.a!)
+        const ob = kept.get(line.dataset.b!)
+        if (!oa || !ob) continue
+        const x1 = half((A.x / 100) * w + oa.x)
+        const y1 = half((A.y / 100) * h + oa.y)
+        const x2 = half((B.x / 100) * w + ob.x)
+        const y2 = half((B.y / 100) * h + ob.y)
+        const v = `${x1} ${y1} ${x2} ${y2}`
+        if (written.get(line) === v) continue
+        written.set(line, v)
+        line.setAttribute('x1', x1)
+        line.setAttribute('y1', y1)
+        line.setAttribute('x2', x2)
+        line.setAttribute('y2', y2)
+      }
+    }
+    // New lines (a hover's connections) are drawn by React at their nodes' resting spots, but the
+    // nodes are floating and leaning toward the cursor. They're moved onto the nodes before their
+    // first paint, so a connection never appears in one place and snaps to another.
+    placeLines.current = () => {
+      lineEls = [...el.querySelectorAll<SVGLineElement>('line[data-a]')]
+      writeLines(geo.w, geo.h)
+    }
     const tick = (now: number) => {
       if (!wanted()) {
         raf = 0
@@ -514,17 +564,19 @@ function useCursorGravity(
         return
       }
       const { nodes, active, ready } = state.current
-      if (frame++ % 30 === 0) {
+      // Looked up again now and then, and at once when what's lit changes, so new hover lines
+      // follow their nodes from their first frame.
+      if (frame++ % 30 === 0 || active !== lastActive) {
+        lastActive = active
         nodeEls = [...el.querySelectorAll<HTMLElement>('[data-node]')]
         lineEls = [...el.querySelectorAll<SVGLineElement>('line[data-a]')]
       }
       const t = (now - held) / 1000
-      const w = el.clientWidth
-      const h = el.clientHeight
+      const w = geo.w
+      const h = geo.h
       if (pointer.inside) {
-        const r = el.getBoundingClientRect()
-        pointer.x = pointer.cx - r.left
-        pointer.y = pointer.cy - r.top
+        pointer.x = pointer.cx - geo.left
+        pointer.y = pointer.cy - geo.top
       }
 
       for (const id in nodes) {
@@ -580,25 +632,7 @@ function useCursorGravity(
         written.set(node, v)
         node.style.transform = v
       }
-      for (const line of lineEls) {
-        if (!line.isConnected) continue
-        const A = nodes[line.dataset.a!]
-        const B = nodes[line.dataset.b!]
-        if (!A || !B) continue
-        const oa = kept.get(line.dataset.a!)!
-        const ob = kept.get(line.dataset.b!)!
-        const x1 = half((A.x / 100) * w + oa.x)
-        const y1 = half((A.y / 100) * h + oa.y)
-        const x2 = half((B.x / 100) * w + ob.x)
-        const y2 = half((B.y / 100) * h + ob.y)
-        const v = `${x1} ${y1} ${x2} ${y2}`
-        if (written.get(line) === v) continue
-        written.set(line, v)
-        line.setAttribute('x1', x1)
-        line.setAttribute('y1', y1)
-        line.setAttribute('x2', x2)
-        line.setAttribute('y2', y2)
-      }
+      writeLines(w, h)
       raf = requestAnimationFrame(tick)
     }
     const run = () => {
@@ -612,12 +646,16 @@ function useCursorGravity(
     const offCovered = onPageCovered(run)
     return () => {
       cancelAnimationFrame(raf)
+      ro.disconnect()
+      window.removeEventListener('resize', measure)
+      window.removeEventListener('scroll', measure)
       wide.removeEventListener('change', run)
       offCovered()
       el.removeEventListener('pointermove', onMove)
       el.removeEventListener('pointerleave', onLeave)
     }
   }, [board])
+  return placeLines
 }
 
 /** How far past its shape (px) the cursor can be and still mean a node, by kind. */
@@ -787,9 +825,8 @@ function Portrait({ className, hit }: { className?: string; hit?: string }) {
   )
 }
 
-/** A lit node's disc: a brand ring, no change in size (nothing jumps). */
-const LIT_RING =
-  'border-brand shadow-[0_0_0_5px_color-mix(in_oklab,var(--brand)_16%,transparent)]'
+/** The lit photo: the supernova's light around its chrome rim (globals.css), no change in size. */
+const LIT_RING = 'lit-light'
 
 /** A bubble's disc with its illustration. */
 function BubbleDisc({
@@ -812,8 +849,7 @@ function BubbleDisc({
       // Where its Story grows from and shrinks back into (components/story/story-panel.tsx).
       data-disc={bubble.slug}
       className={cn(
-        'node-disc flex shrink-0 items-center justify-center rounded-full border-2 transition-[border-color,box-shadow,background-color] duration-200',
-        lit && LIT_RING,
+        'node-disc flex shrink-0 items-center justify-center rounded-full border-2 transition-[border-color,background-color] duration-200',
         className
       )}
       data-lit={lit || undefined}
@@ -850,8 +886,7 @@ function SatelliteDisc({
       data-hit={hit}
       data-shape="circle"
       className={cn(
-        'node-disc flex items-center justify-center rounded-full border-2 transition-[border-color,box-shadow,background-color] duration-200',
-        lit && LIT_RING,
+        'node-disc flex items-center justify-center rounded-full border-2 transition-[border-color,background-color] duration-200',
         className
       )}
       data-lit={lit || undefined}
@@ -1028,16 +1063,14 @@ const FigureLines = memo(function FigureLines({
   nodes,
   w,
   h,
-  introAt,
-  chaos
+  arriveAt
 }: {
   lines: { a: string; b: string }[]
   nodes: Record<string, MotionNode>
   w: number
   h: number
-  /** When the lines start catching on in the intro (ms), or null once it has played. */
-  introAt: number | null
-  chaos: number
+  /** When each star has all but landed in the intro (ms, by id), or null once it has played. */
+  arriveAt: Record<string, number> | null
 }) {
   return lines.map((l) => {
     const A = nodes[l.a]
@@ -1053,13 +1086,14 @@ const FigureLines = memo(function FigureLines({
         y2={(B.y / 100) * h}
         className={cn(
           'board-line transition-opacity duration-300',
-          introAt !== null && 'intro-line',
+          arriveAt !== null && 'intro-line',
           l.a === ME_ID ? 'stroke-foreground/20' : 'stroke-foreground/15'
         )}
         style={
-          introAt !== null
+          arriveAt !== null
             ? ({
-                '--line-delay': `${Math.round(introAt + (hash(`${l.a}|${l.b}`) - 0.3) * 228 * chaos)}ms`
+                // A line catches on once both of its stars are there, give or take a moment.
+                '--line-delay': `${Math.round(Math.max(arriveAt[l.a] ?? 0, arriveAt[l.b] ?? 0) + hash(`${l.a}|${l.b}`) * 90)}ms`
               } as CSSProperties)
             : undefined
         }
@@ -1081,9 +1115,14 @@ type Spark = {
   twinkle: number
 }
 
+/** How many groups the settled dust floats and twinkles in: one layer each, not one per speck. */
+const DUST_GROUPS = 3
+
 /**
- * Debris: sparks thrown out by the blast that stay on as faint, twinkling dust, floating and
- * pulled by the cursor like everything else.
+ * Debris: sparks thrown out by the blast that stay on as faint, twinkling dust. During the blast
+ * each speck flies its own way. Once settled they're plain dots in a few groups, and each group
+ * floats and twinkles as one layer on the compositor: 32 specks each on their own layer, moved
+ * from script every frame, were about 40% of the whole board's per-frame work.
  */
 const Dust = memo(function Dust({
   sparks,
@@ -1098,6 +1137,42 @@ const Dust = memo(function Dust({
   ms: number
   blast: number
 }) {
+  if (!live)
+    return Array.from({ length: DUST_GROUPS }, (_, g) => (
+      <span
+        key={g}
+        aria-hidden
+        className="dust-group pointer-events-none absolute inset-0"
+        style={
+          {
+            '--float': `${11 + g * 3}s`,
+            '--twinkle': `${2.6 + g * 1.1}s`,
+            animationDelay: `${-g * 2.3}s, ${-g * 0.9}s`
+          } as CSSProperties
+        }
+      >
+        {sparks.map(
+          (sp, i) =>
+            i % DUST_GROUPS === g && (
+              <span
+                key={sp.id}
+                data-extra={i % 2 === 1 || undefined}
+                className="absolute rounded-full"
+                style={{
+                  left: `calc(${me[0]}% + ${sp.dx}px)`,
+                  top: `calc(${me[1]}% + ${sp.dy}px)`,
+                  width: sp.size,
+                  height: sp.size,
+                  marginLeft: -sp.size / 2,
+                  marginTop: -sp.size / 2,
+                  background: `var(--spark-${sp.tone})`,
+                  opacity: sp.rest
+                }}
+              />
+            )
+        )}
+      </span>
+    ))
   return sparks.map((sp, i) => (
     <span
       key={sp.id}
@@ -1109,12 +1184,9 @@ const Dust = memo(function Dust({
         top: `calc(${me[1]}% + ${sp.dy}px)`
       }}
     >
-      <span data-node={sp.id} className="block will-change-transform">
+      <span className="block">
         <span
-          className={cn(
-            'block rounded-full',
-            live ? 'intro-spark' : 'spark-twinkle'
-          )}
+          className="intro-spark block rounded-full"
           style={
             {
               width: sp.size,
@@ -1126,12 +1198,8 @@ const Dust = memo(function Dust({
               '--dx': `${sp.dx}px`,
               '--dy': `${sp.dy}px`,
               '--rest': sp.rest,
-              animationDuration: live
-                ? `${Math.round(ms * sp.speed)}ms`
-                : `${sp.twinkle}ms`,
-              animationDelay: live
-                ? `${Math.round(blast + sp.wait)}ms`
-                : `${-sp.wait * 20}ms`
+              animationDuration: `${Math.round(ms * sp.speed)}ms`,
+              animationDelay: `${Math.round(blast + sp.wait)}ms`
             } as CSSProperties
           }
         />
@@ -1205,7 +1273,7 @@ const BubbleNode = memo(function BubbleNode({
             className={cn(
               'mt-2 font-semibold whitespace-nowrap',
               style.label,
-              lit && 'text-link'
+              lit && 'lit-text'
             )}
           >
             {b.title}
@@ -1284,7 +1352,7 @@ const StarNode = memo(function StarNode({
             data-shape="circle"
             className={cn(
               'size-3 rounded-full border-2 border-foreground transition-[background-color,border-color] duration-200',
-              lit ? 'border-brand bg-brand' : ACCENT_BG[AREAS[s.area].accent]
+              lit ? 'star-lit' : ACCENT_BG[AREAS[s.area].accent]
             )}
           />
           <span
@@ -1292,7 +1360,7 @@ const StarNode = memo(function StarNode({
             className={cn(
               'text-[13px] leading-tight font-medium whitespace-nowrap',
               lit
-                ? 'font-semibold text-link'
+                ? 'font-semibold lit-text'
                 : 'text-muted-foreground group-hover:text-foreground'
             )}
           >
@@ -1373,7 +1441,7 @@ const SatelliteNode = memo(function SatelliteNode({
             data-hit={`satellite:${s.kind}`}
             className={cn(
               'mt-1 text-xs font-semibold',
-              isActive && 'text-link'
+              isActive && 'lit-text'
             )}
           >
             {s.label}
@@ -1433,9 +1501,8 @@ const MeNode = memo(function MeNode({
           <Portrait
             hit="me"
             className={cn(
-              'size-36 transition-[border-color,box-shadow] duration-300',
-              meOpen &&
-                'border-brand shadow-[0_0_0_8px_color-mix(in_oklab,var(--brand)_14%,transparent)]'
+              'size-36',
+              meOpen && LIT_RING
             )}
           />
           <p
@@ -1892,10 +1959,6 @@ const Board = memo(function Board({
       if (!live) return NO_FLIGHT
       const c = intro.chaos
       const r = (k: string) => hash(`${id}/${k}`) - 0.5 // -0.5 … 0.5
-      const dx = px ? px[0] : (x - ME[0]) * 1.6
-      const dy = px ? px[1] : y - ME[1]
-      const len = Math.hypot(dx, dy) || 1
-      const swirl = r('swirl') * 140 * c // px, across the line of flight
       const at: [number, number] = px ? ME : [x, y]
       const vars: Record<string, string> = {
         ...(px
@@ -1907,9 +1970,7 @@ const Board = memo(function Board({
               '--fx': ((ME[0] - x) * intro.burst).toFixed(2),
               '--fy': ((ME[1] - y) * intro.burst).toFixed(2)
             }),
-        '--sx': ((-dy / len) * swirl).toFixed(1),
-        '--sy': ((dx / len) * swirl).toFixed(1),
-        '--spin': `${(r('spin') * 80 * c).toFixed(1)}deg`,
+        '--spin': `${(r('spin') * 36 * c).toFixed(1)}deg`,
         '--s0': Math.min(
           0.9,
           intro.scale * (1 + (r('size') + 0.5) * 4 * c)
@@ -1922,6 +1983,22 @@ const Board = memo(function Board({
     },
     [live, intro, ME, blast, delayAt]
   )
+  // When each star has all but reached its spot (the same sums as `fly`): its start, plus the
+  // share of its flight (intro.lines) that covers nearly all the distance. Null once it's played.
+  const starArrivals = useMemo(() => {
+    if (!live) return null
+    const m: Record<string, number> = {}
+    for (const s of stars) {
+      const r = (k: string) => hash(`${s.name}/${k}`) - 0.5
+      const start = Math.max(
+        0,
+        blast + delayAt(s.x, s.y) + r('start') * 123 * intro.chaos
+      )
+      const dur = intro.ms * (1.1 + r('speed') * 0.7 * intro.chaos)
+      m[starId(s.name)] = start + dur * intro.lines
+    }
+    return m
+  }, [live, stars, blast, delayAt, intro])
   // An area's title starts fading in as its stars arrive and finishes as they settle.
   const titleDelay = (x: number, y: number) =>
     Math.round(blast + delayAt(x, y) + intro.ms * 0.3)
@@ -2016,18 +2093,9 @@ const Board = memo(function Board({
         pullReach: 30,
         travel: 4
       }
-    // Dust is light: it floats a little more than a star and the cursor pulls it from farther off.
-    if (size.w)
-      for (const sp of sparks)
-        m[sp.id] = {
-          x: ME[0] + (sp.dx / size.w) * 100,
-          y: ME[1] + (sp.dy / size.h) * 100,
-          weight: 1.2,
-          r: 3,
-          reach: 34
-        }
+    // Dust isn't here: it floats by itself in CSS (Dust), so the loop never touches it.
     return m
-  }, [stars, bubbles, satellites, satPos, ME, sparks, size, scale])
+  }, [stars, bubbles, satellites, satPos, ME, scale])
 
   const activeId = activeStar
     ? starId(activeStar.name)
@@ -2050,7 +2118,7 @@ const Board = memo(function Board({
     [linked, motionNodes]
   )
 
-  useCursorGravity(board, motionNodes, activeId, ready)
+  const placeLines = useCursorGravity(board, motionNodes, activeId, ready)
   useIntentHover(board, active, setActive, ready)
   const { w, h } = size
   const px = (id: string) => {
@@ -2074,6 +2142,10 @@ const Board = memo(function Board({
     activeId && activeId in motionNodes
       ? [...linkedIds].map((id) => ({ a: activeId, b: id }))
       : []
+  // Put a new hover's lines on their (moving) nodes before they're first painted.
+  useLayoutEffect(() => {
+    placeLines.current()
+  }, [placeLines, activeId, linkedIds])
 
   // The areas holding the active star, or the stars the active bubble used.
   const litAreas = new Set(
@@ -2132,15 +2204,14 @@ const Board = memo(function Board({
             nodes={motionNodes}
             w={w}
             h={h}
-            // Each line of a figure catches at its own moment, like a constellation lighting up.
-            introAt={live ? blast + intro.lines : null}
-            chaos={intro.chaos}
+            // Each line catches on as its own two stars reach their spots.
+            arriveAt={starArrivals}
           />
           {hoverLines.map((l) => {
             const A = px(l.a)
             const B = px(l.b)
             return (
-              <g key={`${l.a}-${l.b}`}>
+              <g key={`${l.a}-${l.b}`} className="hover-lines">
                 <line
                   data-a={l.a}
                   data-b={l.b}
@@ -2148,7 +2219,7 @@ const Board = memo(function Board({
                   y1={A.y}
                   x2={B.x}
                   y2={B.y}
-                  className="stroke-brand/35"
+                  className="hover-line"
                   strokeWidth={2}
                 />
                 <line
@@ -2158,7 +2229,7 @@ const Board = memo(function Board({
                   y1={A.y}
                   x2={B.x}
                   y2={B.y}
-                  className="constellation-flow stroke-brand"
+                  className="constellation-flow hover-line-light"
                   strokeWidth={2.5}
                   strokeLinecap="round"
                 />

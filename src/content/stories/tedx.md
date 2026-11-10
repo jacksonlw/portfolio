@@ -40,6 +40,6 @@ For the organizers there was a dashboard with seats sold, revenue and recent ord
 
 ## How it went
 
-I started on September 25, 2019 and worked on it through mid-October, then came back to it for a week in January 2020. In October I moved it from MongoDB to PostgreSQL. Holding the seats and creating the order happen in one step there, and it fails if someone else already has one of the seats.
+I built it over the fall of 2019 and into January 2020. Partway through I moved it from MongoDB to PostgreSQL. Holding the seats and creating the order happen in one step there, and it fails if someone else already has one of the seats.
 
 It never launched. COVID arrived before the event, and the site was never used to sell a ticket.

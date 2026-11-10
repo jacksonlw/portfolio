@@ -1,10 +1,5 @@
 ---
 gallery:
-  - id: broadcast-credits
-    src: /stories/koistream/broadcast-credits.mp4
-    poster: /stories/koistream/broadcast-credits.jpg
-    caption: The end of the broadcast on August 27, 2020.
-    frame: plain
   - id: watch
     src: /stories/koistream/watch.webp
     caption: The watch page with its chat, from the January 2021 code running locally with sample data.
@@ -20,7 +15,7 @@ gallery:
   - id: broadcast-preshow
     src: /stories/koistream/broadcast-preshow.mp4
     poster: /stories/koistream/broadcast-preshow.jpg
-    caption: Drone footage of the campus that played before the August 27, 2020 broadcast began.
+    caption: Drone footage of the campus that played before a broadcast in August 2020 began.
     frame: plain
   - id: home
     src: /stories/koistream/home.webp
@@ -47,8 +42,6 @@ In August 2020 I moved the video onto AWS MediaLive and Amazon CloudFront. Toget
 ## How it went
 
 Once KoiStream was running, over the summer we pitched the school on a real broadcasting studio, with cameras, audio and video switching. The school approved it and paid for it. I was cutting a hole in the wall when the principal walked by and asked, "Do you know what you're doing?" I said, "Yeah, I've got this."
-
-![](#broadcast-credits)
 
 We formed a team of ten students and ran live broadcasts every week through senior year, including an awards show for the whole school at the end of 2020. The studio is still there for students to use.
 

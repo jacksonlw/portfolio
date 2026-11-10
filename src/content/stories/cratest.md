@@ -68,12 +68,12 @@ The logo took three rounds. The first had twelve ideas, from a tonearm drawing a
 
 Some of the plan didn't survive using the app. At first every rating went through a separate review screen. By the end of September I'd moved it onto the card itself, because the card should be for swiping and the stars for rating what's on screen. That's also when the "haven't heard it" swipe came in.
 
-The other big change came on October 5. The app had a Trending tab, and I replaced it with the daily games. I wanted to give people a reason to come back every day, and a chart of what's popular wasn't doing that.
+The other big change came in early October. The app had a Trending tab, and I replaced it with the daily games. I wanted to give people a reason to come back every day, and a chart of what's popular wasn't doing that.
 
 A few friends are testing it now. It isn't on the App Store yet.
 
 ## What it changed about how I work
 
-The Cratest is where I learned to build from specs with a team of coding agents. On September 28 I wrote nine short briefs, covering share cards, invites, streaks, shelves for the Crate and more, each written so I could hand it to a coding agent as is. They were all built and merged that same day.
+The Cratest is where I learned to build from specs with a team of coding agents. One day in late September I wrote nine short briefs, covering share cards, invites, streaks, shelves for the Crate and more, each written so I could hand it to a coding agent as is. They were all built and merged that same day.
 
 Most of my time now goes into deciding what to build and writing it down clearly, then checking what comes back. I move a lot faster than I used to.

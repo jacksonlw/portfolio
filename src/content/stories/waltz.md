@@ -65,9 +65,9 @@ The app is Rust inside Tauri with a React front end. Agents run either through t
 
 ## How it's going
 
-I wrote the spec for this on October 20, 2026, and had one full loop working that evening, from a request to an approved merge. The next night Waltz landed its first changes to its own code. By November 9 it had landed 60 of them, and two had been reverted.
+I wrote the spec in October 2026 and soon had one full loop working, from a request to an approved merge. Within days Waltz was landing changes to its own code. It has landed about 60 of them so far, and two were reverted.
 
-The biggest change came on November 3. By then the app had Goals, Issues, Requirements and more, and my own spec said it "reads like a wall of AI text". I collapsed all of it into Tasks that Waltz keeps up to date and the human only reads. Every agent now posts under one name, Waltz, and the merge buttons for work I'd already asked for went away.
+The biggest change came in early November. By then the app had Goals, Issues, Requirements and more, and my own spec said it "reads like a wall of AI text". I collapsed all of it into Tasks that Waltz keeps up to date and the human only reads. Every agent now posts under one name, Waltz, and the merge buttons for work I'd already asked for went away.
 
 After a Task lands, the agents look back at how it went and write what they learned into their own instructions.
 

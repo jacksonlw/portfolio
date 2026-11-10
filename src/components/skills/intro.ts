@@ -32,12 +32,15 @@ export type Intro = {
   shake: number
   /**
    * How differently each node behaves (0 = all in lockstep, 1 = full chaos): its own speed,
-   * start, spin, curve, size and how hard it overshoots.
+   * start, spin and size. Every node still flies dead straight out from the centre.
    */
   chaos: number
   /** Sparks of debris thrown out from the core (how many; 0 = none). */
   debris: number
-  /** When the lines between stars fade in, after the blast (ms). */
+  /**
+   * How far through its flight (0 to 1) a star is when the lines to it start to fade in. Stars
+   * slow down hard, so at 0.6 one is within a few px of its spot.
+   */
   lines: number
 }
 
@@ -45,16 +48,16 @@ export type Intro = {
 export const INTRO: Intro = {
   buildup: 525,
   kick: 79,
-  ms: 420,
-  spread: 123,
+  ms: 640,
+  spread: 150,
   burst: 1,
   scale: 0.1,
-  overshoot: 1,
+  overshoot: 0,
   flash: true,
   bloom: true,
   shockwave: true,
   shake: 9,
   chaos: 1,
   debris: 32,
-  lines: 298
+  lines: 0.6
 }

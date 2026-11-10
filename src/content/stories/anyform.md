@@ -61,12 +61,12 @@ To test all of this I built Fernway, a made-up outdoor clothing shop with 39 pro
 
 ## How it's going
 
-The first commit, on October 6, 2026, was only the plan. It covered the design, privacy, the trace and the Scouts, written out before any code. The first version I could test was tagged that afternoon.
+I started in October 2026 with only a plan. It covered the design, privacy, the trace and the Scouts, written out before any code.
 
-Some of the plan changed within a day. The privacy mode started out swapping all text it didn't recognize, and that hid labels like "Confirm size" from the models, so on October 7 I narrowed it to personal data. The same day I merged two lists that turned out to be the same thing seen twice, and now there's one list of findings.
+Some of the plan changed early. The privacy mode started out swapping all text it didn't recognize, and that hid labels like "Confirm size" from the models, so I narrowed it to personal data. I also merged two lists that turned out to be the same thing seen twice, and now there's one list of findings.
 
 The Scouts are the least finished part. They don't yet catch enough of Fernway's planted problems to pass my own benchmark. I'm still building it.
 
 ## What it changed about how I work
 
-I didn't write most of this code by hand. The plan was a list of small pieces, each saying what it needed and how to tell it was done, and coding agents built them side by side while I made the decisions the plan had left open. Everything in these pictures was built in three days, October 6 to 8.
+I didn't write most of this code by hand. The plan was a list of small pieces, each saying what it needed and how to tell it was done, and coding agents built them side by side while I made the decisions the plan had left open. Everything in these pictures was built in a few days.
