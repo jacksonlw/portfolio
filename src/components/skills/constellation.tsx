@@ -1435,7 +1435,7 @@ const SatelliteNode = memo(function SatelliteNode({
         <a
           href={s.href}
           data-sat={s.kind}
-          {...(s.kind !== 'resume' && s.kind !== 'email'
+          {...(s.kind !== 'email'
             ? { target: '_blank', rel: 'noopener noreferrer' }
             : {})}
           onFocus={() => open({ kind: 'satellite', id: s.kind })}
@@ -2673,7 +2673,7 @@ const Column = memo(function Column({
           <li key={s.kind}>
             <a
               href={s.href}
-              {...(s.kind !== 'resume' && s.kind !== 'email'
+              {...(s.kind !== 'email'
                 ? { target: '_blank', rel: 'noopener noreferrer' }
                 : {})}
               aria-label={
