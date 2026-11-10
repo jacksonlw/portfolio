@@ -16,4 +16,10 @@ machine-readable outputs. Only real facts go in there; anything not yet written 
 - **Project pages** (`/projects/<slug>` and their `.md` twins) are built but switched off with
   `PROJECT_PAGES_ENABLED` in `src/content/profile.ts`. Flip it to `true` to publish them again;
   the constellation links, sitemap and agent views follow the same switch.
-- **Illustrations** are reviewed at `/dev/illustrations` (development only).
+- **The page** is one constellation (`src/components/skills/constellation.tsx`); its vocabulary
+  (Me node, satellite, bubble, star, area, illustration, style) is in `GLOSSARY.md`.
+- **Illustrations** fill every bubble and satellite; no logos. They're shape data, one drawing per subject
+  (`src/components/illustrations/drawings.ts`), drawn in one glossy style (`render.tsx`).
+- **Layout:** every position on the page comes from `src/components/skills/layouts.ts`.
+- **Intro:** the opening animation is a preset in `src/components/skills/intro.ts` (`INTRO`); the
+  replay button beside the theme switch plays it again.

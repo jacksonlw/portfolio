@@ -7,6 +7,7 @@
 import {
   EDUCATION,
   EXPERIENCE,
+  PRESS,
   PROFILE,
   PROJECT_PAGES_ENABLED,
   PROJECTS,
@@ -84,6 +85,10 @@ export function llmsTxt(): string {
         : `- ${p.title}: ${p.summary} (full details in ${abs('/llms-full.txt')})`
     ),
     '',
+    '## Press',
+    '',
+    ...PRESS.map((a) => `- [${a.title}](${a.url}): ${a.publisher}, ${a.date}`),
+    '',
     '## Contact',
     '',
     `- Email: ${PROFILE.email}`,
@@ -135,6 +140,18 @@ export function llmsFullTxt(): string {
     )
   }
 
+  out.push('## Press', '')
+  for (const a of PRESS) {
+    out.push(
+      `### ${a.title}`,
+      '',
+      `${a.publisher} · ${a.date} · ${a.url}`,
+      '',
+      a.summary,
+      ''
+    )
+  }
+
   out.push('## Skills', '')
   for (const area of [...new Set(SKILLS.map((s) => s.area))]) {
     out.push(`### ${area}`, '')
@@ -162,6 +179,7 @@ export function profileJson() {
     education: EDUCATION,
     skills: SKILLS,
     work: WORK,
+    press: PRESS,
     projects: PROJECTS.map((p) => ({
       ...p,
       ...(PROJECT_PAGES_ENABLED
@@ -218,7 +236,14 @@ function person() {
       name: e.school
     })),
     knowsAbout: SKILLS.map((s) => s.name),
-    sameAs: PROFILE.links.map((l) => l.href)
+    sameAs: PROFILE.links.map((l) => l.href),
+    subjectOf: PRESS.map((a) => ({
+      '@type': 'Article',
+      headline: a.title,
+      url: a.url,
+      datePublished: a.date,
+      publisher: { '@type': 'Organization', name: a.publisher }
+    }))
   }
 }
 

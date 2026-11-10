@@ -1,25 +1,17 @@
 import type { Project } from '@/content/profile'
-import {
-  Illustration,
-  hasIllustration
-} from '@/components/illustrations/registry'
+import { Illustration } from '@/components/illustrations/registry'
 import { TINT_BG } from '@/lib/accent'
 import { cn } from '@/lib/cn'
 
-/**
- * A project's art on a panel in its pastel accent: its badge once drawn, else its name set large.
- * `size` is the badge's rendered width (it sets the outline weight for small renders).
- */
+/** A project's panel in its pastel accent: its illustration. */
 export function ProjectMedia({
   project,
   className,
-  artClassName,
-  size
+  artClassName
 }: {
   project: Project
   className?: string
   artClassName?: string
-  size?: number
 }) {
   return (
     <div
@@ -29,17 +21,10 @@ export function ProjectMedia({
         className
       )}
     >
-      {hasIllustration(project.slug) ? (
-        <Illustration
-          name={project.slug}
-          size={size}
-          className={cn('h-auto w-[44%]', artClassName)}
-        />
-      ) : (
-        <span className="text-title text-foreground/40" aria-hidden>
-          {project.title}
-        </span>
-      )}
+      <Illustration
+        name={project.slug}
+        className={cn('h-auto w-[24%]', artClassName)}
+      />
     </div>
   )
 }

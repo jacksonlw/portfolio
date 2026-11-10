@@ -2,7 +2,7 @@ import type { Metadata, Viewport } from 'next'
 import localFont from 'next/font/local'
 import './globals.css'
 import { ChatbotSlot } from '@/components/chatbot/chatbot-slot'
-import { Footer } from '@/components/site/footer'
+import { ThemeToggle } from '@/components/site/theme-toggle'
 import { PROFILE } from '@/content/profile'
 
 // The AnyForm brand typeface and its mono companion (OFL; licences beside the files in ./fonts).
@@ -54,8 +54,17 @@ export const metadata: Metadata = {
 }
 
 export const viewport: Viewport = {
-  themeColor: '#FFFFFF'
+  themeColor: [
+    { media: '(prefers-color-scheme: light)', color: '#f4f5f7' },
+    { media: '(prefers-color-scheme: dark)', color: '#111216' }
+  ]
 }
+
+/**
+ * Picks light or dark before the page paints, so there's no flash: the visitor's own choice if
+ * they've switched before, else their system's.
+ */
+const THEME_SCRIPT = `try{var t=localStorage.getItem('theme'),d=t?t==='dark':matchMedia('(prefers-color-scheme: dark)').matches,e=document.documentElement;e.classList.toggle('dark',d);e.style.colorScheme=d?'dark':'light'}catch(_){}`
 
 export default function RootLayout({
   children
@@ -68,9 +77,14 @@ export default function RootLayout({
       className={`${flex.variable} ${code.variable}`}
       suppressHydrationWarning
     >
+      <head>
+        {/* Inline on purpose, so it runs before the first paint (no flash of the wrong theme).
+            React warns about script tags in development; it's harmless here. */}
+        <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
+      </head>
       <body className="flex min-h-dvh flex-col" suppressHydrationWarning>
         <main className="flex-1">{children}</main>
-        <Footer />
+        <ThemeToggle />
         <ChatbotSlot />
       </body>
     </html>

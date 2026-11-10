@@ -44,7 +44,7 @@ export type Project = {
   highlights: string[]
   /** The long-form write-up, filled in together with Jackson. */
   story: StorySection[]
-  /** A screenshot in /public, until the project's illustration lands. */
+  /** A screenshot in /public, for the project page. */
   image: string | null
   imageKind: 'mobile' | 'web' | null
 }
@@ -66,12 +66,7 @@ export type Education = {
 }
 
 export type SkillArea =
-  | 'AI & agents'
-  | 'Languages'
-  | 'Frontend & mobile'
-  | 'Backend & data'
-  | 'Cloud & tools'
-  | 'How I work'
+  'AI & agents' | 'Product & frontend' | 'Backend & data' | 'Cloud'
 
 export type Skill = {
   name: string
@@ -90,4 +85,30 @@ export type WorkNode = {
   /** A few words under the bubble: the role. */
   tagline: string
   summary: string
+}
+
+/** Something written about Jackson by someone else: an article, a profile, an interview. */
+export type Press = {
+  title: string
+  publisher: string
+  /** ISO date, e.g. "2026-09-28". */
+  date: string
+  url: string
+  /** What the piece covers, kept to what it actually says. */
+  summary: string
+  /** The bubbles it covers (project or work slugs): lit with its satellite on hover. */
+  covers: string[]
+}
+
+/** A small body orbiting the Me node that takes the visitor somewhere. */
+export type Satellite = {
+  kind: 'resume' | 'email' | 'github' | 'press'
+  /** Its short name under the drawing. */
+  label: string
+  href: string
+  /** What its popover says. */
+  title: string
+  detail: string
+  /** The bubbles it covers (project or work slugs), lit with it on hover. */
+  covers: string[]
 }

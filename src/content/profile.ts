@@ -12,7 +12,9 @@ import type {
   Education,
   Experience,
   Link,
+  Press,
   Project,
+  Satellite,
   Skill,
   WorkNode
 } from './types'
@@ -22,7 +24,9 @@ export type {
   Education,
   Experience,
   Link,
+  Press,
   Project,
+  Satellite,
   Skill,
   WorkNode
 } from './types'
@@ -36,10 +40,10 @@ export const PROFILE = {
   resume: '/resume.pdf',
   /** A one-line description, for metadata and the machine-readable views. */
   intro:
-    'I’m Jackson Lawrence, a software engineer at Oracle based in San Francisco, CA.',
+    'I’m Jackson Lawrence, a software engineer based in San Francisco, CA.',
   /** The search and share description: what a scanner should take away in one sentence. */
   description:
-    'Software engineer in San Francisco building AI agents in production at Oracle (multi-agent orchestration, RAG, full-stack), plus AnyForm and The Cratest.',
+    'Jackson Lawrence is a software engineer in San Francisco who builds AI agents and full-stack apps. He’s working on AnyForm, The Cratest and Waltz.',
   photo: '/profile-picture.jpg',
   /**
    * The About, in Jackson's direction: a short lead that's always shown and a longer part behind
@@ -48,14 +52,14 @@ export const PROFILE = {
    */
   about: {
     lead: [
-      'I’m a **software engineer** who builds products people actually want to use. I picked up design thinking in high school and it’s shaped how I work ever since: I start with the people I’m building for, put something real in front of them early, and keep refining until it works for them.'
+      'I’m a **software engineer** who puts early prototypes in front of the people I’m building for, then keeps improving the product until it works for them.'
     ],
     more: [
-      'That approach has carried me from a smart school prototype I presented at Oracle OpenWorld and a livestream platform for my school’s community, to co-founding Trailblaze and growing our app past 10,000 users in its first year, to teaching new developers at CareerFoundry. Today I build AI agents at Oracle, and on my own time I’m working on AnyForm and The Cratest.',
-      'I keep a close eye on markets and emerging tech, because the best products come from knowing both what people need and what is possible.'
+      'Right now I build AI agents in production: a workflow builder that handles thousands of Gen AI chats a day, and a RAG pipeline that took in over 2 million documents in under a month. On my own time I’m building AnyForm, The Cratest and Waltz.',
+      'Before that I co-founded Trailblaze, growing it past 10,000 users in its first year, and taught developers at CareerFoundry.'
     ]
   },
-  links: [{ label: 'Code', href: 'https://github.com/JacksonL1787' }] as Link[]
+  links: [{ label: 'Code', href: 'https://github.com/jacksonlw' }] as Link[]
 }
 
 export const EXPERIENCE: Experience[] = [
@@ -101,7 +105,7 @@ export const EXPERIENCE: Experience[] = [
   },
   {
     company: 'CareerFoundry',
-    title: 'Web Development Instructor',
+    title: 'Web Dev Instructor',
     location: 'Remote, US',
     dates: { start: 'July 2022', end: 'May 2023' },
     bullets: [
@@ -120,6 +124,20 @@ export const EXPERIENCE: Experience[] = [
       'Delivered HD video stream through the use of FFmpeg, AWS MediaLive, and Amazon CloudFront',
       'Constructed a full-fledged broadcasting studio on campus with high-grade production equipment'
     ]
+  }
+]
+
+/** Written about Jackson by others. Summaries stick to what each piece says. */
+export const PRESS: Press[] = [
+  {
+    title:
+      'From d.tech to Oracle: Jackson Lawrence and his full-circle journey',
+    publisher: 'Oracle Social Impact',
+    date: '2026-09-28',
+    url: 'https://blogs.oracle.com/socialimpact/from-d-tech-to-oracle-jackson-lawrence-and-his-full-circle-journey',
+    summary:
+      'An interview about Jackson’s path from Design Tech High School (d.tech), on Oracle’s Redwood Shores campus, to a software engineer role at Oracle working on emerging AI capabilities and Oracle’s chatbots. It covers building KoiStream and the school’s broadcast studio during COVID, presenting projects at Oracle OpenWorld twice as a student, taking Oracle Education Foundation classes and later coaching d.tech students as a volunteer, and how he uses design thinking in AI work today.',
+    covers: ['oracle', 'koistream']
   }
 ]
 
@@ -152,92 +170,73 @@ export const SKILLS: Skill[] = [
   skill(
     'Multi-Agent Orchestration',
     'AI & agents',
-    'Getting agents to hand work to each other and to people. At Oracle I architected an agentic workflow builder that handles thousands of Gen AI chats a day in production, and helped deliver the handoff from AI agents to human agents.',
-    ['oracle']
+    'Getting agents to hand work to each other and to people. At Oracle I architected an agentic workflow builder that handles thousands of Gen AI chats a day, and I helped build the handoff from AI agents to human agents in production support chat. Those workflows run on LangGraph and LangChain. Waltz is built on the same idea, where a team of agents does the work and a human steers the why.',
+    ['oracle', 'waltz']
   ),
   skill(
     'RAG',
     'AI & agents',
-    'Grounding models in real documents. At Oracle I built and deployed an OCR + RAG pipeline that ingested over 2 million documents in under a month; as an intern I built the microservice that uploads documents for RAG.',
+    'Grounding models in real documents. At Oracle I built and deployed an OCR + RAG pipeline that ingested over 2 million documents in under a month. As an intern I built the microservice that uploads documents for it. Underneath sit embeddings and a vector database, so a search matches on meaning instead of exact words.',
     ['oracle']
   ),
   skill(
     'Prompt Engineering',
     'AI & agents',
-    'The everyday craft behind every agent I ship, and behind AnyForm, where models write findings from session traces and Scouts act as AI users.',
-    ['anyform', 'oracle']
+    'Part of every agent I ship. In AnyForm, prompts are how models write findings from session traces and how Scouts act as AI users, and Waltz’s agents run on them too.',
+    ['anyform', 'oracle', 'waltz']
   ),
   skill(
-    'Embeddings',
+    'AI Coding Tools',
     'AI & agents',
-    'Turning documents into vectors so retrieval finds meaning, not just matching words: the core of the RAG systems I build.'
-  ),
-  skill(
-    'Vector DBs',
-    'AI & agents',
-    'Where embeddings live and get searched: the storage layer under the RAG pipelines I build at Oracle.',
-    ['oracle']
-  ),
-  skill(
-    'LangGraph',
-    'AI & agents',
-    'Agent workflows as graphs, with state, branches and loops: the shape of the agentic workflows I build at Oracle.',
-    ['oracle']
-  ),
-  skill(
-    'LangChain',
-    'AI & agents',
-    'Building blocks for LLM apps: chaining model calls, tools and retrieval together, part of my AI work at Oracle.',
-    ['oracle']
-  ),
-  skill(
-    'Claude Code',
-    'AI & agents',
-    'One of my daily drivers for writing software, on AnyForm, The Cratest and this site.',
-    ['anyform', 'cratest']
-  ),
-  skill(
-    'Codex',
-    'AI & agents',
-    'One of the coding agents I use at Oracle. Trying the newest tools as they land is part of staying current.',
-    ['oracle']
+    'I use Claude Code every day on AnyForm, The Cratest, Waltz and this site, and Codex at Oracle. I try new coding tools when they come out.',
+    ['oracle', 'anyform', 'cratest', 'waltz']
   ),
 
-  // Languages
+  // Product & frontend
   skill(
     'TypeScript',
-    'Languages',
-    'My default since KoiStream: Trailblaze, AnyForm, The Cratest, this site, and my work at Oracle.',
-    ['oracle', 'koistream', 'trailblaze', 'anyform', 'cratest']
+    'Product & frontend',
+    'My default language since KoiStream. Trailblaze, AnyForm, The Cratest, Waltz and this site are all TypeScript, and I use it at Oracle. Before that I wrote plain JavaScript, for Branch and the TEDx ticketing site, and JavaScript is what I taught at CareerFoundry.',
+    [
+      'oracle',
+      'careerfoundry',
+      'anyform',
+      'cratest',
+      'waltz',
+      'trailblaze',
+      'koistream',
+      'tedx',
+      'branch'
+    ]
   ),
   skill(
-    'Go',
-    'Languages',
-    'My backend language of choice: Trailblaze’s services and the APIs behind AnyForm and The Cratest.',
-    ['trailblaze', 'anyform', 'cratest']
+    'React / Next.js',
+    'Product & frontend',
+    'I’ve built Trailblaze, AnyForm, The Cratest and Waltz with React, taught it at CareerFoundry, and use it at Oracle. Next.js runs Trailblaze’s public website, AnyForm’s dashboard and site, The Cratest’s admin console and this site.',
+    ['oracle', 'careerfoundry', 'trailblaze', 'anyform', 'cratest', 'waltz']
   ),
   skill(
-    'Java',
-    'Languages',
-    'Enterprise backends at Oracle, including a Helidon MP microservice with CRUD endpoints for RAG document uploads.',
+    'React Native',
+    'Product & frontend',
+    'I built Trailblaze’s job-recruiting app in React Native, database included, and it passed 10,000 users in under a year. The Cratest uses it too.',
+    ['trailblaze', 'cratest']
+  ),
+  skill(
+    'SwiftUI',
+    'Product & frontend',
+    'The Cratest’s iOS app is SwiftUI with UIKit, and so are its music games, Crate Digger and Cover Story.',
+    ['cratest']
+  ),
+  skill(
+    'Oracle JET',
+    'Product & frontend',
+    'Oracle’s JavaScript toolkit. As an intern I designed a type-safe way for a Knockout-based JET project to manage global state with 30+ variables.',
     ['oracle']
   ),
   skill(
-    'Python',
-    'Languages',
-    'Scripting and AI tooling at Oracle, where new AI libraries usually land first.',
-    ['oracle']
-  ),
-  skill(
-    'SQL',
-    'Languages',
-    'Designing data models, from Trailblaze’s database architecture to the PostgreSQL schemas behind AnyForm and The Cratest.',
-    ['trailblaze', 'anyform', 'cratest']
-  ),
-  skill(
-    'JavaScript',
-    'Languages',
-    'The language under everything I’ve built, from Branch and KoiStream to Trailblaze, my teaching at CareerFoundry and my work at Oracle.',
+    'UI/UX & Figma',
+    'Product & frontend',
+    'I design what I build, at Oracle and on my own projects. Trailblaze’s website was mine to design and build, and AnyForm exists to find what gets in users’ way. I work things out in Figma first, as I did for Trailblaze and KoiStream, and I used it in my CareerFoundry lessons.',
     [
       'oracle',
       'careerfoundry',
@@ -250,63 +249,12 @@ export const SKILLS: Skill[] = [
     ]
   ),
   skill(
-    'GraphQL',
-    'Languages',
-    'The API layer behind Trailblaze, so the app asks for exactly the data it needs.',
-    ['trailblaze']
-  ),
-
-  // Frontend & mobile
-  skill(
-    'Next.js',
-    'Frontend & mobile',
-    'Trailblaze’s public website, AnyForm’s dashboard and site, The Cratest’s admin console, and this site.',
-    ['trailblaze', 'anyform', 'cratest']
-  ),
-  skill(
-    'React Native',
-    'Frontend & mobile',
-    'I built Trailblaze’s job-recruiting app in React Native, screens to services to database, and grew it past 10,000 users in under a year. The Cratest uses it too.',
-    ['trailblaze', 'cratest']
-  ),
-  skill(
-    'SwiftUI',
-    'Frontend & mobile',
-    'The Cratest’s native iOS app is SwiftUI with UIKit, music games like Crate Digger and Cover Story included.',
-    ['cratest']
-  ),
-  skill(
-    'React',
-    'Frontend & mobile',
-    'The foundation under my web and mobile work: Trailblaze, AnyForm, The Cratest, my teaching at CareerFoundry and my work at Oracle.',
-    ['oracle', 'careerfoundry', 'trailblaze', 'anyform', 'cratest']
-  ),
-  skill(
-    'Oracle JET',
-    'Frontend & mobile',
-    'Oracle’s JavaScript toolkit. As an intern I designed a type-safe way for a Knockout-based JET project to manage global state with 30+ variables.',
-    ['oracle']
-  ),
-  skill(
-    'Tailwind CSS',
-    'Frontend & mobile',
-    'How I style the web: AnyForm, The Cratest, Trailblaze and this site.',
-    ['anyform', 'cratest', 'trailblaze']
-  ),
-
-  // Backend & data
-  skill(
-    'PostgreSQL',
-    'Backend & data',
-    'The database under both AnyForm and The Cratest.',
-    ['anyform', 'cratest']
-  ),
-  skill(
-    'REST APIs',
-    'Backend & data',
-    'The backbone of nearly everything I’ve built: from a microservice for LLM queries and file uploads at Oracle, where I automated testing for over 90% of scenarios, to the APIs behind every one of my projects.',
+    'Design Thinking',
+    'Product & frontend',
+    'I learned design thinking in high school at Design Tech and I still work that way. I start with the people I’m building for and get a prototype in front of them early, then change it until it works for them.',
     [
       'oracle',
+      'careerfoundry',
       'anyform',
       'cratest',
       'trailblaze',
@@ -315,11 +263,43 @@ export const SKILLS: Skill[] = [
       'branch'
     ]
   ),
+
+  // Backend & data
   skill(
-    'Helidon',
+    'Go',
     'Backend & data',
-    'Oracle’s Java microservice framework. I built and deployed a Helidon MP service with CRUD endpoints for RAG uploads.',
+    'My usual backend language. Trailblaze’s services are Go, and so are the APIs behind AnyForm and The Cratest.',
+    ['trailblaze', 'anyform', 'cratest']
+  ),
+  skill(
+    'Rust',
+    'Backend & data',
+    'Waltz’s backend is Rust, with its own client for the Anthropic API, and it runs inside a Tauri desktop app.',
+    ['waltz']
+  ),
+  skill(
+    'Java / Helidon',
+    'Backend & data',
+    'Enterprise backends at Oracle. As an intern I built and deployed a Helidon MP microservice with CRUD endpoints for RAG document uploads.',
     ['oracle']
+  ),
+  skill(
+    'Python',
+    'Backend & data',
+    'I use it at Oracle for scripts and AI tooling, since new AI libraries usually come out for Python first.',
+    ['oracle']
+  ),
+  skill(
+    'Node.js / Express',
+    'Backend & data',
+    'The servers behind Branch, the TEDx ticketing site and KoiStream, with Express for the HTTP APIs.',
+    ['branch', 'tedx', 'koistream']
+  ),
+  skill(
+    'PostgreSQL / SQL',
+    'Backend & data',
+    'I designed Trailblaze’s database, and the PostgreSQL schemas behind AnyForm and The Cratest.',
+    ['trailblaze', 'anyform', 'cratest']
   ),
   skill(
     'Oracle 26ai Database',
@@ -327,124 +307,50 @@ export const SKILLS: Skill[] = [
     'Oracle’s AI database, with vector search built in.'
   ),
   skill(
-    'Node.js',
+    'REST & GraphQL',
     'Backend & data',
-    'JavaScript on the server, behind Branch, the TEDx ticketing site and KoiStream.',
-    ['branch', 'tedx', 'koistream']
-  ),
-  skill(
-    'Express',
-    'Backend & data',
-    'HTTP APIs on Node.js for Branch, the TEDx ticketing site and KoiStream.',
-    ['branch', 'tedx', 'koistream']
+    'Almost everything I’ve built talks over REST. At Oracle I automated testing for over 90% of scenarios in a REST microservice that handles LLM queries and file uploads. Trailblaze used GraphQL, so the app could ask for exactly the data it needed.',
+    [
+      'oracle',
+      'anyform',
+      'cratest',
+      'trailblaze',
+      'koistream',
+      'tedx',
+      'branch'
+    ]
   ),
 
-  // Cloud & tools
+  // Cloud
   skill(
     'AWS',
-    'Cloud & tools',
+    'Cloud',
     'KoiStream delivered HD live video through AWS MediaLive and Amazon CloudFront, and Trailblaze, AnyForm and The Cratest run on AWS too.',
     ['koistream', 'trailblaze', 'anyform', 'cratest']
   ),
   skill(
+    'OCI',
+    'Cloud',
+    'Oracle Cloud Infrastructure, where my work at Oracle runs.',
+    ['oracle']
+  ),
+  skill(
+    'Kubernetes / Terraform',
+    'Cloud',
+    'I use Terraform at Oracle and for AnyForm and The Cratest, so the cloud setup lives in code and gets reviewed like code. At Oracle our services run on Kubernetes.',
+    ['oracle', 'anyform', 'cratest']
+  ),
+  skill(
     'FFmpeg',
-    'Cloud & tools',
-    'The video workhorse behind KoiStream’s HD live streams.',
+    'Cloud',
+    'KoiStream ran its HD live streams through FFmpeg.',
     ['koistream']
   ),
   skill(
     'Playwright',
-    'Cloud & tools',
-    'Browser automation at Oracle, and the engine behind AnyForm’s Scouts, AI users that rehearse your app before real users do.',
-    ['oracle', 'anyform']
-  ),
-  skill(
-    'OCI',
-    'Cloud & tools',
-    'Oracle Cloud Infrastructure, home to my enterprise work at Oracle.',
-    ['oracle']
-  ),
-  skill(
-    'Terraform',
-    'Cloud & tools',
-    'Infrastructure as code at Oracle and for AnyForm and The Cratest: cloud setups that are written down, reviewed and repeatable.',
-    ['oracle', 'anyform', 'cratest']
-  ),
-  skill(
-    'Kubernetes',
-    'Cloud & tools',
-    'Running and scaling containerised services at Oracle.',
-    ['oracle']
-  ),
-  skill(
-    'Figma',
-    'Cloud & tools',
-    'Where I design before I build: Trailblaze, KoiStream and the lessons I taught at CareerFoundry.',
-    ['trailblaze', 'koistream', 'careerfoundry']
-  ),
-  skill(
-    'Git',
-    'Cloud & tools',
-    'Version control for everything I build, including the public source for KoiStream, TEDx Design Tech and Branch.',
-    ['koistream', 'tedx', 'branch']
-  ),
-  skill('Jira', 'Cloud & tools', 'Tracking work at Oracle and at Trailblaze.', [
-    'oracle',
-    'trailblaze'
-  ]),
-
-  // How I work
-  skill(
-    'Root cause analysis',
-    'How I work',
-    'Following a problem all the way to its cause, not just its symptom. Full RCA, start to finish.'
-  ),
-  skill(
-    'Design Thinking',
-    'How I work',
-    'Design thinking has shaped how I build since high school at Design Tech. It taught me to start with the people I’m building for, then prototype, test and refine until it works for them. Every product I’ve designed since has started with the user.',
-    [
-      'oracle',
-      'careerfoundry',
-      'anyform',
-      'cratest',
-      'trailblaze',
-      'koistream',
-      'tedx',
-      'branch'
-    ]
-  ),
-  skill(
-    'Agile',
-    'How I work',
-    'Scrum meetings, code reviews and production releases with Oracle teams since my first internship, and the same rhythm running engineering at Trailblaze.',
-    ['oracle', 'trailblaze']
-  ),
-  skill(
-    'UI/UX',
-    'How I work',
-    'Designing for the people using it, in my work at Oracle and in every project I’ve built: Trailblaze’s website was mine end to end, and AnyForm exists to find what gets in users’ way.',
-    [
-      'oracle',
-      'anyform',
-      'cratest',
-      'trailblaze',
-      'koistream',
-      'tedx',
-      'branch'
-    ]
-  ),
-  skill(
-    'Teaching',
-    'How I work',
-    'As a CareerFoundry instructor I taught new developers to build full-stack web apps, with feedback on every project within 24 hours.',
-    ['careerfoundry']
-  ),
-  skill(
-    'Startups',
-    'How I work',
-    'Co-founder and CTO of Trailblaze for over three years, from the first screen to 10,000+ users.',
-    ['trailblaze']
+    'Cloud',
+    'I use it for browser automation at Oracle. In AnyForm it drives the Scouts, AI users that try your app before real users do, and Waltz’s end-to-end tests run on it.',
+    ['oracle', 'anyform', 'waltz']
   )
 ]
 
@@ -460,8 +366,9 @@ export const PROJECTS: Project[] = [
     slug: 'anyform',
     accent: 'sky',
     title: 'AnyForm',
-    tagline: 'AI-reviewed session replays',
-    summary: 'See what your users saw, and fix what got in their way.',
+    tagline: 'AI session replays',
+    summary:
+      'See what your users saw, and fix what got in their way. It plays each visit back as a trace a model can read, and Scouts, AI users you describe, rehearse your app before real users do.',
     status: 'in-development',
     role: null,
     dates: null,
@@ -476,7 +383,7 @@ export const PROJECTS: Project[] = [
     slug: 'cratest',
     accent: 'sun',
     title: 'The Cratest',
-    tagline: 'Social music reviews',
+    tagline: 'Music reviews',
     summary: 'A social platform for reviewing songs, albums and artists.',
     status: 'in-development',
     role: null,
@@ -489,32 +396,29 @@ export const PROJECTS: Project[] = [
     imageKind: null
   },
   {
-    slug: 'trailblaze',
-    accent: 'ocean',
-    title: 'Trailblaze',
-    tagline: 'Jobs for new talent',
-    summary: 'Job opportunities for the next generation of talent.',
-    status: null,
-    role: 'Co-Founder & CTO',
-    dates: { start: 'January 2021', end: 'April 2024' },
-    stack: ['React Native', 'Next.js'],
-    links: [{ label: 'trailblaze.to', href: 'https://trailblaze.to' }],
-    highlights: [
-      'Grew the mobile app to over 10,000 users in less than one year',
-      'Built the screens, services and database architecture of the React Native app',
-      'Designed and built the public website in Next.js'
-    ],
+    slug: 'waltz',
+    accent: 'lavender',
+    title: 'Waltz',
+    tagline: 'Agent software factory',
+    summary:
+      'A desktop app where a team of agents does the work and a human steers the why.',
+    status: 'in-development',
+    role: null,
+    dates: { start: 'October 2026', end: null },
+    stack: ['Rust', 'Tauri', 'React', 'TypeScript', 'Anthropic API', 'MCP'],
+    links: [],
+    highlights: [],
     story: [],
-    image: '/grindstone-mockup-2.png',
-    imageKind: 'mobile'
+    image: null,
+    imageKind: null
   },
   {
     slug: 'koistream',
     accent: 'lavender',
     title: 'KoiStream',
-    tagline: 'Community livestreams',
+    tagline: 'Livestreaming',
     summary:
-      'Connecting students, staff, and families through community livestreams.',
+      'A livestream platform for my high school’s students, staff and families.',
     status: 'archived',
     role: 'Director & Full-Stack Developer',
     dates: { start: 'March 2020', end: 'June 2021' },
@@ -522,7 +426,7 @@ export const PROJECTS: Project[] = [
     links: [
       {
         label: 'Source code',
-        href: 'https://github.com/JacksonL1787/koistream'
+        href: 'https://github.com/jacksonlw/koistream'
       }
     ],
     highlights: [
@@ -547,7 +451,7 @@ export const PROJECTS: Project[] = [
     links: [
       {
         label: 'Source code',
-        href: 'https://github.com/JacksonL1787/ticketing-tedxdesigntech'
+        href: 'https://github.com/jacksonlw/ticketing-tedxdesigntech'
       }
     ],
     highlights: [],
@@ -559,14 +463,14 @@ export const PROJECTS: Project[] = [
     slug: 'branch',
     accent: 'mint',
     title: 'Branch',
-    tagline: 'Smart school prototype',
+    tagline: 'Smart school',
     summary: 'Smart school prototype presented at Oracle OpenWorld 2019.',
     status: 'archived',
     role: null,
     dates: null,
     stack: [],
     links: [
-      { label: 'Source code', href: 'https://github.com/JacksonL1787/Branch' }
+      { label: 'Source code', href: 'https://github.com/jacksonlw/Branch' }
     ],
     highlights: ['Presented at Oracle OpenWorld 2019'],
     story: [],
@@ -586,15 +490,23 @@ export const WORK: WorkNode[] = [
     tagline: 'Software Engineer',
     accent: 'rose',
     summary:
-      'Software Engineer on a small R&D team since June 2025, after two internships. Full-stack ownership of AI agents in production, handling thousands of Gen AI chats a day, plus OCR and RAG ingestion and AI-to-human handoff.'
+      'Software engineer on a small R&D team since June 2025, after two summer internships. I own AI agents in production that handle thousands of Gen AI chats a day, built an OCR and RAG pipeline for documents, and worked on handing chats from AI agents to people.'
   },
   {
     slug: 'careerfoundry',
     title: 'CareerFoundry',
-    tagline: 'Web Development Instructor',
+    tagline: 'Web Dev Instructor',
     accent: 'peach',
     summary:
       'Web Development Instructor, July 2022 to May 2023. Taught new developers to build full-stack web apps, with feedback on every project within 24 hours.'
+  },
+  {
+    slug: 'trailblaze',
+    title: 'Trailblaze',
+    tagline: 'Co-Founder & CTO',
+    accent: 'ocean',
+    summary:
+      'Co-Founder & CTO, January 2021 to April 2024. Built the screens, services and database of our job-recruiting app in React Native and grew it past 10,000 users in under a year, and designed and built the company website in Next.js.'
   }
 ]
 
@@ -608,3 +520,53 @@ export const usedInTitle = (slug: string) =>
 
 export const formatDates = (d: DateRange) =>
   d.label ?? `${d.start} – ${d.end ?? 'Present'}`
+
+const github = PROFILE.links.find((l) => l.href.includes('github.com'))
+
+const pressDate = (iso: string) =>
+  new Date(`${iso}T12:00:00Z`).toLocaleDateString('en-US', {
+    month: 'long',
+    day: 'numeric',
+    year: 'numeric',
+    timeZone: 'UTC'
+  })
+
+/** The satellites around the Me node, derived from the profile and the press list. */
+export const SATELLITES: Satellite[] = [
+  {
+    kind: 'resume',
+    label: 'Resume',
+    href: PROFILE.resume,
+    title: 'Resume',
+    detail: 'Open as a PDF',
+    covers: []
+  },
+  {
+    kind: 'email',
+    label: 'Email',
+    href: `mailto:${PROFILE.email}`,
+    title: 'Email',
+    detail: PROFILE.email,
+    covers: []
+  },
+  ...(github
+    ? [
+        {
+          kind: 'github' as const,
+          label: 'GitHub',
+          href: github.href,
+          title: 'GitHub',
+          detail: github.href.replace(/^https:\/\/github\.com\//, ''),
+          covers: []
+        }
+      ]
+    : []),
+  ...PRESS.map((a) => ({
+    kind: 'press' as const,
+    label: 'Press',
+    href: a.url,
+    title: a.title,
+    detail: `${a.publisher} · ${pressDate(a.date)}`,
+    covers: a.covers
+  }))
+]

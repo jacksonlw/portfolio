@@ -1,136 +1,332 @@
 'use client'
 
-import { ArrowRightIcon, ArrowUpRightIcon } from '@phosphor-icons/react/ssr'
+import { PlayIcon } from '@phosphor-icons/react/ssr'
+import Image from 'next/image'
 import Link from 'next/link'
 import {
+  useCallback,
   useEffect,
   useLayoutEffect,
   useMemo,
   useRef,
   useState,
-  type CSSProperties
+  type CSSProperties,
+  type ReactNode
 } from 'react'
-import { Illustration } from '@/components/illustrations/registry'
 import {
+  ILLUSTRATIONS,
+  Illustration
+} from '@/components/illustrations/registry'
+import { RichText } from '@/components/site/rich-text'
+import {
+  PROFILE,
   PROJECT_PAGES_ENABLED,
   type Accent,
   type Project,
+  type Satellite,
   type Skill,
   type WorkNode
 } from '@/content/profile'
-import { ACCENT_BG, TINT_BG } from '@/lib/accent'
+import { ACCENT_BG } from '@/lib/accent'
 import { cn } from '@/lib/cn'
+import { INTRO, type Intro } from './intro'
+import { LAYOUT, OFF_BOARD, type BubbleSize, type Layout } from './layouts'
+import photo from '../../../public/profile-picture.jpg'
 
 /*
- * The skills constellation, filling the screen. Work and projects float in the middle as bubbles,
- * sized by how much they matter and scattered rather than gridded; the skill areas flank them,
- * each a cluster of skills around its illustration. Hover (or focus, or tap) a skill and lines run
- * to where it was used; hover a job or a project and lines run to every skill it used. A dark ink
- * popover explains whatever is active.
+ * The constellation: the whole page. Jackson's Me node sits at the center, his satellites (resume,
+ * email, GitHub, press) orbiting it on faint lines. His work and projects float around him as
+ * bubbles, each wearing its illustration, and his skills are stars in four areas at the edges, each area's
+ * stars joined into a small figure.
  *
- * It moves: every node drifts on its own slow cycle, the layers shift with the pointer (bubbles
- * most, skills least) for depth, linked nodes lean toward the active one, and active links flow.
- * One requestAnimationFrame loop (useConstellationMotion) writes transforms and line ends straight
- * to the DOM, so React doesn't re-render per frame. Under reduced motion it all holds still.
+ * Lines are kept few: Me node to satellites, star to star within an area, and, only while something
+ * is hovered, a star to the bubbles where it was used (or a bubble to its stars, or the press
+ * satellite to the bubbles it covers). Nothing ties a bubble to the Me node: they're all his.
  *
- * Positions are percentages of the board; lines are drawn in a pixel-space SVG sized to it.
- * The board shows from `lg`, its nodes scaled down a little until `xl`. Below `lg` the same
- * content is CompactConstellation: work and projects as cards with the skills they used, then
- * skills grouped by area, each opening an ink panel that says where it was used. Every node is a
- * real link or button.
+ * Hover (or focus) anything and the dark ink popover explains it; the Me node's popover is the full
+ * About, and stays open while the pointer moves into it so its links can be clicked. Clicking the Me
+ * node does nothing (a tap opens it on touch screens).
+ *
+ * Nodes float gently on their own, and lean toward the cursor like it has gravity
+ * (useCursorGravity); the hovered node never moves. One
+ * requestAnimationFrame loop writes transforms and line ends straight to the DOM. Under reduced
+ * motion nothing moves at all.
+ *
+ * From `lg` it fills the screen (Board); below that the same constellation is laid out vertically
+ * (Column).
  */
 
-/** Each area wears its own pastel; none repeats. */
-type AreaDef = { key: string; accent: Accent; hub: [number, number] }
+/* ---------- layout ---------- */
 
-const AREAS: Record<Skill['area'], AreaDef> = {
-  'AI & agents': { key: 'area/ai', accent: 'sky', hub: [14, 17] },
-  Languages: { key: 'area/languages', accent: 'lavender', hub: [14, 50] },
-  'Frontend & mobile': { key: 'area/frontend', accent: 'mint', hub: [14, 83] },
-  'Backend & data': { key: 'area/backend', accent: 'sun', hub: [86, 17] },
-  'Cloud & tools': { key: 'area/cloud', accent: 'ocean', hub: [86, 50] },
-  'How I work': { key: 'area/work', accent: 'peach', hub: [86, 83] }
+/** Each area wears its own pastel. Where things sit comes from the layout (layouts.ts). */
+const AREAS: Record<Skill['area'], { accent: Accent }> = {
+  'AI & agents': { accent: 'sky' },
+  'Product & frontend': { accent: 'mint' },
+  'Backend & data': { accent: 'sun' },
+  Cloud: { accent: 'peach' }
 }
 
-type BubbleSize = 'xl' | 'lg' | 'md' | 'sm'
+/** The debris's colours: --spark-<tone> in globals.css (deep shades in light mode, pastels in dark). */
+const SPARK_TONES = [
+  'brand',
+  'sun',
+  'rose',
+  'sky',
+  'peach',
+  'lavender',
+  'mint',
+  'magenta',
+  'cyan',
+  'violet'
+]
 
-/**
- * Where each bubble floats and how big it is: size follows importance (Jackson's current work
- * largest, older projects smallest). Hand-placed so the middle reads as a loose cluster.
- */
-const BUBBLES: Record<string, { x: number; y: number; size: BubbleSize }> = {
-  oracle: { x: 50, y: 33, size: 'xl' },
-  anyform: { x: 36, y: 20, size: 'lg' },
-  cratest: { x: 63, y: 16, size: 'lg' },
-  trailblaze: { x: 39, y: 60, size: 'lg' },
-  careerfoundry: { x: 64, y: 48, size: 'md' },
-  koistream: { x: 56, y: 72, size: 'md' },
-  tedx: { x: 35, y: 85, size: 'sm' },
-  branch: { x: 68, y: 89, size: 'sm' }
+/** The rainbow that plays across chrome (--iri-* in globals.css), for the supernova's light. */
+const IRI = ['magenta', 'violet', 'cyan', 'mint', 'gold', 'coral']
+
+/** Disc diameter (rem) and label size. */
+const BUBBLE_STYLE: Record<BubbleSize, { disc: number; label: string }> = {
+  lg: { disc: 7, label: 'text-sm' },
+  md: { disc: 6, label: 'text-sm' },
+  sm: { disc: 5, label: 'text-xs' }
 }
 
-const BUBBLE_STYLE: Record<
-  BubbleSize,
-  { disc: string; art: string; label: string; depth: number }
-> = {
-  xl: { disc: 'size-36', art: 'w-28', label: 'text-base', depth: 18 },
-  lg: { disc: 'size-[7.5rem]', art: 'w-24', label: 'text-sm', depth: 14 },
-  md: { disc: 'size-24', art: 'w-[4.5rem]', label: 'text-sm', depth: 11 },
-  sm: { disc: 'size-20', art: 'w-14', label: 'text-xs', depth: 8 }
-}
-
-/** A skill's dot: its area's full accent. */
-const DOT = ACCENT_BG
-
-type Star = Skill & { x: number; y: number; i: number; above: boolean }
-type ProjectNode = (Project | WorkNode) & {
+type Star = Skill & {
   x: number
   y: number
+  i: number
+  k: number
+  above: boolean
+}
+type Bubble = (Project | WorkNode) & {
+  /** Where it sits on the reference screen (% of the board); the board recomputes it for the real one. */
+  x: number
+  y: number
+  /** Its place around the photo: distance (px, reference screen) and angle (degrees). */
+  r: number
+  deg: number
   kind: 'project' | 'work'
   size: BubbleSize
 }
-type Active = { kind: 'skill' | 'project'; id: string } | null
+type Active =
+  | { kind: 'skill' | 'project' | 'satellite'; id: string }
+  | { kind: 'me' }
+  | null
+
+/** One area's stars around its hub, knocked off their even spots by `salt`'s scatter. */
+function scatterArea(
+  layout: Layout,
+  area: Skill['area'],
+  list: Skill[],
+  salt: number
+) {
+  const [cx, cy] = layout.areas[area]
+  const ring = layout.ring
+  const n = list.length
+  const big = n > 6
+  // Each area turned its own way, so no two figures share an orientation.
+  const turn = (hash(`${area}/${salt}`) - 0.5) * 1.6
+  return list.map((s, k) => {
+    // With an odd count the last star would sit on the outer ring beside the first: keep it in.
+    const outer = k % 2 === 0 && !(n % 2 === 1 && k === n - 1)
+    const [rx, ry] = (big ? (outer ? [8.5, 13] : [5, 8]) : [7.5, 11]).map(
+      (v) => v * ring
+    )
+    // Knock each star off its even spot, in angle and in distance, like a real sky.
+    const slip =
+      (hash(`${s.name}/a/${salt}`) - 0.5) * ((Math.PI * 2) / n) * 0.75
+    const reach = 0.82 + hash(`${s.name}/r/${salt}`) * 0.32
+    const a = -Math.PI / 2 + turn + (k / n) * Math.PI * 2 + slip
+    const sin = Math.sin(a)
+    return {
+      ...s,
+      // Rounded, so the server's render and the browser's match exactly.
+      x: Math.round((cx + rx * reach * Math.cos(a)) * 100) / 100,
+      y: Math.round((cy + ry * reach * sin) * 100) / 100,
+      k,
+      above: sin < -0.05
+    }
+  })
+}
 
 /**
- * Each area's skills on a ring around its hub, starting at the top. Big clusters alternate an
- * outer and an inner ring so neighbouring labels don't collide.
+ * How many labels in an area would collide (with each other or the area's name), measured on a
+ * typical 1440×900 board. Label sizes are estimates from the text length.
  */
-function layoutStars(skills: Skill[]): Star[] {
+function collisions(
+  layout: Layout,
+  area: Skill['area'],
+  stars: Omit<Star, 'i'>[]
+) {
+  const W = 1440
+  const H = 900
+  const boxes = stars.map((s) => {
+    const x = (s.x / 100) * W
+    const y = (s.y / 100) * H
+    const w = s.name.length * 7 + 14
+    return {
+      l: x - w / 2,
+      r: x + w / 2,
+      t: s.above ? y - 30 : y - 8,
+      b: s.above ? y + 8 : y + 30
+    }
+  })
+  const [hx, hy] = layout.areas[area]
+  const hw = area.length * 8 + 12
+  boxes.push({
+    l: (hx / 100) * W - hw / 2,
+    r: (hx / 100) * W + hw / 2,
+    t: (hy / 100) * H - 10,
+    b: (hy / 100) * H + 10
+  })
+  let hits = 0
+  for (let i = 0; i < boxes.length; i++)
+    for (let j = i + 1; j < boxes.length; j++) {
+      const A = boxes[i]
+      const B = boxes[j]
+      if (A.l < B.r && B.l < A.r && A.t < B.b && B.t < A.b) hits++
+    }
+  return hits
+}
+
+/**
+ * Each area's stars scattered around its hub like a real constellation: uneven, but never with
+ * labels on top of each other. Tries scatters in a fixed order and keeps the first clean one (or
+ * the least crowded), so the sky is the same on every visit.
+ */
+function layoutStars(layout: Layout, skills: Skill[]): Star[] {
   const byArea = new Map<Skill['area'], Skill[]>()
   for (const s of skills) byArea.set(s.area, [...(byArea.get(s.area) ?? []), s])
   const stars: Star[] = []
   let i = 0
   for (const [area, list] of byArea) {
-    const [cx, cy] = AREAS[area].hub
-    const big = list.length > 6
-    list.forEach((s, k) => {
-      // With an odd count the last star would sit on the outer ring beside the first: keep it in.
-      const outer =
-        k % 2 === 0 && !(list.length % 2 === 1 && k === list.length - 1)
-      const [rx, ry] = big ? (outer ? [9.5, 12.5] : [6, 8.5]) : [8.5, 11]
-      const a = -Math.PI / 2 + (k / list.length) * Math.PI * 2
-      const sin = Math.sin(a)
-      stars.push({
-        ...s,
-        x: cx + rx * Math.cos(a),
-        y: cy + ry * sin,
-        i: i++,
-        above: sin < -0.05
-      })
-    })
+    let best = scatterArea(layout, area, list, 0)
+    let bestHits = collisions(layout, area, best)
+    for (let salt = 1; salt < 60 && bestHits > 0; salt++) {
+      const next = scatterArea(layout, area, list, salt)
+      const hits = collisions(layout, area, next)
+      if (hits < bestHits) {
+        best = next
+        bestHits = hits
+      }
+    }
+    for (const s of best) stars.push({ ...s, i: i++ })
   }
   return stars
 }
 
-const pos = (x: number, y: number): CSSProperties => ({
-  left: `${x}%`,
-  top: `${y}%`
-})
+/**
+ * The lines that join a set of stars into a figure: each star tied to its nearest neighbour until
+ * all are joined (a minimum spanning tree), which branches the way drawn constellations do. `sx`
+ * scales x against y so distances match what the eye sees.
+ */
+function figure(pts: { x: number; y: number }[], sx = 1): [number, number][] {
+  if (pts.length < 2) return []
+  const inTree = new Set([0])
+  const edges: [number, number][] = []
+  while (inTree.size < pts.length) {
+    let best: [number, number] | null = null
+    let bestD = Infinity
+    for (const a of inTree)
+      for (let b = 0; b < pts.length; b++) {
+        if (inTree.has(b)) continue
+        const d = Math.hypot((pts[a].x - pts[b].x) * sx, pts[a].y - pts[b].y)
+        if (d < bestD) {
+          bestD = d
+          best = [a, b]
+        }
+      }
+    edges.push(best!)
+    inTree.add(best![1])
+  }
+  return edges
+}
+
+/** Every bubble: its hand-placed spot, or the next point on a spiral so none is ever dropped. */
+function placeBubbles(
+  layout: Layout,
+  list: ((Project & { kind: 'project' }) | (WorkNode & { kind: 'work' }))[]
+): Bubble[] {
+  let k = 0
+  return list.map((n) => {
+    const spot = layout.bubbles[n.slug] ?? {
+      // Not placed by hand: the next point on a golden-angle spiral, so it's never dropped.
+      r: 330,
+      deg: (k++ * 137.5) % 360,
+      size: 'md' as const
+    }
+    const [x, y] = around(layout, spot.r, spot.deg, 1, layout.reference)
+    return { ...n, ...spot, x, y }
+  })
+}
+
+/** A point `r` px from the photo at `deg`, scaled by `k`, as % of a board `w` × `h`. */
+function around(
+  layout: Layout,
+  r: number,
+  deg: number,
+  k: number,
+  [w, h]: readonly [number, number]
+): [number, number] {
+  const t = (deg * Math.PI) / 180
+  // Rounded, so the server's render and the browser's match exactly.
+  const round = (v: number) => Math.round(v * 100) / 100
+  return [
+    round(layout.me[0] + ((r * k * Math.cos(t)) / w) * 100),
+    round(layout.me[1] + ((r * k * Math.sin(t)) / h) * 100)
+  ]
+}
+
+/**
+ * How much the layout scales on this board: the smaller of its width and height against the
+ * reference screen, within limits, so the whole constellation keeps its shape.
+ */
+function layoutScale(layout: Layout, w: number, h: number) {
+  if (!w || !h) return 1
+  const [rw, rh] = layout.reference
+  return Math.min(1.15, Math.max(0.6, Math.min(w / rw, h / rh)))
+}
+
+/** What lights up with the active node. */
+function linksOf(
+  active: Active,
+  stars: Star[],
+  satellites: Satellite[]
+): { skills: Set<string>; projects: Set<string> } {
+  const none = { skills: new Set<string>(), projects: new Set<string>() }
+  if (!active || active.kind === 'me') return none
+  if (active.kind === 'skill') {
+    const s = stars.find((x) => x.name === active.id)
+    return { skills: none.skills, projects: new Set(s?.projects ?? []) }
+  }
+  if (active.kind === 'satellite') {
+    const s = satellites.find((x) => x.kind === active.id)
+    return { skills: none.skills, projects: new Set(s?.covers ?? []) }
+  }
+  return {
+    skills: new Set(
+      stars.filter((s) => s.projects.includes(active.id)).map((s) => s.name)
+    ),
+    projects: none.projects
+  }
+}
 
 /* ---------- motion ---------- */
 
-/** A node the motion loop moves: its base position (% of the board), drift and parallax depth. */
-type MotionNode = { x: number; y: number; amp: number; depth: number }
+/**
+ * A node the motion loop moves: its spot (% of the board), how easily it's moved (0 pins it), the
+ * radius of its disc or dot (px), and how far past that the cursor can be and still pull it (px).
+ */
+type MotionNode = {
+  x: number
+  y: number
+  weight: number
+  r: number
+  reach: number
+  /** The farthest gravity can pull it (px); defaults to most of its reach. */
+  travel?: number
+  /** How far past its edge gravity starts to pull it (px); defaults to its hover reach. */
+  pullReach?: number
+}
 
 /** A stable 0–1 number from a string, so every node gets its own phase and period. */
 function hash(id: string) {
@@ -140,103 +336,172 @@ function hash(id: string) {
   return ((h >>> 0) % 10000) / 10000
 }
 
-/**
- * The constellation's motion. Elements opt in with `data-node="<id>"` (moved by a transform) and
- * lines with `data-a`/`data-b` (their ends follow those nodes). `active` and `linked` drive the
- * lean: linked nodes ease a few pixels toward the active one. Returns the board's pixel size,
- * which the SVG needs to draw lines before the loop starts (and when motion is off).
- */
-function useConstellationMotion(
-  board: React.RefObject<HTMLDivElement | null>,
-  nodes: Record<string, MotionNode>,
-  active: string | null,
-  linked: Set<string>
-) {
+/** The board's pixel size, kept current as it resizes. The lines and satellites need it. */
+function useBoardSize(board: React.RefObject<HTMLDivElement | null>) {
   const [size, setSize] = useState({ w: 0, h: 0 })
-  const state = useRef({ nodes, active, linked })
-  useLayoutEffect(() => {
-    state.current = { nodes, active, linked }
-  }, [nodes, active, linked])
-
   useLayoutEffect(() => {
     const el = board.current
     if (!el) return
     const measure = () => setSize({ w: el.clientWidth, h: el.clientHeight })
+    // Measure straight away, before the first paint, so the layout is right from the start; then
+    // keep up with resizes.
     measure()
     const ro = new ResizeObserver(measure)
     ro.observe(el)
-    return () => ro.disconnect()
+    window.addEventListener('resize', measure)
+    return () => {
+      ro.disconnect()
+      window.removeEventListener('resize', measure)
+    }
   }, [board])
+  return size
+}
+
+/** Keyboard focus opens a node and blurring closes it (the pointer uses useIntentHover). */
+function useHoverIntent(setActive: (a: Active) => void) {
+  return useMemo(
+    () => ({
+      open: (a: NonNullable<Active>) => setActive(a),
+      close: () => setActive(null)
+    }),
+    [setActive]
+  )
+}
+
+/** How far a node idly floats from its spot (px), before its weight. */
+const FLOAT_PX = 5
+
+/** How far a star can be pulled toward the cursor (px): less than its reach, so stars never collide. */
+const STAR_TRAVEL = 12
+
+/** How much of a node's reach it will travel to meet the cursor (a little less than all of it). */
+const MEET = 0.85
+/** How far a node leans toward a cursor on it, as a share of its radius, and at most (px). */
+const LEAN = 0.14
+const LEAN_MAX = 7
+/** How far past its reach the pull fades out (px, before the node's weight). */
+const PULL_FADE = 140
+/** How quickly a node glides to where gravity wants it, per frame (0–1; lower is smoother). */
+const GLIDE = 0.09
+
+/** 0 below `a`, 1 above `b`, and an S-curve between: for pulls that fade without a seam. */
+const smoothstep = (a: number, b: number, x: number) => {
+  const t = Math.min(1, Math.max(0, (x - a) / (b - a)))
+  return t * t * (3 - 2 * t)
+}
+
+/**
+ * The cursor's gravity, plus each node's idle float. A node the cursor comes within reach of (a
+ * little less than its hover reach) glides to meet it, its edge closing the gap to the pointer;
+ * farther out the pull eases off smoothly. Nodes glide, never spring, so there's no bounce, and
+ * drift back to their spots when the cursor moves on. Elements opt in with `data-node="<id>"`; lines with `data-a`/`data-b` keep their
+ * ends on those nodes. `weight` sets how easily a node is moved (0 pins it).
+ */
+function useCursorGravity(
+  board: React.RefObject<HTMLDivElement | null>,
+  nodes: Record<string, MotionNode>,
+  active: string | null
+) {
+  const state = useRef({ nodes, active })
+  useLayoutEffect(() => {
+    state.current = { nodes, active }
+  }, [nodes, active])
 
   useEffect(() => {
     const el = board.current
     if (!el || window.matchMedia('(prefers-reduced-motion: reduce)').matches)
       return
 
-    const target = { x: 0, y: 0 }
-    const pointer = { x: 0, y: 0 }
-    const lean = new Map<string, { x: number; y: number }>()
+    const pointer = { x: 0, y: 0, inside: false }
+    const offset = new Map<string, { x: number; y: number }>()
+    // Each node's idle float, eased to a stop while it's the open one so its popover stays put.
+    const calm = new Map<string, number>()
     const onMove = (e: PointerEvent) => {
       const r = el.getBoundingClientRect()
-      target.x = ((e.clientX - r.left) / r.width - 0.5) * 2
-      target.y = ((e.clientY - r.top) / r.height - 0.5) * 2
+      pointer.x = e.clientX - r.left
+      pointer.y = e.clientY - r.top
+      pointer.inside = true
     }
     const onLeave = () => {
-      target.x = 0
-      target.y = 0
+      pointer.inside = false
     }
     el.addEventListener('pointermove', onMove)
     el.addEventListener('pointerleave', onLeave)
 
     let raf = 0
     const tick = (now: number) => {
-      const { nodes, active, linked } = state.current
+      const { nodes, active } = state.current
+      const t = now / 1000
       const w = el.clientWidth
       const h = el.clientHeight
-      const t = now / 1000
-      pointer.x += (target.x - pointer.x) * 0.06
-      pointer.y += (target.y - pointer.y) * 0.06
-      const a = active ? nodes[active] : undefined
 
-      const offset: Record<string, { x: number; y: number }> = {}
       for (const id in nodes) {
         const n = nodes[id]
-        const r = hash(id)
-        const period = 7 + r * 5
-        const phase = r * Math.PI * 2
-        // Drift on two out-of-step sines, so the path never looks like a simple bob.
-        let x = Math.sin((t / period) * Math.PI * 2 + phase) * n.amp
-        let y = Math.cos((t / (period * 1.3)) * Math.PI * 2 + phase) * n.amp
-        x += pointer.x * n.depth
-        y += pointer.y * n.depth
-        // Lean toward the active node, eased in and out.
-        const l = lean.get(id) ?? { x: 0, y: 0 }
-        let lx = 0
-        let ly = 0
-        if (a && linked.has(id)) {
-          const dx = ((a.x - n.x) / 100) * w
-          const dy = ((a.y - n.y) / 100) * h
-          const d = Math.hypot(dx, dy) || 1
-          lx = (dx / d) * 10
-          ly = (dy / d) * 10
+        const o = offset.get(id) ?? { x: 0, y: 0 }
+        // Where gravity wants the node: how far it leans toward the cursor depends smoothly on
+        // how far the cursor is from its edge, so there's no jump anywhere as the cursor moves.
+        let tx = 0
+        let ty = 0
+        if (pointer.inside && n.weight > 0) {
+          const dx = pointer.x - (n.x / 100) * w
+          const dy = pointer.y - (n.y / 100) * h
+          const d = Math.hypot(dx, dy)
+          const edge = Math.max(0, d - n.r)
+          const meet = Math.min(
+            (n.pullReach ?? n.reach) * MEET,
+            n.travel ?? Infinity
+          )
+          // Up close the node closes the gap entirely (its edge meets the cursor); beyond that the
+          // pull eases off to nothing over the next PULL_FADE px.
+          const fade = 1 - smoothstep(meet, meet + PULL_FADE, edge)
+          // Inside the node it still leans a little toward the cursor, more the farther the
+          // cursor is from its centre, so a big disc follows the pointer across its face too.
+          const lean =
+            Math.min(LEAN_MAX, n.r * LEAN) * Math.min(1, d / n.r) * fade
+          const pull = lean + (edge <= meet ? edge : meet * fade)
+          if (d > 0) {
+            tx = (dx / d) * pull
+            ty = (dy / d) * pull
+          }
         }
-        l.x += (lx - l.x) * 0.08
-        l.y += (ly - l.y) * 0.08
-        lean.set(id, l)
-        offset[id] = { x: x + l.x, y: y + l.y }
+        // Glide there (and home again once the cursor moves on): a plain ease, no spring, so it
+        // never overshoots or wobbles.
+        o.x += (tx - o.x) * GLIDE
+        o.y += (ty - o.y) * GLIDE
+        if (!tx && !ty && Math.abs(o.x) + Math.abs(o.y) < 0.02) o.x = o.y = 0
+        offset.set(id, o)
+      }
+
+      // The idle float: each node traces its own small, slow ellipse, never a real orbit.
+      const at = new Map<string, { x: number; y: number }>()
+      for (const id in nodes) {
+        const n = nodes[id]
+        const o = offset.get(id)!
+        const g =
+          (calm.get(id) ?? 1) +
+          ((id === active ? 0 : 1) - (calm.get(id) ?? 1)) * 0.08
+        calm.set(id, g)
+        const r = hash(id)
+        const period = 9 + r * 6
+        const phase = r * Math.PI * 2
+        const amp = FLOAT_PX * n.weight * g
+        at.set(id, {
+          x: o.x + Math.sin((t / period) * Math.PI * 2 + phase) * amp,
+          y: o.y + Math.cos((t / period) * Math.PI * 2 + phase) * amp * 0.7
+        })
       }
 
       for (const node of el.querySelectorAll<HTMLElement>('[data-node]')) {
-        const o = offset[node.dataset.node!]
+        const o = at.get(node.dataset.node!)
         if (o)
           node.style.transform = `translate3d(${o.x.toFixed(2)}px, ${o.y.toFixed(2)}px, 0)`
       }
       for (const line of el.querySelectorAll<SVGLineElement>('line[data-a]')) {
         const A = nodes[line.dataset.a!]
         const B = nodes[line.dataset.b!]
-        const oa = offset[line.dataset.a!]
-        const ob = offset[line.dataset.b!]
-        if (!A || !B || !oa || !ob) continue
+        const oa = at.get(line.dataset.a!) ?? { x: 0, y: 0 }
+        const ob = at.get(line.dataset.b!) ?? { x: 0, y: 0 }
+        if (!A || !B) continue
         line.setAttribute('x1', ((A.x / 100) * w + oa.x).toFixed(1))
         line.setAttribute('y1', ((A.y / 100) * h + oa.y).toFixed(1))
         line.setAttribute('x2', ((B.x / 100) * w + ob.x).toFixed(1))
@@ -251,429 +516,291 @@ function useConstellationMotion(
       el.removeEventListener('pointerleave', onLeave)
     }
   }, [board])
+}
 
-  return size
+/** How far past its shape (px) the cursor can be and still mean a node, by kind. */
+const REACH = { skill: 26, project: 14, satellite: 14, me: 4 } as const
+/** The head start (px) the open node gets, so two close nodes don't flicker between each other. */
+const STICK = 10
+
+/** The key a node answers to in the picker: `me`, or `<kind>:<id>`. */
+const keyOf = (a: Active) =>
+  !a ? null : a.kind === 'me' ? 'me' : `${a.kind}:${a.id}`
+function fromKey(key: string): NonNullable<Active> {
+  if (key === 'me') return { kind: 'me' }
+  const i = key.indexOf(':')
+  return {
+    kind: key.slice(0, i) as 'skill' | 'project' | 'satellite',
+    id: key.slice(i + 1)
+  }
 }
 
 /**
- * Every job and project gets a bubble: the hand-placed spot in BUBBLES when it has one, otherwise
- * the next point on a sunflower spiral through the middle column (work large, projects medium), so
- * adding a project never drops it from the board.
+ * Hover by intent rather than by whatever box the pointer is inside. Each node marks its real
+ * shapes with `data-hit="<key>"` (`data-shape="circle"` for discs and dots, rect otherwise). On each
+ * frame the pointer moves, every shape is measured: how far the cursor is from its edge now, and
+ * how far it will be a moment ahead on its current heading. The nearest node within its reach wins,
+ * and the open one gets a small head start. So a node opens as the cursor clearly heads into it, a
+ * neighbour takes over as soon as the cursor is nearer to it, and empty sky closes everything.
+ * Mouse and pen only; touch keeps tap-to-open.
  */
-function placeBubbles(
-  list: ((Project & { kind: 'project' }) | (WorkNode & { kind: 'work' }))[]
-): ProjectNode[] {
-  let k = 0
-  return list.map((n) => {
-    const fixed = BUBBLES[n.slug]
-    if (fixed) return { ...n, ...fixed }
-    const i = k++
-    const a = i * 2.39996 // the golden angle, in radians
-    const r = Math.sqrt(i + 0.5) / Math.sqrt(12)
-    return {
-      ...n,
-      x: 50 + Math.cos(a) * r * 16,
-      y: 52 + Math.sin(a) * r * 36,
-      size: n.kind === 'work' ? 'lg' : 'md'
+function useIntentHover(
+  board: React.RefObject<HTMLDivElement | null>,
+  active: Active,
+  setActive: (a: Active) => void,
+  /** False while nodes are still flying out of the core at the start, so nothing is picked. */
+  ready: boolean
+) {
+  const current = useRef<string | null>(null)
+  useLayoutEffect(() => {
+    current.current = keyOf(active)
+  }, [active])
+  const isReady = useRef(ready)
+  const repick = useRef<() => void>(() => {})
+  useLayoutEffect(() => {
+    isReady.current = ready
+    // Once everything has landed, pick for wherever the cursor is resting.
+    if (ready) repick.current()
+  }, [ready])
+
+  useEffect(() => {
+    const el = board.current
+    if (!el) return
+    const p = { x: 0, y: 0, vx: 0, vy: 0, seen: false }
+    let raf = 0
+
+    const distance = (node: HTMLElement, x: number, y: number) => {
+      const r = node.getBoundingClientRect()
+      if (node.dataset.shape === 'circle') {
+        const rad = r.width / 2
+        return Math.max(
+          0,
+          Math.hypot(x - (r.left + rad), y - (r.top + r.height / 2)) - rad
+        )
+      }
+      const dx = Math.max(r.left - x, 0, x - r.right)
+      const dy = Math.max(r.top - y, 0, y - r.bottom)
+      return Math.hypot(dx, dy)
     }
-  })
+
+    const pick = () => {
+      raf = 0
+      if (!isReady.current || !p.seen) return
+      const ax = p.x + p.vx * 5
+      const ay = p.y + p.vy * 5
+      const now = current.current
+      let best: string | null = null
+      let bestScore = Infinity
+      for (const node of el.querySelectorAll<HTMLElement>('[data-hit]')) {
+        const key = node.dataset.hit!
+        const kind =
+          key === 'me'
+            ? 'me'
+            : (key.slice(0, key.indexOf(':')) as keyof typeof REACH)
+        const held = key === now ? STICK : 0
+        const d = distance(node, p.x, p.y)
+        if (d > REACH[kind] + held) continue
+        const score = 0.65 * d + 0.35 * distance(node, ax, ay) - held
+        if (score < bestScore) {
+          bestScore = score
+          best = key
+        }
+      }
+      if (best !== now) setActive(best ? fromKey(best) : null)
+    }
+
+    const onMove = (e: PointerEvent) => {
+      if (e.pointerType === 'touch') return
+      if (p.seen) {
+        p.vx += (e.clientX - p.x - p.vx) * 0.5
+        p.vy += (e.clientY - p.y - p.vy) * 0.5
+      }
+      p.x = e.clientX
+      p.y = e.clientY
+      p.seen = true
+      if (!raf) raf = requestAnimationFrame(pick)
+    }
+    // Where the cursor is even if it never moves: the browser reports it (pointerover) when
+    // something appears under a resting cursor, as on first paint and when the nodes become
+    // hoverable after the intro.
+    const onOver = (e: PointerEvent) => {
+      if (e.pointerType === 'touch') return
+      p.x = e.clientX
+      p.y = e.clientY
+      p.seen = true
+      if (!raf) raf = requestAnimationFrame(pick)
+    }
+    const onLeave = (e: PointerEvent) => {
+      if (e.pointerType === 'touch') return
+      p.seen = false
+      if (current.current) setActive(null)
+    }
+    repick.current = () => {
+      if (!raf) raf = requestAnimationFrame(pick)
+    }
+    el.addEventListener('pointermove', onMove)
+    el.addEventListener('pointerover', onOver)
+    el.addEventListener('pointerleave', onLeave)
+    return () => {
+      cancelAnimationFrame(raf)
+      el.removeEventListener('pointermove', onMove)
+      el.removeEventListener('pointerover', onOver)
+      el.removeEventListener('pointerleave', onLeave)
+    }
+  }, [board, setActive])
 }
 
-/**
- * The board's height follows how much is on it: a base, plus room per skill and per bubble,
- * clamped between a compact board and a tall one. More work, projects or skills, more space.
- */
-function boardHeight(skills: number, bubbles: number) {
-  const rem = 20 + skills * 0.55 + bubbles * 2
-  return `clamp(38rem, ${rem.toFixed(2)}rem, 80rem)`
-}
+/* ---------- shared pieces ---------- */
 
-/* ---------- the board ---------- */
-
-const hubId = (area: string) => `hub:${area}`
+const ME_ID = 'me'
+const satId = (kind: string) => `sat:${kind}`
 const starId = (name: string) => `skill:${name}`
 const bubbleId = (slug: string) => `bubble:${slug}`
 
-export function SkillsConstellation({
-  skills,
-  projects,
-  work
+/** Jackson's photo in its ring, cropped to his face. */
+function Portrait({ className, hit }: { className?: string; hit?: string }) {
+  return (
+    <span
+      data-hit={hit}
+      data-shape="circle"
+      className={cn(
+        'chrome-rim relative block overflow-hidden rounded-full border-[3px]',
+        className
+      )}
+    >
+      <Image
+        src={photo}
+        alt={`Portrait of ${PROFILE.name}`}
+        fill
+        priority
+        placeholder="blur"
+        sizes="200px"
+        className="origin-[62%_31%] scale-[1.6] object-cover object-top"
+      />
+    </span>
+  )
+}
+
+/** A lit node's disc: a brand ring, no change in size (nothing jumps). */
+const LIT_RING =
+  'border-brand shadow-[0_0_0_5px_color-mix(in_oklab,var(--brand)_16%,transparent)]'
+
+/**
+ * The disc's colour: every disc is lit by a soft radial glow of its drawing's colour, on white in
+ * light mode and on near-black in dark (globals.css, .node-disc), a step brighter while it's
+ * hovered or lit.
+ */
+function discAccent(key: string): CSSProperties {
+  const accent = ILLUSTRATIONS[key]?.accent
+  return accent
+    ? ({
+        '--disc-accent': `var(--af-${accent})`,
+        '--disc-deep': `var(--af-${accent}-deep)`
+      } as CSSProperties)
+    : {}
+}
+
+/** A bubble's disc with its illustration. */
+function BubbleDisc({
+  bubble,
+  rem,
+  lit,
+  hit,
+  className
 }: {
-  skills: Skill[]
-  projects: Project[]
-  work: WorkNode[]
+  bubble: Bubble
+  rem: number
+  lit?: boolean
+  hit?: string
+  className?: string
 }) {
-  const stars = useMemo(() => layoutStars(skills), [skills])
-  const nodes: ProjectNode[] = useMemo(
-    () =>
-      placeBubbles([
-        ...work.map((w) => ({ ...w, kind: 'work' as const })),
-        ...projects.map((p) => ({ ...p, kind: 'project' as const }))
-      ]),
-    [projects, work]
+  return (
+    <span
+      data-hit={hit}
+      data-shape="circle"
+      className={cn(
+        'node-disc flex shrink-0 items-center justify-center rounded-full border-2 transition-[border-color,box-shadow,background-color] duration-200',
+        lit && LIT_RING,
+        className
+      )}
+      data-lit={lit || undefined}
+      style={{
+        width: `${rem}rem`,
+        height: `${rem}rem`,
+        ...discAccent(bubble.slug)
+      }}
+    >
+      <Illustration
+        name={bubble.slug}
+        decorative
+        className="h-auto"
+        style={{ width: `${rem * 0.6}rem` }}
+      />
+    </span>
   )
-  const [active, setActive] = useState<Active>(null)
+}
 
-  // What the active node connects to: a skill's projects, or a project's skills.
-  const linked = useMemo(() => {
-    if (!active)
-      return { skills: new Set<string>(), projects: new Set<string>() }
-    if (active.kind === 'skill') {
-      const s = stars.find((x) => x.name === active.id)
-      return { skills: new Set<string>(), projects: new Set(s?.projects ?? []) }
-    }
-    return {
-      skills: new Set(
-        stars.filter((s) => s.projects.includes(active.id)).map((s) => s.name)
-      ),
-      projects: new Set<string>()
-    }
-  }, [active, stars])
-
-  const activeStar =
-    active?.kind === 'skill'
-      ? stars.find((s) => s.name === active.id)
-      : undefined
-  const activeProject =
-    active?.kind === 'project'
-      ? nodes.find((p) => p.slug === active.id)
-      : undefined
-  const anchor = activeStar ?? activeProject
-
-  // Everything that moves, keyed by its motion id.
-  const motionNodes = useMemo(() => {
-    const m: Record<string, MotionNode> = {}
-    for (const [area, { hub }] of Object.entries(AREAS))
-      m[hubId(area)] = { x: hub[0], y: hub[1], amp: 3, depth: 6 }
-    for (const s of stars)
-      m[starId(s.name)] = { x: s.x, y: s.y, amp: 2.5, depth: 4 }
-    for (const n of nodes)
-      m[bubbleId(n.slug)] = {
-        x: n.x,
-        y: n.y,
-        amp: 6,
-        depth: BUBBLE_STYLE[n.size].depth
-      }
-    return m
-  }, [stars, nodes])
-
-  const activeId = activeStar
-    ? starId(activeStar.name)
-    : activeProject
-      ? bubbleId(activeProject.slug)
-      : null
-  const linkedIds = useMemo(
-    () =>
-      new Set([
-        ...[...linked.skills].map(starId),
-        ...[...linked.projects].map(bubbleId)
-      ]),
-    [linked]
+/** A satellite's disc with its drawing. */
+function SatelliteDisc({
+  satellite,
+  lit,
+  hit,
+  className
+}: {
+  satellite: Satellite
+  lit?: boolean
+  hit?: string
+  className?: string
+}) {
+  return (
+    <span
+      data-hit={hit}
+      data-shape="circle"
+      className={cn(
+        'node-disc flex items-center justify-center rounded-full border-2 transition-[border-color,box-shadow,background-color] duration-200',
+        lit && LIT_RING,
+        className
+      )}
+      data-lit={lit || undefined}
+      style={discAccent(satellite.kind)}
+    >
+      <Illustration name={satellite.kind} decorative className="w-[58%]" />
+    </span>
   )
+}
 
-  const board = useRef<HTMLDivElement>(null)
-  const { w, h } = useConstellationMotion(
-    board,
-    motionNodes,
-    activeId,
-    linkedIds
-  )
-  const px = (x: number, y: number) => ({ x: (x / 100) * w, y: (y / 100) * h })
-
-  const on = (a: NonNullable<Active>) => ({
-    onMouseEnter: () => setActive(a),
-    onFocus: () => setActive(a)
-  })
-
-  const links: { a: string; b: string }[] = []
-  if (activeId) for (const id of linkedIds) links.push({ a: activeId, b: id })
-
+/** The About, as it reads in the Me node's popover (and the column's panel): just the bio. */
+function About() {
   return (
     <>
-      {/* The board, from xl up. */}
-      <div
-        ref={board}
-        className="relative hidden w-full lg:block"
-        style={{ height: boardHeight(stars.length, nodes.length) }}
-        onMouseLeave={() => setActive(null)}
-      >
-        {w > 0 && (
-          <svg
-            viewBox={`0 0 ${w} ${h}`}
-            className="pointer-events-none absolute inset-0 size-full"
-            aria-hidden
-            focusable="false"
-          >
-            {stars.map((s) => {
-              const [hx, hy] = AREAS[s.area].hub
-              const A = px(hx, hy)
-              const B = px(s.x, s.y)
-              return (
-                <line
-                  key={s.name}
-                  data-a={hubId(s.area)}
-                  data-b={starId(s.name)}
-                  x1={A.x}
-                  y1={A.y}
-                  x2={B.x}
-                  y2={B.y}
-                  className="stroke-foreground/12"
-                  strokeWidth={1.5}
-                />
-              )
-            })}
-            {links.map((l) => {
-              const A = motionNodes[l.a]
-              const B = motionNodes[l.b]
-              const pa = px(A.x, A.y)
-              const pb = px(B.x, B.y)
-              return (
-                <g key={`${l.a}-${l.b}`}>
-                  <line
-                    data-a={l.a}
-                    data-b={l.b}
-                    x1={pa.x}
-                    y1={pa.y}
-                    x2={pb.x}
-                    y2={pb.y}
-                    className="stroke-brand/35"
-                    strokeWidth={2}
-                  />
-                  <line
-                    data-a={l.a}
-                    data-b={l.b}
-                    x1={pa.x}
-                    y1={pa.y}
-                    x2={pb.x}
-                    y2={pb.y}
-                    className="constellation-flow stroke-brand"
-                    strokeWidth={2.5}
-                    strokeLinecap="round"
-                  />
-                </g>
-              )
-            })}
-          </svg>
-        )}
-
-        {/* Area hubs: the area's illustration over its name. */}
-        {Object.entries(AREAS).map(([area, { key, accent, hub }]) => (
-          <div
-            key={area}
-            className="pointer-events-none absolute -translate-x-1/2 -translate-y-1/2"
-            style={pos(hub[0], hub[1])}
-          >
-            <div
-              data-node={hubId(area)}
-              className="flex flex-col items-center will-change-transform lg:scale-[0.8] xl:scale-100"
-            >
-              <Illustration name={key} className="w-16" decorative />
-              <span
-                className={cn(
-                  '-mt-1 rounded-full border border-foreground/80 px-2.5 py-0.5 text-xs font-semibold whitespace-nowrap',
-                  TINT_BG[accent]
-                )}
-              >
-                {area}
-              </span>
-            </div>
-          </div>
+      <p className="text-lg font-semibold">{PROFILE.name}</p>
+      <div className="mt-2 space-y-3 text-sm text-pretty text-foreground/85">
+        {[...PROFILE.about.lead, ...PROFILE.about.more].map((para, i) => (
+          <p key={i}>
+            <RichText text={para} />
+          </p>
         ))}
-
-        {/* Work and projects, floating in the middle. */}
-        {nodes.map((p) => {
-          const isActive = activeProject?.slug === p.slug
-          const isLinked = linked.projects.has(p.slug)
-          const dim = active && !isActive && !isLinked
-          const lit = isActive || isLinked
-          const style = BUBBLE_STYLE[p.size]
-          const className = cn(
-            'constellation-star group flex flex-col items-center rounded-xl p-2 transition-opacity duration-300 focus-ring',
-            dim && 'opacity-35'
-          )
-          const body = (
-            <>
-              {p.kind === 'project' && PROJECT_PAGES_ENABLED && (
-                <span
-                  aria-hidden
-                  className={cn(
-                    'mb-2 inline-flex items-center gap-1 rounded-full bg-primary px-3 py-1 text-xs font-semibold text-primary-foreground transition-[opacity,translate,background-color] duration-300 group-hover:bg-brand group-focus-visible:bg-brand motion-reduce:transition-none',
-                    isActive
-                      ? 'translate-y-0 opacity-100'
-                      : 'pointer-events-none translate-y-1 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 group-focus-visible:translate-y-0 group-focus-visible:opacity-100'
-                  )}
-                >
-                  See more
-                  <ArrowUpRightIcon
-                    weight="bold"
-                    className="size-3.5 transition-transform duration-300 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 motion-reduce:transition-none"
-                  />
-                </span>
-              )}
-              <span
-                className={cn(
-                  'flex items-center justify-center rounded-full border-2 transition-[border-color,scale,box-shadow] duration-300 group-hover:scale-105',
-                  style.disc,
-                  TINT_BG[p.accent],
-                  lit
-                    ? 'scale-105 border-brand shadow-[0_0_0_6px_color-mix(in_oklab,var(--brand)_14%,transparent)]'
-                    : 'border-foreground/80'
-                )}
-              >
-                <Illustration name={p.slug} className={style.art} decorative />
-              </span>
-              <span
-                className={cn(
-                  'mt-2 font-semibold whitespace-nowrap',
-                  style.label,
-                  lit && 'text-link'
-                )}
-              >
-                {p.title}
-              </span>
-              <span className="max-w-40 text-center text-xs leading-snug text-muted-foreground">
-                {p.tagline}
-              </span>
-            </>
-          )
-          return (
-            <div
-              key={p.slug}
-              className="absolute z-10 -translate-x-1/2 -translate-y-1/2"
-              style={pos(p.x, p.y)}
-            >
-              <div
-                data-node={bubbleId(p.slug)}
-                className="will-change-transform lg:scale-[0.78] xl:scale-100"
-              >
-                {p.kind === 'project' && PROJECT_PAGES_ENABLED ? (
-                  <Link
-                    href={`/projects/${p.slug}`}
-                    {...on({ kind: 'project', id: p.slug })}
-                    className={className}
-                  >
-                    {body}
-                  </Link>
-                ) : (
-                  <button
-                    type="button"
-                    {...on({ kind: 'project', id: p.slug })}
-                    onClick={() => setActive({ kind: 'project', id: p.slug })}
-                    className={className}
-                  >
-                    {body}
-                  </button>
-                )}
-              </div>
-            </div>
-          )
-        })}
-
-        {/* Skills. */}
-        {stars.map((s) => {
-          const isActive = activeStar?.name === s.name
-          const isLinked = linked.skills.has(s.name)
-          const dim = active && !isActive && !isLinked
-          return (
-            <div
-              key={s.name}
-              className="absolute"
-              style={
-                {
-                  left: `${s.x}%`,
-                  top: `${s.y}%`,
-                  // Put the dot (0.75rem, inside 0.25rem of padding) exactly on the star.
-                  translate: s.above
-                    ? '-50% calc(-100% + 0.625rem)'
-                    : '-50% -0.625rem'
-                } as CSSProperties
-              }
-            >
-              <div
-                data-node={starId(s.name)}
-                className="will-change-transform lg:scale-[0.88] xl:scale-100"
-              >
-                <button
-                  type="button"
-                  {...on({ kind: 'skill', id: s.name })}
-                  onClick={() => setActive({ kind: 'skill', id: s.name })}
-                  aria-pressed={isActive}
-                  className={cn(
-                    'constellation-star group flex items-center gap-1.5 rounded-md px-1.5 py-1 focus-ring transition-opacity duration-300',
-                    s.above ? 'flex-col-reverse' : 'flex-col',
-                    dim && 'opacity-35'
-                  )}
-                  style={{ '--i': s.i } as CSSProperties}
-                >
-                  <span
-                    className={cn(
-                      'size-3 rounded-full border-2 border-foreground transition-[scale,background-color] duration-300 group-hover:scale-125',
-                      isActive || isLinked
-                        ? 'scale-150 border-brand bg-brand'
-                        : DOT[AREAS[s.area].accent]
-                    )}
-                  />
-                  <span
-                    className={cn(
-                      'text-[13px] leading-tight font-medium whitespace-nowrap',
-                      isActive || isLinked
-                        ? 'font-semibold text-link'
-                        : 'text-muted-foreground group-hover:text-foreground'
-                    )}
-                  >
-                    {s.name}
-                  </span>
-                </button>
-              </div>
-            </div>
-          )
-        })}
-
-        {/* The ink popover beside whatever is active. */}
-        {anchor && (
-          <div
-            role="tooltip"
-            className={cn(
-              'dark pointer-events-none absolute z-20 w-80 rounded-lg bg-background p-4 text-foreground shadow-pop',
-              anchor.y > 60 && '-translate-y-full',
-              anchor.x > 50 && '-translate-x-full'
-            )}
-            style={{
-              // Clear of a bubble's disc, tagline and See more pill; closer for a skill's dot.
-              left: `calc(${anchor.x}% ${anchor.x > 50 ? '-' : '+'} ${activeProject ? '6.5rem' : '1.5rem'})`,
-              top: `calc(${anchor.y}% ${anchor.y > 60 ? '- 0.5rem' : '+ 0.5rem'})`
-            }}
-          >
-            <Explain
-              star={activeStar}
-              project={activeProject}
-              nodes={nodes}
-              stars={stars}
-            />
-          </div>
-        )}
       </div>
-
-      {/* Below lg: work and projects with their skills, then skills grouped by area. */}
-      <CompactConstellation stars={stars} nodes={nodes} />
     </>
   )
 }
 
-/** The popover's content: a skill and the projects it was used in, or a project and its skills. */
+/** The popover's content for a star, a bubble or a satellite. */
 function Explain({
   star,
-  project,
-  nodes,
+  bubble,
+  satellite,
+  bubbles,
   stars
 }: {
   star?: Star
-  project?: ProjectNode
-  nodes: ProjectNode[]
+  bubble?: Bubble
+  satellite?: Satellite
+  bubbles: Bubble[]
   stars: Star[]
 }) {
   if (star) {
-    const used = nodes.filter((p) => star.projects.includes(p.slug))
+    const used = bubbles.filter((p) => star.projects.includes(p.slug))
     return (
       <>
         <p className="text-xs font-medium text-muted-foreground">{star.area}</p>
@@ -692,18 +819,16 @@ function Explain({
       </>
     )
   }
-  if (project) {
-    const used = stars.filter((s) => s.projects.includes(project.slug))
+  if (bubble) {
+    const used = stars.filter((s) => s.projects.includes(bubble.slug))
     return (
       <>
         <p className="text-xs font-medium text-muted-foreground">
-          {project.kind === 'work'
-            ? `Work · ${project.tagline}`
-            : `Project · ${project.tagline}`}
+          {bubble.kind === 'work' ? 'Work' : 'Project'} · {bubble.tagline}
         </p>
-        <p className="mt-0.5 text-lg font-semibold">{project.title}</p>
+        <p className="mt-0.5 text-lg font-semibold">{bubble.title}</p>
         <p className="mt-2 text-sm text-pretty text-foreground/85">
-          {project.summary}
+          {bubble.summary}
         </p>
         {used.length > 0 && (
           <p className="mt-3 text-xs text-muted-foreground">
@@ -716,226 +841,1399 @@ function Explain({
       </>
     )
   }
+  if (satellite)
+    return (
+      <>
+        {satellite.kind === 'press' && (
+          <p className="text-xs font-medium text-muted-foreground">Press</p>
+        )}
+        <p className="mt-0.5 text-base font-semibold text-pretty">
+          {satellite.title}
+        </p>
+        <p className="mt-1 text-sm text-foreground/85">{satellite.detail}</p>
+      </>
+    )
   return null
 }
 
-const RANK: Record<BubbleSize, number> = { xl: 0, lg: 1, md: 2, sm: 3 }
-
-/** How many skills a card shows before "+N more". */
-const CARD_SKILLS = 6
-
-/**
- * The constellation for phones and small tablets. Work and projects come first, biggest first,
- * each with its art, summary and the skills it used; then the skills, grouped under each area's
- * illustration. Tapping a skill opens an ink panel under its group with where it was used.
- */
-function CompactConstellation({
-  stars,
-  nodes
+/** A bubble's own link or button: a page link when project pages are on. */
+function BubbleTarget({
+  bubble,
+  className,
+  style,
+  handlers,
+  children
 }: {
-  stars: Star[]
-  nodes: ProjectNode[]
+  bubble: Bubble
+  className: string
+  style?: CSSProperties
+  handlers: Record<string, () => void>
+  children: ReactNode
 }) {
-  const [open, setOpen] = useState<string | null>(null)
-  const [expanded, setExpanded] = useState<Set<string>>(() => new Set())
-  const ranked = [...nodes].sort((a, b) => RANK[a.size] - RANK[b.size])
+  if (bubble.kind === 'project' && PROJECT_PAGES_ENABLED)
+    return (
+      <Link
+        href={`/projects/${bubble.slug}`}
+        {...handlers}
+        className={className}
+        style={style}
+      >
+        {children}
+      </Link>
+    )
+  return (
+    // Clicking only opens what hovering already shows, so no pointer cursor (taps and keys still work).
+    <button
+      type="button"
+      {...handlers}
+      className={cn('cursor-default', className)}
+      style={style}
+    >
+      {children}
+    </button>
+  )
+}
+
+/* ---------- the constellation ---------- */
+
+export function Constellation({
+  skills,
+  projects,
+  work,
+  satellites
+}: {
+  skills: Skill[]
+  projects: Project[]
+  work: WorkNode[]
+  satellites: Satellite[]
+}) {
+  const layout = LAYOUT
+  // The replay button plays the intro again by remounting the board.
+  const [replays, setReplays] = useState(0)
+  const stars = useMemo(() => layoutStars(layout, skills), [layout, skills])
+  const bubbles = useMemo(
+    () =>
+      placeBubbles(layout, [
+        ...work.map((w) => ({ ...w, kind: 'work' as const })),
+        ...projects
+          .filter((p) => !OFF_BOARD.includes(p.slug))
+          .map((p) => ({ ...p, kind: 'project' as const }))
+      ]),
+    [layout, projects, work]
+  )
+  return (
+    <>
+      <Board
+        key={replays}
+        layout={layout}
+        intro={INTRO}
+        stars={stars}
+        bubbles={bubbles}
+        satellites={satellites}
+      />
+
+      <Column stars={stars} bubbles={bubbles} satellites={satellites} />
+
+      {/* Replay the supernova: beside the light/dark switch, on the full-screen board only. */}
+      {INTRO.ms > 0 && (
+        <button
+          type="button"
+          onClick={() => setReplays((n) => n + 1)}
+          aria-label="Replay the opening animation"
+          title="Replay"
+          className="chrome-rim fixed right-[4.25rem] bottom-4 z-40 hidden size-10 items-center justify-center rounded-full border-2 text-foreground shadow-card-hover focus-ring transition-colors hover:border-foreground/40 lg:flex"
+        >
+          <PlayIcon weight="fill" className="size-4" aria-hidden />
+        </button>
+      )}
+    </>
+  )
+}
+
+/** The constellation from `lg` up: one screen, Me node at the center. */
+function Board({
+  layout,
+  intro,
+  stars,
+  bubbles: placed,
+  satellites
+}: {
+  layout: Layout
+  intro: Intro
+  stars: Star[]
+  bubbles: Bubble[]
+  satellites: Satellite[]
+}) {
+  const [active, setActive] = useState<Active>(null)
+  const { open, close } = useHoverIntent(setActive)
+
+  const board = useRef<HTMLDivElement>(null)
+  const size = useBoardSize(board)
+  const ME = layout.me
+  // One scale for the whole layout (distances and node sizes), from the board's size.
+  const scale = layoutScale(layout, size.w, size.h)
+  const boardSize = useMemo<[number, number]>(
+    () => (size.w ? [size.w, size.h] : layout.reference),
+    [size.w, size.h, layout.reference]
+  )
+  const bubbles = useMemo(
+    () =>
+      placed.map((b) => {
+        const [x, y] = around(layout, b.r, b.deg, scale, boardSize)
+        return { ...b, x, y }
+      }),
+    [placed, layout, scale, boardSize]
+  )
+  // The pointer is handled by useIntentHover (below); these keep the keyboard working.
+  const hover = (a: NonNullable<Active>) => ({
+    onFocus: () => open(a),
+    onBlur: () => close()
+  })
+
+  const linked = useMemo(
+    () => linksOf(active, stars, satellites),
+    [active, stars, satellites]
+  )
+  const activeStar =
+    active?.kind === 'skill'
+      ? stars.find((s) => s.name === active.id)
+      : undefined
+  const activeBubble =
+    active?.kind === 'project'
+      ? bubbles.find((p) => p.slug === active.id)
+      : undefined
+  const activeSat =
+    active?.kind === 'satellite'
+      ? satellites.find((s) => s.kind === active.id)
+      : undefined
+  const meOpen = active?.kind === 'me'
+
+  // The intro plays once. After it's over every intro class and effect is dropped, so nothing
+  // (resizing across the breakpoint, a re-render) can ever replay it.
+  // The moment it blows: after the build-up and the core's brief collapse.
+  const blast = intro.buildup + intro.kick
+  const introTotal =
+    blast + intro.spread + intro.ms * (1.1 + 0.35 * intro.chaos) + 394
+  const [played, setPlayed] = useState(false)
+  useEffect(() => {
+    const t = window.setTimeout(() => setPlayed(true), introTotal)
+    return () => window.clearTimeout(t)
+  }, [introTotal])
+  const live = !played
+
+  // Hover comes back as soon as the nodes are out on the board (mostly flown, still settling), long
+  // before the rest of the intro is done.
+  const readyAt = blast + intro.spread * 0.5 + intro.ms * 0.4
+  const [ready, setReady] = useState(readyAt <= 0)
+  useEffect(() => {
+    const t = window.setTimeout(() => setReady(true), readyAt)
+    return () => window.clearTimeout(t)
+  }, [readyAt])
+  const on = (cls: string) => (live ? cls : '')
+
+  // The intro: each node is thrown out from the Me node (by `burst`), nearer ones first, and with
+  // `chaos` each one goes its own way: its own speed and start, a spin, a curve off the straight
+  // line, a different size at the start and a harder or softer overshoot. Seeded by the node's id,
+  // so it's the same on the server and in the browser.
+  const far = Math.hypot(50 * 1.6, 50)
+  const delayAt = (x: number, y: number) =>
+    Math.round((Math.hypot((x - ME[0]) * 1.6, y - ME[1]) / far) * intro.spread)
+  // `px` gives a satellite's offset from the photo in px, which (unlike its % spot) is known
+  // before the board is measured, so its flight never changes mid-air.
+  const fly = (
+    x: number,
+    y: number,
+    id: string,
+    px?: [number, number]
+  ): CSSProperties => {
+    if (!live) return {}
+    const c = intro.chaos
+    const r = (k: string) => hash(`${id}/${k}`) - 0.5 // -0.5 … 0.5
+    const dx = px ? px[0] : (x - ME[0]) * 1.6
+    const dy = px ? px[1] : y - ME[1]
+    const len = Math.hypot(dx, dy) || 1
+    const swirl = r('swirl') * 140 * c // px, across the line of flight
+    const at: [number, number] = px ? ME : [x, y]
+    const vars: Record<string, string> = {
+      ...(px
+        ? {
+            '--gx': (-px[0] * intro.burst).toFixed(1),
+            '--gy': (-px[1] * intro.burst).toFixed(1)
+          }
+        : {
+            '--fx': ((ME[0] - x) * intro.burst).toFixed(2),
+            '--fy': ((ME[1] - y) * intro.burst).toFixed(2)
+          }),
+      '--sx': ((-dy / len) * swirl).toFixed(1),
+      '--sy': ((dx / len) * swirl).toFixed(1),
+      '--spin': `${(r('spin') * 80 * c).toFixed(1)}deg`,
+      '--s0': Math.min(
+        0.9,
+        intro.scale * (1 + (r('size') + 0.5) * 4 * c)
+      ).toFixed(2),
+      '--ov': (intro.overshoot * (1 + r('kick') * 1.2 * c)).toFixed(2),
+      '--dur': `${Math.round(intro.ms * (1.1 + r('speed') * 0.7 * c))}ms`,
+      '--intro-delay': `${Math.max(0, Math.round(blast + delayAt(at[0], at[1]) + r('start') * 123 * c))}ms`
+    }
+    return vars as CSSProperties
+  }
+  // An area's title starts fading in as its stars arrive and finishes as they settle.
+  const titleDelay = (x: number, y: number) =>
+    Math.round(blast + delayAt(x, y) + intro.ms * 0.3)
+
+  // The debris: each spark's own direction, distance, size, colour, speed, start, how bright it
+  // stays as dust and how fast it twinkles. Seeded, so it's the same everywhere.
+  const sparks = useMemo(
+    () =>
+      Array.from({ length: intro.debris }, (_, i) => {
+        const r = (k: string) => hash(`spark${i}/${k}`)
+        const a = (i / intro.debris) * Math.PI * 2 + r('a') * 0.9
+        const dist = 150 + r('d') ** 0.8 * 620
+        return {
+          id: `spark:${i}`,
+          dx: Math.round(Math.cos(a) * dist),
+          dy: Math.round(Math.sin(a) * dist * 0.7),
+          size: Math.round((2 + r('s') * 4) * 10) / 10,
+          tone: SPARK_TONES[Math.floor(r('c') * SPARK_TONES.length)],
+          speed: 0.8 + r('t') * 1.0,
+          wait: Math.round(r('w') * 70),
+          rest: Math.round((0.18 + r('o') * 0.32) * 100) / 100,
+          twinkle: Math.round(1800 + r('k') * 3200)
+        }
+      }),
+    [intro.debris]
+  )
+
+  // A satellite's offset from the photo (px), from the layout, scaled with the board.
+  const satOffset = (kind: Satellite['kind']): [number, number] => {
+    const { r, deg } = layout.satellites[kind]
+    return [
+      r * scale * Math.cos((deg * Math.PI) / 180),
+      r * scale * Math.sin((deg * Math.PI) / 180)
+    ]
+  }
+
+  // Satellites and bubbles both sit a scaled distance from the photo, so the layout keeps its shape.
+  const satPos = useMemo(() => {
+    const m: Record<string, [number, number]> = {}
+    for (const s of satellites) {
+      const { r, deg } = layout.satellites[s.kind]
+      m[s.kind] = around(layout, r, deg, scale, boardSize)
+    }
+    return m
+  }, [satellites, scale, boardSize, layout])
+
+  const motionNodes = useMemo(() => {
+    const m: Record<string, MotionNode> = {}
+    // The Me node leans toward the cursor too, heavier than the rest so it moves the least.
+    m[ME_ID] = {
+      x: ME[0],
+      y: ME[1],
+      weight: 0.5,
+      r: 72 * scale,
+      reach: REACH.me,
+      pullReach: 30,
+      travel: 8
+    }
+    for (const s of satellites) {
+      const [x, y] = satPos[s.kind]
+      m[satId(s.kind)] = {
+        x,
+        y,
+        weight: 0.8,
+        r: 32 * scale,
+        reach: REACH.satellite,
+        // The same long, soft approach as a star, moving a little less.
+        pullReach: 30,
+        travel: 10
+      }
+    }
+    for (const s of stars)
+      m[starId(s.name)] = {
+        x: s.x,
+        y: s.y,
+        weight: 1,
+        r: 6,
+        reach: REACH.skill,
+        // Stars sit close together: a shorter pull keeps neighbours from meeting.
+        travel: STAR_TRAVEL
+      }
+    for (const n of bubbles)
+      m[bubbleId(n.slug)] = {
+        x: n.x,
+        y: n.y,
+        weight: 0.6,
+        r: BUBBLE_STYLE[n.size].disc * 8 * scale,
+        reach: REACH.project,
+        // Heavier than a star: pulled from as far, but moving a little less.
+        pullReach: 30,
+        travel: 10
+      }
+    // Dust is light: it floats a little more than a star and the cursor pulls it from farther off.
+    if (size.w)
+      for (const sp of sparks)
+        m[sp.id] = {
+          x: ME[0] + (sp.dx / size.w) * 100,
+          y: ME[1] + (sp.dy / size.h) * 100,
+          weight: 1.2,
+          r: 3,
+          reach: 34
+        }
+    return m
+  }, [stars, bubbles, satellites, satPos, ME, sparks, size, scale])
+
+  const activeId = activeStar
+    ? starId(activeStar.name)
+    : activeBubble
+      ? bubbleId(activeBubble.slug)
+      : activeSat
+        ? satId(activeSat.kind)
+        : meOpen
+          ? ME_ID
+          : null
+  // Only what's actually on the board: a skill can name a project kept off it (Branch).
+  const linkedIds = useMemo(
+    () =>
+      new Set(
+        [
+          ...[...linked.skills].map(starId),
+          ...[...linked.projects].map(bubbleId)
+        ].filter((id) => id in motionNodes)
+      ),
+    [linked, motionNodes]
+  )
+
+  useCursorGravity(board, motionNodes, activeId)
+  useIntentHover(board, active, setActive, ready)
+  const { w, h } = size
+  const px = (id: string) => {
+    const n = motionNodes[id]
+    return { x: (n.x / 100) * w, y: (n.y / 100) * h }
+  }
+
+  // The lines: each area's figure always; the active node's links on hover.
+  const fixedLines: { a: string; b: string }[] = [
+    ...Object.keys(AREAS).flatMap((area) => {
+      const list = stars.filter((s) => s.area === area)
+      return figure(list, w && h ? w / h : 1.6).map(([a, b]) => ({
+        a: starId(list[a].name),
+        b: starId(list[b].name)
+      }))
+    })
+  ]
+  const hoverLines: { a: string; b: string }[] =
+    activeId && activeId in motionNodes
+      ? [...linkedIds].map((id) => ({ a: activeId, b: id }))
+      : []
+
+  // The areas holding the active star, or the stars the active bubble used.
+  const litAreas = new Set(
+    stars
+      .filter((s) => activeStar?.name === s.name || linked.skills.has(s.name))
+      .map((s) => s.area as string)
+  )
+
+  const dimmed = (lit: boolean) => active !== null && !lit && 'opacity-30'
+
+  const anchor = activeStar ?? activeBubble
+  const satAnchor = activeSat ? satPos[activeSat.kind] : undefined
 
   return (
-    <div className="space-y-14 lg:hidden">
-      <div>
-        <h3 className="text-lg font-semibold">Work and projects</h3>
-        <ul className="mt-5 grid gap-x-8 gap-y-8 sm:grid-cols-2">
-          {ranked.map((n) => {
-            const used = stars.filter((s) => s.projects.includes(n.slug))
-            const all = expanded.has(n.slug)
-            const shown = all ? used : used.slice(0, CARD_SKILLS)
+    <div
+      ref={board}
+      className={cn(
+        'relative hidden h-dvh min-h-[46rem] w-full overflow-x-clip lg:block',
+        live && intro.shake > 0 && 'intro-shake',
+        // Nothing on the board can be hovered or clicked until it has landed.
+        !ready && '[&_*]:pointer-events-none'
+      )}
+      style={
+        {
+          '--node-k': scale,
+          '--intro-kick': `${intro.kick}ms`,
+          '--intro-build': `${intro.buildup}ms`,
+          '--intro-blast': `${blast}ms`,
+          '--intro-ms': `${intro.ms}ms`,
+          '--intro-scale': intro.scale,
+          '--intro-overshoot': intro.overshoot,
+          '--shake': intro.shake
+        } as CSSProperties
+      }
+      onClick={(e) => {
+        // A click just off a satellite, while it's the one lit, follows its link.
+        if (active?.kind !== 'satellite') return
+        if ((e.target as Element).closest('a,button,[role=button],#me-about'))
+          return
+        board.current
+          ?.querySelector<HTMLAnchorElement>(`a[data-sat="${active.id}"]`)
+          ?.click()
+      }}
+    >
+      {w > 0 && (
+        <svg
+          viewBox={`0 0 ${w} ${h}`}
+          className="pointer-events-none absolute inset-0 size-full"
+          aria-hidden
+          focusable="false"
+        >
+          {fixedLines.map((l) => {
+            const A = px(l.a)
+            const B = px(l.b)
             return (
-              <li key={n.slug} className="flex gap-4">
+              <line
+                key={`${l.a}-${l.b}`}
+                data-a={l.a}
+                data-b={l.b}
+                x1={A.x}
+                y1={A.y}
+                x2={B.x}
+                y2={B.y}
+                className={cn(
+                  'transition-opacity duration-300',
+                  on('intro-line'),
+                  l.a === ME_ID
+                    ? 'stroke-foreground/20'
+                    : 'stroke-foreground/15',
+                  active && 'opacity-40'
+                )}
+                // Each line of a figure catches at its own moment, like a constellation lighting up.
+                style={
+                  live
+                    ? ({
+                        '--line-delay': `${Math.round(blast + intro.lines + (hash(`${l.a}|${l.b}`) - 0.3) * 228 * intro.chaos)}ms`
+                      } as CSSProperties)
+                    : undefined
+                }
+                strokeWidth={1.5}
+              />
+            )
+          })}
+          {hoverLines.map((l) => {
+            const A = px(l.a)
+            const B = px(l.b)
+            return (
+              <g key={`${l.a}-${l.b}`}>
+                <line
+                  data-a={l.a}
+                  data-b={l.b}
+                  x1={A.x}
+                  y1={A.y}
+                  x2={B.x}
+                  y2={B.y}
+                  className="stroke-brand/35"
+                  strokeWidth={2}
+                />
+                <line
+                  data-a={l.a}
+                  data-b={l.b}
+                  x1={A.x}
+                  y1={A.y}
+                  x2={B.x}
+                  y2={B.y}
+                  className="constellation-flow stroke-brand"
+                  strokeWidth={2.5}
+                  strokeLinecap="round"
+                />
+              </g>
+            )
+          })}
+        </svg>
+      )}
+
+      {/* The intro's light: a screen-wide bloom, a flash at the core, and a shockwave that runs
+          off every edge of the screen. All gone in well under a second. */}
+      {/* Debris: sparks thrown out by the blast that stay on as faint, twinkling dust, floating and
+          pulled by the cursor like everything else. */}
+      {sparks.map((sp) => (
+        <span
+          key={sp.id}
+          aria-hidden
+          className="pointer-events-none absolute"
+          style={{
+            left: `calc(${ME[0]}% + ${sp.dx}px)`,
+            top: `calc(${ME[1]}% + ${sp.dy}px)`
+          }}
+        >
+          <span data-node={sp.id} className="block will-change-transform">
+            <span
+              className={cn(
+                'block rounded-full',
+                live ? 'intro-spark' : 'spark-twinkle'
+              )}
+              style={
+                {
+                  width: sp.size,
+                  height: sp.size,
+                  marginLeft: -sp.size / 2,
+                  marginTop: -sp.size / 2,
+                  background: `var(--spark-${sp.tone})`,
+                  opacity: sp.rest,
+                  '--dx': `${sp.dx}px`,
+                  '--dy': `${sp.dy}px`,
+                  '--rest': sp.rest,
+                  animationDuration: live
+                    ? `${Math.round(intro.ms * sp.speed)}ms`
+                    : `${sp.twinkle}ms`,
+                  animationDelay: live
+                    ? `${Math.round(blast + sp.wait)}ms`
+                    : `${-sp.wait * 20}ms`
+                } as CSSProperties
+              }
+            />
+          </span>
+        </span>
+      ))}
+      {/* The build-up: a churning ball of colour where your photo will be, light gathering
+          around it and specks falling into it. At the blast it bursts and your photo is there. */}
+      {live && intro.buildup > 0 && (
+        <>
+          <span
+            aria-hidden
+            className="intro-core pointer-events-none absolute z-30 size-36 -translate-x-1/2 -translate-y-1/2"
+            style={{ left: `${ME[0]}%`, top: `${ME[1]}%` }}
+          >
+            {/* Light leaking out: thin rays at random angles, each flickering on its own beat. */}
+            {Array.from({ length: 18 }, (_, i) => {
+              const r = (k: string) => hash(`ray${i}/${k}`)
+              return (
                 <span
+                  key={`ray${i}`}
+                  className="core-ray absolute top-1/2 left-1/2"
+                  style={
+                    {
+                      width: `${(1.5 + r('w') * 3.5).toFixed(1)}px`,
+                      height: `${Math.round(80 + r('h') ** 1.4 * 190)}px`,
+                      rotate: `${Math.round(i * 20 + r('a') * 30)}deg`,
+                      '--ray-color': `var(--iri-${IRI[Math.floor(r('c') * IRI.length)]})`,
+                      animationDuration: `${Math.round(96 + r('t') * 175)}ms`,
+                      animationDelay: `${-Math.round(r('d') * 263)}ms`
+                    } as CSSProperties
+                  }
+                />
+              )
+            })}
+            {/* The orb: polished chrome with blobs of light lurching around inside it. */}
+            <span className="core-orb absolute inset-0 overflow-hidden rounded-full">
+              {[
+                // [colour, blend]: dark reflections and coloured light thrash around under bright
+                // highlights, the way a chrome ball throws its surroundings back.
+                [
+                  'radial-gradient(circle, #23262c 0%, transparent 62%)',
+                  'normal'
+                ],
+                [
+                  'radial-gradient(circle, var(--iri-magenta) 0%, transparent 58%)',
+                  'normal'
+                ],
+                [
+                  'radial-gradient(circle, var(--iri-cyan) 0%, transparent 58%)',
+                  'screen'
+                ],
+                [
+                  'radial-gradient(circle, #fbfcfd 0%, transparent 52%)',
+                  'screen'
+                ],
+                [
+                  'radial-gradient(circle, var(--iri-violet) 0%, transparent 60%)',
+                  'normal'
+                ],
+                [
+                  'radial-gradient(circle, var(--iri-gold) 0%, transparent 55%)',
+                  'screen'
+                ],
+                [
+                  'radial-gradient(circle, #3a3f48 0%, transparent 58%)',
+                  'normal'
+                ],
+                [
+                  'radial-gradient(circle, var(--iri-mint) 0%, transparent 55%)',
+                  'screen'
+                ],
+                [
+                  'radial-gradient(circle, #fbfcfd 0%, transparent 46%)',
+                  'screen'
+                ]
+              ].map(([bg, blend], i) => {
+                const r = (k: string) => hash(`blob${i}/${k}`) - 0.5
+                const j = (k: string) => `${Math.round(r(k) * 70)}%`
+                return (
+                  <span
+                    key={i}
+                    className="core-blob absolute inset-[-25%] blur-[6px]"
+                    style={
+                      {
+                        background: bg,
+                        mixBlendMode: blend as CSSProperties['mixBlendMode'],
+                        '--j1x': j('1x'),
+                        '--j1y': j('1y'),
+                        '--j2x': j('2x'),
+                        '--j2y': j('2y'),
+                        '--j3x': j('3x'),
+                        '--j3y': j('3y'),
+                        animationDuration: `${Math.round(201 + (r('t') + 0.5) * 228)}ms`
+                      } as CSSProperties
+                    }
+                  />
+                )
+              })}
+              {/* The white-hot centre, pulsing. */}
+              <span className="core-heart absolute inset-[30%] rounded-full bg-[radial-gradient(circle,#fbfcfd_0%,color-mix(in_oklab,#fbfcfd_60%,transparent)_40%,transparent_70%)] blur-sm" />
+            </span>
+          </span>
+          <span
+            aria-hidden
+            className="intro-halo pointer-events-none absolute size-[28rem] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[radial-gradient(circle,color-mix(in_oklab,var(--iri-violet)_35%,white)_0%,color-mix(in_oklab,var(--iri-cyan)_26%,transparent)_30%,color-mix(in_oklab,var(--iri-magenta)_16%,transparent)_48%,transparent_68%)]"
+            style={{ left: `${ME[0]}%`, top: `${ME[1]}%` }}
+          />
+          <span
+            aria-hidden
+            className="pointer-events-none absolute"
+            style={{ left: `${ME[0]}%`, top: `${ME[1]}%` }}
+          >
+            {Array.from({ length: 16 }, (_, i) => {
+              const r = (k: string) => hash(`mote${i}/${k}`)
+              const a = (i / 16) * Math.PI * 2 + r('a')
+              const dist = 140 + r('d') * 220
+              const dur = intro.buildup * (0.45 + r('t') * 0.45)
+              const size = 2 + r('s') * 3
+              return (
+                <span
+                  key={i}
+                  className="intro-mote absolute rounded-full"
+                  style={
+                    {
+                      width: size,
+                      height: size,
+                      marginLeft: -size / 2,
+                      marginTop: -size / 2,
+                      background: `var(--spark-${SPARK_TONES[i % SPARK_TONES.length]})`,
+                      '--mx': `${Math.round(Math.cos(a) * dist)}px`,
+                      '--my': `${Math.round(Math.sin(a) * dist * 0.75)}px`,
+                      animationDuration: `${Math.round(dur)}ms`,
+                      // Each lands in the core just before (or right at) the collapse.
+                      animationDelay: `${Math.round(blast - dur - r('w') * 105)}ms`
+                    } as CSSProperties
+                  }
+                />
+              )
+            })}
+          </span>
+        </>
+      )}
+      {live && intro.bloom && (
+        <span
+          aria-hidden
+          className="intro-bloom pointer-events-none absolute inset-0"
+          style={{
+            background: `radial-gradient(circle at ${ME[0]}% ${ME[1]}%, color-mix(in oklab, var(--brand) 26%, white) 0%, color-mix(in oklab, var(--brand) 12%, transparent) 28%, transparent 62%)`
+          }}
+        />
+      )}
+      {live && intro.flash && (
+        <span
+          aria-hidden
+          className="intro-flash pointer-events-none absolute size-96 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[radial-gradient(circle,#fbfcfd_0%,color-mix(in_oklab,var(--iri-cyan)_45%,white)_16%,color-mix(in_oklab,var(--iri-violet)_40%,transparent)_32%,color-mix(in_oklab,var(--iri-magenta)_22%,transparent)_48%,transparent_70%)]"
+          style={{ left: `${ME[0]}%`, top: `${ME[1]}%` }}
+        />
+      )}
+      {live && intro.shockwave && (
+        <span
+          aria-hidden
+          className="intro-shock pointer-events-none absolute size-40 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-brand/50"
+          style={{ left: `${ME[0]}%`, top: `${ME[1]}%` }}
+        />
+      )}
+
+      {/* Area labels: plain text at each cluster's heart. An area with a lit star stays bright
+          (and strengthens), so you can always see which area a skill belongs to. */}
+      {Object.entries(layout.areas).map(([area, hub]) => (
+        <p
+          key={area}
+          className={cn(
+            on('intro-label'),
+            'pointer-events-none absolute -translate-x-1/2 -translate-y-1/2 text-xs font-semibold tracking-wide whitespace-nowrap uppercase transition-[opacity,color] duration-300',
+            litAreas.has(area)
+              ? 'text-foreground'
+              : cn('text-muted-foreground', active && 'opacity-40')
+          )}
+          style={
+            {
+              left: `${hub[0]}%`,
+              top: `${hub[1]}%`,
+              // Fade in as the area's stars land around it.
+              '--intro-label-delay': `${titleDelay(hub[0], hub[1])}ms`
+            } as CSSProperties
+          }
+        >
+          {area}
+        </p>
+      ))}
+
+      {/* Bubbles: work and projects around the Me node. */}
+      {bubbles.map((b) => {
+        const style = BUBBLE_STYLE[b.size]
+        const isActive = activeBubble?.slug === b.slug
+        const lit = isActive || linked.projects.has(b.slug)
+        return (
+          <div
+            key={b.slug}
+            className="absolute z-10"
+            style={{
+              left: `${b.x}%`,
+              top: `${b.y}%`,
+              // Put the disc's center (inside 0.5rem of padding) on the bubble's point.
+              translate: `-50% calc(-${style.disc / 2}rem - 0.5rem)`
+            }}
+          >
+            <div
+              data-node={bubbleId(b.slug)}
+              className="will-change-transform"
+              style={{ scale: 'var(--node-k, 1)' }}
+            >
+              <BubbleTarget
+                bubble={b}
+                handlers={{
+                  ...hover({ kind: 'project', id: b.slug }),
+                  onClick: () => open({ kind: 'project', id: b.slug })
+                }}
+                className={cn(
+                  on('intro-piece'),
+                  'group flex flex-col items-center rounded-xl p-2 focus-ring transition-opacity duration-300',
+                  dimmed(lit)
+                )}
+                style={fly(b.x, b.y, b.slug)}
+              >
+                <BubbleDisc
+                  bubble={b}
+                  rem={style.disc}
+                  lit={lit}
+                  hit={`project:${b.slug}`}
+                />
+                <span
+                  data-hit={`project:${b.slug}`}
                   className={cn(
-                    'flex size-16 shrink-0 items-center justify-center rounded-full border-2 border-foreground/80',
-                    TINT_BG[n.accent]
+                    'mt-2 font-semibold whitespace-nowrap',
+                    style.label,
+                    lit && 'text-link'
                   )}
                 >
-                  <Illustration name={n.slug} className="w-12" decorative />
+                  {b.title}
                 </span>
-                <div className="min-w-0 flex-1">
-                  <p className="flex flex-wrap items-baseline gap-x-2">
-                    {n.kind === 'project' && PROJECT_PAGES_ENABLED ? (
-                      <Link
-                        href={`/projects/${n.slug}`}
-                        className="rounded-sm text-base font-semibold underline-offset-4 focus-ring hover:text-link hover:underline"
-                      >
-                        {n.title}
-                      </Link>
-                    ) : (
-                      <span className="text-base font-semibold">{n.title}</span>
-                    )}
-                    <span className="text-xs text-muted-foreground">
-                      {n.tagline}
-                    </span>
-                  </p>
-                  <p className="mt-1 text-sm text-pretty text-muted-foreground">
-                    {n.summary}
-                  </p>
-                  {used.length > 0 && (
-                    <ul
-                      className="mt-3 flex flex-wrap gap-1.5"
-                      aria-label={`Skills used at ${n.title}`}
-                    >
-                      {shown.map((s) => (
-                        <li
-                          key={s.name}
-                          className="flex items-center gap-1.5 rounded-full border border-border px-2.5 py-0.5 text-xs font-medium"
-                        >
-                          <span
-                            className={cn(
-                              'size-2 rounded-full border border-foreground/70',
-                              DOT[AREAS[s.area].accent]
-                            )}
-                            aria-hidden
-                          />
-                          {s.name}
-                        </li>
-                      ))}
-                      {used.length > CARD_SKILLS && (
-                        <li>
-                          <button
-                            type="button"
-                            onClick={() =>
-                              setExpanded((prev) => {
-                                const next = new Set(prev)
-                                if (next.has(n.slug)) next.delete(n.slug)
-                                else next.add(n.slug)
-                                return next
-                              })
-                            }
-                            aria-expanded={all}
-                            className="rounded-full px-2.5 py-0.5 text-xs font-semibold text-link focus-ring"
-                          >
-                            {all
-                              ? 'Show fewer'
-                              : `+${used.length - CARD_SKILLS} more`}
-                          </button>
-                        </li>
-                      )}
-                    </ul>
-                  )}
-                  {n.kind === 'project' && PROJECT_PAGES_ENABLED && (
-                    <Link
-                      href={`/projects/${n.slug}`}
-                      className="mt-3 inline-flex items-center gap-1 rounded-sm text-sm font-semibold text-link underline-offset-4 focus-ring hover:underline"
-                    >
-                      Read the story
-                      <ArrowRightIcon
-                        weight="bold"
-                        aria-hidden
-                        className="size-4"
-                      />
-                    </Link>
-                  )}
-                </div>
-              </li>
-            )
-          })}
-        </ul>
-      </div>
+                <span
+                  data-hit={`project:${b.slug}`}
+                  className="max-w-40 text-center text-xs leading-snug text-muted-foreground"
+                >
+                  {b.tagline}
+                </span>
+              </BubbleTarget>
+            </div>
+          </div>
+        )
+      })}
 
-      <div>
-        <h3 className="text-lg font-semibold">Skills</h3>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Tap a skill to see where I’ve used it.
-        </p>
-        <div className="mt-6 grid gap-x-8 gap-y-10 sm:grid-cols-2">
-          {Object.entries(AREAS).map(([area, { key, accent }]) => {
-            const list = stars.filter((s) => s.area === area)
-            const current = list.find((s) => s.name === open)
-            const where = current
-              ? nodes.filter((n) => current.projects.includes(n.slug))
-              : []
-            return (
-              <div key={area}>
-                <div className="flex items-center gap-2">
-                  <Illustration name={key} className="w-11" decorative />
-                  <h4
-                    className={cn(
-                      'rounded-full border border-foreground/80 px-2.5 py-0.5 text-xs font-semibold',
-                      TINT_BG[accent]
-                    )}
-                  >
-                    {area}
-                  </h4>
-                </div>
-                <ul className="mt-3 flex flex-wrap gap-1.5">
-                  {list.map((s) => {
-                    const on = s.name === open
-                    return (
-                      <li key={s.name}>
-                        <button
-                          type="button"
-                          onClick={() => setOpen(on ? null : s.name)}
-                          aria-expanded={on}
-                          className={cn(
-                            'flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm font-medium focus-ring transition-colors',
-                            on
-                              ? 'border-brand bg-brand text-brand-foreground'
-                              : 'border-border bg-card hover:border-foreground/40'
-                          )}
-                        >
-                          <span
-                            className={cn(
-                              'size-2 rounded-full border',
-                              on
-                                ? 'border-brand-foreground bg-brand-foreground'
-                                : cn('border-foreground/70', DOT[accent])
-                            )}
-                            aria-hidden
-                          />
-                          {s.name}
-                        </button>
-                      </li>
-                    )
-                  })}
-                </ul>
-                {current && (
-                  <div
-                    className="dark mt-3 rounded-lg bg-background p-4 text-foreground"
-                    aria-live="polite"
-                  >
-                    <p className="text-base font-semibold">{current.name}</p>
-                    <p className="mt-1.5 text-sm text-pretty text-foreground/85">
-                      {current.explanation}
-                    </p>
-                    {where.length > 0 && (
-                      <div className="mt-3">
-                        <p className="text-xs text-muted-foreground">Used in</p>
-                        <ul className="mt-1.5 flex flex-wrap gap-1.5">
-                          {where.map((n) => (
-                            <li key={n.slug}>
-                              {n.kind === 'project' && PROJECT_PAGES_ENABLED ? (
-                                <Link
-                                  href={`/projects/${n.slug}`}
-                                  className="inline-flex rounded-full bg-foreground/10 px-2.5 py-1 text-xs font-semibold text-foreground focus-ring transition-colors hover:bg-foreground/20"
-                                >
-                                  {n.title}
-                                </Link>
-                              ) : (
-                                <span className="inline-flex rounded-full bg-foreground/10 px-2.5 py-1 text-xs font-semibold">
-                                  {n.title}
-                                </span>
-                              )}
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    )}
-                  </div>
+      {/* Stars. */}
+      {stars.map((s) => {
+        const isActive = activeStar?.name === s.name
+        const lit = isActive || linked.skills.has(s.name)
+        return (
+          <div
+            key={s.name}
+            className="absolute"
+            style={
+              {
+                left: `${s.x}%`,
+                top: `${s.y}%`,
+                // Put the dot (0.75rem, inside 0.25rem of padding) exactly on the star.
+                translate: s.above
+                  ? '-50% calc(-100% + 0.625rem)'
+                  : '-50% -0.625rem'
+              } as CSSProperties
+            }
+          >
+            <div
+              data-node={starId(s.name)}
+              className="will-change-transform"
+              // Labels stay legible: stars shrink less than everything else.
+              style={{ scale: 'max(0.85, var(--node-k, 1))' }}
+            >
+              <button
+                type="button"
+                {...hover({ kind: 'skill', id: s.name })}
+                onClick={() => open({ kind: 'skill', id: s.name })}
+                aria-pressed={isActive}
+                className={cn(
+                  on('intro-piece'),
+                  'group relative flex cursor-default items-center gap-1.5 rounded-md px-1.5 py-1 focus-ring transition-opacity duration-300',
+                  s.above ? 'flex-col-reverse' : 'flex-col',
+                  dimmed(lit)
                 )}
-              </div>
-            )
-          })}
+                style={fly(s.x, s.y, s.name)}
+              >
+                <span
+                  data-hit={`skill:${s.name}`}
+                  data-shape="circle"
+                  className={cn(
+                    'size-3 rounded-full border-2 border-foreground transition-[background-color,border-color] duration-200',
+                    lit
+                      ? 'border-brand bg-brand'
+                      : ACCENT_BG[AREAS[s.area].accent]
+                  )}
+                />
+                <span
+                  data-hit={`skill:${s.name}`}
+                  className={cn(
+                    'text-[13px] leading-tight font-medium whitespace-nowrap',
+                    lit
+                      ? 'font-semibold text-link'
+                      : 'text-muted-foreground group-hover:text-foreground'
+                  )}
+                >
+                  {s.name}
+                </span>
+              </button>
+            </div>
+          </div>
+        )
+      })}
+
+      {/* Satellites, orbiting the Me node. */}
+      {satellites.map((s) => {
+        const [x, y] = satPos[s.kind]
+        const isActive = activeSat?.kind === s.kind
+        return (
+          <div
+            key={s.kind}
+            className="absolute z-10"
+            style={{ left: `${x}%`, top: `${y}%`, translate: '-50% -2.25rem' }}
+          >
+            <div
+              data-node={satId(s.kind)}
+              className="will-change-transform"
+              style={{ scale: 'var(--node-k, 1)' }}
+            >
+              <a
+                href={s.href}
+                data-sat={s.kind}
+                {...(s.kind === 'github' || s.kind === 'press'
+                  ? { target: '_blank', rel: 'noopener noreferrer' }
+                  : {})}
+                {...hover({ kind: 'satellite', id: s.kind })}
+                aria-label={
+                  s.kind === 'press'
+                    ? `Press: ${s.title}, ${s.detail}`
+                    : `${s.title}: ${s.detail}`
+                }
+                className={cn(
+                  on('intro-piece'),
+                  'group flex flex-col items-center rounded-lg p-1 focus-ring transition-opacity duration-300',
+                  dimmed(isActive)
+                )}
+                style={fly(x, y, s.kind, satOffset(s.kind))}
+              >
+                <SatelliteDisc
+                  satellite={s}
+                  lit={isActive}
+                  hit={`satellite:${s.kind}`}
+                  className="size-16"
+                />
+                <span
+                  data-hit={`satellite:${s.kind}`}
+                  className={cn(
+                    'mt-1 text-xs font-semibold',
+                    isActive && 'text-link'
+                  )}
+                >
+                  {s.label}
+                </span>
+              </a>
+            </div>
+          </div>
+        )
+      })}
+
+      {/* The Me node. Clicking does nothing; a tap opens the About on touch screens. */}
+      <div
+        className="absolute z-20"
+        style={{
+          left: `${ME[0]}%`,
+          top: `${ME[1]}%`,
+          translate: '-50% -4.5rem'
+        }}
+      >
+        <div data-node={ME_ID} className="will-change-transform">
+          <div
+            role="button"
+            tabIndex={0}
+            aria-expanded={meOpen}
+            aria-describedby="me-about"
+            {...hover({ kind: 'me' })}
+            onPointerUp={(e) => {
+              if (e.pointerType !== 'mouse')
+                if (meOpen) setActive(null)
+                else open({ kind: 'me' })
+            }}
+            className={cn(
+              on('intro-me'),
+              'flex w-max cursor-default flex-col items-center rounded-2xl pb-2 text-center focus-ring'
+            )}
+            // Scales with the layout, around the photo's centre.
+            style={{
+              transform: 'scale(var(--node-k, 1))',
+              transformOrigin: '50% 4.5rem'
+            }}
+          >
+            <Portrait
+              hit="me"
+              className={cn(
+                'size-36 transition-[border-color,box-shadow] duration-300',
+                meOpen &&
+                  'border-brand shadow-[0_0_0_8px_color-mix(in_oklab,var(--brand)_14%,transparent)]'
+              )}
+            />
+            <p
+              data-hit="me"
+              className="mt-4 text-2xl font-semibold tracking-tight whitespace-nowrap"
+            >
+              {PROFILE.name}
+            </p>
+            <p
+              data-hit="me"
+              className="mt-1 text-sm whitespace-nowrap text-muted-foreground"
+            >
+              {PROFILE.role} · {PROFILE.location.split(',')[0]}
+            </p>
+          </div>
+
+          {/* The bio, always in the markup; shown only while the Me node itself is hovered. */}
+          <div
+            id="me-about"
+            role="tooltip"
+            className={cn(
+              'dark ink-pop pointer-events-none absolute left-1/2 w-[34rem] -translate-x-1/2 rounded-lg bg-background p-5 text-foreground shadow-pop transition-[opacity,translate] duration-200',
+              meOpen ? 'translate-y-0 opacity-100' : 'translate-y-1 opacity-0'
+            )}
+            // Just under your name as drawn (the block above is scaled), at full size itself.
+            style={{ top: 'calc(4.5rem + (100% - 4.5rem) * var(--node-k, 1))' }}
+          >
+            <About />
+          </div>
         </div>
       </div>
+
+      {/* The ink popover beside the active star, bubble or satellite. */}
+      {(anchor || satAnchor) && (
+        <div
+          role="tooltip"
+          className={cn(
+            'dark ink-pop pointer-events-none absolute z-30 w-80 rounded-lg bg-background p-4 text-foreground shadow-pop',
+            (anchor?.y ?? satAnchor![1]) > 60 && '-translate-y-full',
+            // Toward the middle for stars and bubbles; outward for satellites, clear of the Me node.
+            (anchor ? anchor.x > 50 : satAnchor![0] < 50) && '-translate-x-full'
+          )}
+          style={(() => {
+            const [x, y] = anchor ? [anchor.x, anchor.y] : satAnchor!
+            const left = anchor ? x > 50 : x < 50
+            const gap = activeBubble
+              ? `${BUBBLE_STYLE[activeBubble.size].disc / 2 + 1}rem`
+              : activeSat
+                ? '2.5rem'
+                : '1.5rem'
+            return {
+              left: `calc(${x}% ${left ? '-' : '+'} ${gap})`,
+              top: `calc(${y}% ${y > 60 ? '- 0.5rem' : '+ 0.5rem'})`
+            }
+          })()}
+        >
+          <Explain
+            star={activeStar}
+            bubble={activeBubble}
+            satellite={activeSat}
+            bubbles={bubbles}
+            stars={stars}
+          />
+        </div>
+      )}
+
+      <p className="pointer-events-none absolute bottom-4 left-5 text-xs text-muted-foreground/80">
+        Hover anything to see how it connects.
+      </p>
     </div>
+  )
+}
+
+/* ---------- below lg: the column ---------- */
+
+/** Down the page in the board's order: Jackson's own projects first. */
+const ORDER = [
+  'waltz',
+  'anyform',
+  'cratest',
+  'oracle',
+  'trailblaze',
+  'koistream',
+  'careerfoundry',
+  'tedx',
+  'branch'
+]
+const rank = (slug: string) =>
+  ORDER.includes(slug) ? ORDER.indexOf(slug) : ORDER.length
+
+/**
+ * Where each bubble sits in the honeycomb: a 6-column grid where each bubble spans 2, in rows of
+ * three and two, the rows of two shifted half a step so they nest between the rows of three.
+ */
+function honeycombColumn(i: number) {
+  const cycle = i % 5
+  return cycle < 3 ? 1 + cycle * 2 : 2 + (cycle - 3) * 2
+}
+
+type Picked =
+  | { kind: 'me' }
+  | { kind: 'bubble'; slug: string }
+  | { kind: 'star'; name: string }
+
+/**
+ * The constellation for phones and small tablets, made to be tapped, not hovered. Your photo, name
+ * and role up top with the satellites; then work and projects packed in a honeycomb; then each skill
+ * area as a cluster of stars. Tap anything and a sheet rises from the bottom with what it is and
+ * what it connects to, as chips you can tap to keep exploring without scrolling; the page behind
+ * lights up whatever's related. Gentle drift only.
+ */
+function Column({
+  stars,
+  bubbles,
+  satellites
+}: {
+  stars: Star[]
+  bubbles: Bubble[]
+  satellites: Satellite[]
+}) {
+  const [picked, setPicked] = useState<Picked | null>(null)
+  // Stable, so the sheet's open effect (focus and the Escape key) runs once per opening.
+  const closeSheet = useCallback(() => setPicked(null), [])
+  const ranked = [...bubbles].sort((a, b) => rank(a.slug) - rank(b.slug))
+  const pickedBubble =
+    picked?.kind === 'bubble'
+      ? bubbles.find((b) => b.slug === picked.slug)
+      : undefined
+  const pickedStar =
+    picked?.kind === 'star'
+      ? stars.find((s) => s.name === picked.name)
+      : undefined
+
+  // What lights up on the page behind the sheet.
+  const litStars = new Set(
+    pickedBubble
+      ? stars
+          .filter((s) => s.projects.includes(pickedBubble.slug))
+          .map((s) => s.name)
+      : pickedStar
+        ? [pickedStar.name]
+        : []
+  )
+  const litBubbles = new Set(
+    pickedStar ? pickedStar.projects : pickedBubble ? [pickedBubble.slug] : []
+  )
+
+  return (
+    <div className="px-5 pt-10 pb-28 lg:hidden">
+      {/* You. */}
+      <div className="flex flex-col items-center text-center">
+        <button
+          type="button"
+          onClick={() => setPicked({ kind: 'me' })}
+          aria-label={`About ${PROFILE.name}`}
+          className="constellation-drift rounded-full focus-ring"
+        >
+          <Portrait
+            className={cn(
+              'size-28 border-[3px]',
+              picked?.kind === 'me' && LIT_RING
+            )}
+          />
+        </button>
+        <p className="mt-3 text-2xl font-semibold tracking-tight">
+          {PROFILE.name}
+        </p>
+        <p className="mt-0.5 text-sm text-muted-foreground">
+          {PROFILE.role} · {PROFILE.location}
+        </p>
+        <ul className="mt-5 flex justify-center gap-5">
+          {satellites.map((s) => (
+            <li key={s.kind}>
+              <a
+                href={s.href}
+                {...(s.kind === 'github' || s.kind === 'press'
+                  ? { target: '_blank', rel: 'noopener noreferrer' }
+                  : {})}
+                aria-label={
+                  s.kind === 'press'
+                    ? `Press: ${s.title}, ${s.detail}`
+                    : `${s.title}: ${s.detail}`
+                }
+                className="flex flex-col items-center rounded-lg p-1 focus-ring"
+              >
+                <SatelliteDisc satellite={s} className="size-14" />
+                <span className="mt-1 text-xs font-semibold">{s.label}</span>
+              </a>
+            </li>
+          ))}
+        </ul>
+        <p className="mt-4 text-xs text-muted-foreground">
+          Tap anything to see how it connects.
+        </p>
+      </div>
+
+      {/* Work and projects, packed in a honeycomb. */}
+      <h2 className="mt-10 text-center text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+        Work & projects
+      </h2>
+      <ul className="mx-auto mt-4 grid max-w-sm grid-cols-6 gap-x-1 gap-y-3">
+        {ranked.map((b, i) => {
+          const on = litBubbles.has(b.slug)
+          return (
+            <li
+              key={b.slug}
+              className="col-span-2"
+              style={{ gridColumnStart: honeycombColumn(i) }}
+            >
+              <button
+                type="button"
+                onClick={() => setPicked({ kind: 'bubble', slug: b.slug })}
+                className={cn(
+                  'flex w-full flex-col items-center rounded-xl p-1 text-center focus-ring transition-opacity duration-300',
+                  picked && !on && 'opacity-45'
+                )}
+              >
+                <BubbleDisc
+                  bubble={b}
+                  rem={4.5}
+                  lit={on}
+                  className="constellation-drift"
+                />
+                <span
+                  className={cn(
+                    'mt-1.5 text-xs leading-tight font-semibold',
+                    on && 'text-link'
+                  )}
+                >
+                  {b.title}
+                </span>
+              </button>
+            </li>
+          )
+        })}
+      </ul>
+
+      {/* Skills: each area a cluster of stars. */}
+      <div className="mt-10 space-y-7">
+        {Object.entries(AREAS).map(([area, { accent }]) => {
+          const list = stars.filter((s) => s.area === area)
+          return (
+            <section key={area}>
+              <h2 className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+                {area}
+              </h2>
+              <ul className="mt-2.5 flex flex-wrap gap-1.5">
+                {list.map((s) => {
+                  const on = litStars.has(s.name)
+                  return (
+                    <li key={s.name}>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setPicked({ kind: 'star', name: s.name })
+                        }
+                        className={cn(
+                          'flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm font-medium focus-ring transition-[opacity,border-color,background-color] duration-300',
+                          on
+                            ? 'border-brand bg-brand/10 text-link'
+                            : 'border-border bg-card/70',
+                          picked && !on && 'opacity-45'
+                        )}
+                      >
+                        <span
+                          className={cn(
+                            'size-2.5 shrink-0 rounded-full border border-foreground/60',
+                            on ? 'border-brand bg-brand' : ACCENT_BG[accent]
+                          )}
+                          aria-hidden
+                        />
+                        {s.name}
+                      </button>
+                    </li>
+                  )
+                })}
+              </ul>
+            </section>
+          )
+        })}
+      </div>
+
+      <Sheet
+        picked={picked}
+        bubble={pickedBubble}
+        star={pickedStar}
+        stars={stars}
+        bubbles={ranked}
+        onPick={setPicked}
+        onClose={closeSheet}
+      />
+    </div>
+  )
+}
+
+/**
+ * The sheet that rises from the bottom on mobile: what's tapped, and its connections as chips that
+ * open in place. Closes with its ✕, a tap above it or Escape.
+ */
+function Sheet({
+  picked,
+  bubble,
+  star,
+  stars,
+  bubbles,
+  onPick,
+  onClose
+}: {
+  picked: Picked | null
+  bubble?: Bubble
+  star?: Star
+  stars: Star[]
+  bubbles: Bubble[]
+  onPick: (p: Picked) => void
+  onClose: () => void
+}) {
+  const close = useRef<HTMLButtonElement>(null)
+  const open = picked !== null
+  useEffect(() => {
+    if (!open) return
+    close.current?.focus()
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose()
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [open, onClose])
+
+  return (
+    <>
+      <div
+        aria-hidden
+        onClick={onClose}
+        className={cn(
+          'fixed inset-0 z-40 bg-[rgb(12_13_16/0.35)] transition-opacity duration-300 lg:hidden',
+          open ? 'opacity-100' : 'pointer-events-none opacity-0'
+        )}
+      />
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label={
+          bubble?.title ??
+          star?.name ??
+          (picked?.kind === 'me' ? `About ${PROFILE.name}` : 'Details')
+        }
+        inert={!open}
+        className={cn(
+          'dark ink-pop fixed inset-x-0 bottom-0 z-50 max-h-[70dvh] overflow-y-auto rounded-t-2xl bg-background px-5 pt-3 pb-[max(1.5rem,env(safe-area-inset-bottom))] text-foreground shadow-pop transition-transform duration-300 ease-out lg:hidden',
+          open ? 'translate-y-0' : 'translate-y-full'
+        )}
+      >
+        <div
+          className="mx-auto mb-3 h-1 w-10 rounded-full bg-foreground/20"
+          aria-hidden
+        />
+        <button
+          ref={close}
+          type="button"
+          onClick={onClose}
+          aria-label="Close"
+          className="absolute top-3 right-4 rounded-full px-2 py-1 text-lg leading-none text-muted-foreground focus-ring"
+        >
+          ✕
+        </button>
+
+        {picked?.kind === 'me' && <About />}
+
+        {bubble && (
+          <>
+            <div className="flex items-center gap-3 pr-8">
+              <BubbleDisc bubble={bubble} rem={3} />
+              <div>
+                <p className="text-xs font-medium text-muted-foreground">
+                  {bubble.kind === 'work' ? 'Work' : 'Project'} ·{' '}
+                  {bubble.tagline}
+                </p>
+                <p className="text-lg font-semibold">{bubble.title}</p>
+              </div>
+            </div>
+            <p className="mt-3 text-sm text-pretty text-foreground/85">
+              {bubble.summary}
+            </p>
+            <p className="mt-4 text-xs font-medium text-muted-foreground">
+              Built with
+            </p>
+            <ul className="mt-2 flex flex-wrap gap-1.5">
+              {stars
+                .filter((s) => s.projects.includes(bubble.slug))
+                .map((s) => (
+                  <li key={s.name}>
+                    <button
+                      type="button"
+                      onClick={() => onPick({ kind: 'star', name: s.name })}
+                      className="flex items-center gap-1.5 rounded-full bg-foreground/10 px-3 py-1.5 text-sm font-medium focus-ring"
+                    >
+                      <span
+                        className={cn(
+                          'size-2.5 rounded-full',
+                          ACCENT_BG[AREAS[s.area].accent]
+                        )}
+                        aria-hidden
+                      />
+                      {s.name}
+                    </button>
+                  </li>
+                ))}
+            </ul>
+          </>
+        )}
+
+        {star && (
+          <>
+            <p className="pr-8 text-xs font-medium text-muted-foreground">
+              {star.area}
+            </p>
+            <p className="text-lg font-semibold">{star.name}</p>
+            <p className="mt-2 text-sm text-pretty text-foreground/85">
+              {star.explanation}
+            </p>
+            {star.projects.length > 0 && (
+              <>
+                <p className="mt-4 text-xs font-medium text-muted-foreground">
+                  Used in
+                </p>
+                <ul className="mt-2 flex flex-wrap gap-2">
+                  {bubbles
+                    .filter((b) => star.projects.includes(b.slug))
+                    .map((b) => (
+                      <li key={b.slug}>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            onPick({ kind: 'bubble', slug: b.slug })
+                          }
+                          className="flex items-center gap-2 rounded-full bg-foreground/10 py-1 pr-3 pl-1 text-sm font-medium focus-ring"
+                        >
+                          <BubbleDisc bubble={b} rem={1.75} />
+                          {b.title}
+                        </button>
+                      </li>
+                    ))}
+                </ul>
+              </>
+            )}
+          </>
+        )}
+      </div>
+    </>
   )
 }
