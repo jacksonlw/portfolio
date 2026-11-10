@@ -74,7 +74,20 @@
 
 /* The page: light coming from the middle, behind you, falling off toward the edges for depth. A
    silver-white centre fading to soft gray in light mode; a faint glow in deep ink in dark. */
-body {
+/* It's a layer of its own, fixed behind the page, not a fixed background on the body: a fixed
+   background is repainted as the page scrolls (and iOS doesn't keep it fixed at all), where a
+   layer just stays put. As tall as the screen ever gets, so a phone's toolbar sliding away never
+   uncovers its edge. */
+body::before {
+  content: '';
+  position: fixed;
+  z-index: -1;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100vh;
+  height: 100lvh;
+  pointer-events: none;
   background-image: radial-gradient(
     ellipse 110% 90% at 50% 46%,
     #fbfbfc 0%,
@@ -82,11 +95,10 @@ body {
     #e2e4e9 78%,
     #d9dce2 100%
   );
-  background-attachment: fixed;
 }
 
 /* Dark mode is deep space: near-black, with the faintest lift around you. */
-html.dark body {
+html.dark body::before {
   background-image: radial-gradient(
     ellipse 110% 90% at 50% 46%,
     #0d0e14 0%,
@@ -1012,6 +1024,16 @@ html:has(.intro-lock) .intro-chrome {
   }
 }
 
+/* While something on the board is hovered (data-hovering on the board), whatever isn't lit with
+   it dims: the nodes that aren't marked data-on, and every figure's lines. Done here, not with
+   classes from React, so hovering doesn't re-render the whole board. */
+[data-hovering] .board-node:not([data-on]) {
+  opacity: 0.3;
+}
+[data-hovering] .board-line {
+  opacity: 0.4;
+}
+
 /* A node's rim: chrome in the node's own colour, its highlights and shadows tinted by it, with a
    touch of the rainbow sheen. */
 .node-disc {
@@ -1302,4 +1324,39 @@ html.dark .portrait-grade {
 }
 .lite .intro-shock {
   box-shadow: 0 0 14px 2px color-mix(in oklab, var(--iri-cyan) 60%, transparent);
+}
+
+/* While a Story covers the page, the looping animations behind it pause (and the motion loop
+   stops: components/site/overlay.ts), so the page under the scrim isn't redrawn every frame. They
+   carry on from where they stopped as the Story closes. */
+html[data-story-open]
+  :is(.spark-twinkle, .constellation-drift, .constellation-flow) {
+  animation-play-state: paused;
+}
+
+/* A Story's panel as it grows out of its bubble: the disc's own glow, filling the panel, then
+   fading to the page (components/story/story-panel.tsx). */
+.story-bloom {
+  background: radial-gradient(
+    circle at 50% 45%,
+    color-mix(in oklab, var(--disc-accent, #ccdaff) 75%, #fbfcfd) 0%,
+    color-mix(in oklab, var(--disc-accent, #ccdaff) 50%, #eef0f3) 60%,
+    color-mix(in oklab, var(--disc-accent, #ccdaff) 35%, #e4e7eb) 100%
+  );
+}
+.dark .story-bloom {
+  background: radial-gradient(
+    circle at 50% 45%,
+    color-mix(in oklab, var(--disc-accent, #ccdaff) 35%, #16181c) 0%,
+    color-mix(in oklab, var(--disc-accent, #ccdaff) 18%, #0d0e11) 70%
+  );
+}
+
+/* A Story's tinted bands (its recap, gallery and pictures): the disc's colour washed into the card,
+   so they follow light and dark mode. */
+.story-wash {
+  background: color-mix(in oklab, var(--disc-accent, #ccdaff) 30%, var(--card));
+}
+.dark .story-wash {
+  background: color-mix(in oklab, var(--disc-accent, #ccdaff) 12%, var(--card));
 }

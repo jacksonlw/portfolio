@@ -344,13 +344,6 @@ export const SKILLS: Skill[] = [
   )
 ]
 
-/**
- * Project pages (/projects/<slug> and their .md twins) are built but switched off for now: the
- * routes 404, nothing links to them, and the sitemap and agent views leave them out. Flip to true
- * to publish them again; their content below stays the source either way.
- */
-export const PROJECT_PAGES_ENABLED = false
-
 export const PROJECTS: Project[] = [
   {
     slug: 'anyform',
@@ -364,10 +357,7 @@ export const PROJECTS: Project[] = [
     dates: { start: 'October 2026', end: null },
     stack: ['Go', 'Next.js', 'TypeScript', 'PostgreSQL', 'Playwright'],
     links: [],
-    highlights: [],
-    story: [],
-    image: null,
-    imageKind: null
+    highlights: []
   },
   {
     slug: 'cratest',
@@ -381,10 +371,7 @@ export const PROJECTS: Project[] = [
     dates: { start: 'September 2026', end: null },
     stack: ['Go', 'PostgreSQL', 'SwiftUI', 'UIKit', 'Next.js'],
     links: [],
-    highlights: [],
-    story: [],
-    image: null,
-    imageKind: null
+    highlights: []
   },
   {
     slug: 'waltz',
@@ -398,10 +385,7 @@ export const PROJECTS: Project[] = [
     dates: { start: 'October 2026', end: null },
     stack: ['Rust', 'Tauri', 'React', 'TypeScript', 'Anthropic API', 'MCP'],
     links: [],
-    highlights: [],
-    story: [],
-    image: null,
-    imageKind: null
+    highlights: []
   },
   {
     slug: 'koistream',
@@ -424,10 +408,7 @@ export const PROJECTS: Project[] = [
       'Built a live streaming platform with viewing, chatting and moderation',
       'Delivered HD video through FFmpeg, AWS MediaLive and Amazon CloudFront',
       'Built a full broadcasting studio on campus with high-grade production equipment'
-    ],
-    story: [],
-    image: '/koistream-mockup.png',
-    imageKind: 'web'
+    ]
   },
   {
     slug: 'tedx',
@@ -446,10 +427,7 @@ export const PROJECTS: Project[] = [
         href: 'https://github.com/jacksonlw/ticketing-tedxdesigntech'
       }
     ],
-    highlights: [],
-    story: [],
-    image: '/tedx-mockup-2.png',
-    imageKind: 'web'
+    highlights: []
   },
   {
     slug: 'branch',
@@ -464,49 +442,55 @@ export const PROJECTS: Project[] = [
     links: [
       { label: 'Source code', href: 'https://github.com/jacksonlw/Branch' }
     ],
-    highlights: ['Presented at Oracle OpenWorld 2019'],
-    story: [],
-    image: '/branch-mockup.png',
-    imageKind: 'web'
+    highlights: ['Presented at Oracle OpenWorld 2019']
   }
 ]
 
-/**
- * Work that sits beside the projects in the skills constellation without a page of its own. Kept
- * to the resume's facts.
- */
+/** Jobs, beside the projects in the constellation. Kept to the resume's facts. */
 export const WORK: WorkNode[] = [
   {
     slug: 'oracle',
     title: 'Oracle',
     tagline: 'Software Engineer',
+    role: 'Software Engineer',
     dates: { start: 'June 2025', end: null },
     accent: 'rose',
     summary:
-      'Software engineer on a small R&D team, after two summer internships. I architected an agentic workflow builder that handles thousands of Gen AI chats a day, built an OCR and RAG pipeline that took in over 2 million documents in under a month, and worked with other teams on handing chats from AI agents to people.'
+      'Software engineer on a small R&D team, after two summer internships. I architected an agentic workflow builder that handles thousands of Gen AI chats a day, built an OCR and RAG pipeline that took in over 2 million documents in under a month, and worked with other teams on handing chats from AI agents to people.',
+    links: []
   },
   {
     slug: 'careerfoundry',
     title: 'CareerFoundry',
     tagline: 'Web Dev Instructor',
+    role: 'Web Dev Instructor',
     dates: { start: 'July 2022', end: 'May 2023' },
     accent: 'peach',
     summary:
-      'I taught new developers to build full-stack web apps, and gave them feedback on their projects within 24 hours.'
+      'I taught new developers to build full-stack web apps, and gave them feedback on their projects within 24 hours.',
+    links: []
   },
   {
     slug: 'trailblaze',
     title: 'Trailblaze',
     tagline: 'Co-Founder & CTO',
+    role: 'Co-Founder & CTO',
     dates: { start: 'January 2021', end: 'April 2024' },
     accent: 'ocean',
     summary:
-      'I built the screens, services and database of our job-recruiting app in React Native, and it passed 10,000 users in under a year. I designed and built the company website in Next.js too.'
+      'I built the screens, services and database of our job-recruiting app in React Native, and it passed 10,000 users in under a year. I designed and built the company website in Next.js too.',
+    links: []
   }
 ]
 
 export const getProject = (slug: string) =>
   PROJECTS.find((p) => p.slug === slug)
+
+export const getWork = (slug: string) => WORK.find((w) => w.slug === slug)
+
+/** Where a bubble's Story lives: /projects/<slug> for a project, /work/<slug> for a job. */
+export const storyPath = (slug: string) =>
+  WORK.some((w) => w.slug === slug) ? `/work/${slug}` : `/projects/${slug}`
 
 /** The display name of anything a skill can be used in: a project or a work bubble. */
 export const usedInTitle = (slug: string) =>

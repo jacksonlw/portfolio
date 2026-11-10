@@ -6,18 +6,23 @@ import { ThemeToggle } from '@/components/site/theme-toggle'
 import { PROFILE } from '@/content/profile'
 
 // The AnyForm brand typeface and its mono companion (OFL; licences beside the files in ./fonts).
-// Variable on every axis; ROND (roundness) stays at its default, 0.
+// The file here is cut down to what the site sets type in: weights 300 to 700 and the optical
+// size axis, with width, grade, roundness and slant fixed at their defaults (it's a twelfth the
+// size of the full font, with every glyph kept). To use another axis or weight, re-cut it from
+// the full font with fontTools' varLib.instancer.
 const flex = localFont({
   src: './fonts/GoogleSansFlex.woff2',
   variable: '--font-flex',
-  weight: '100 1000',
+  weight: '300 700',
   display: 'swap'
 })
+// Only the illustration lab sets anything in mono, so it isn't preloaded on every page.
 const code = localFont({
   src: './fonts/GoogleSansCode.woff2',
   variable: '--font-code',
   weight: '300 800',
-  display: 'swap'
+  display: 'swap',
+  preload: false
 })
 
 export const metadata: Metadata = {

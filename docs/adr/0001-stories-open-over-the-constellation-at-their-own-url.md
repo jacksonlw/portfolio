@@ -1,0 +1,3 @@
+# Stories open over the constellation at their own URL
+
+A bubble opens its Story as a panel over the constellation, not by navigating away, so the page stays the constellation. Opening one still changes the URL, to `/projects/<slug>` for a project and `/work/<slug>` for a job. Loading that URL directly shows the constellation, settled with no intro, and that Story already open, and each has a `.md` twin for agents. We chose a real URL over a hash or no URL because the site is AI-first: each Story has to be shareable, indexable and readable by Jackson's chatbot, and that reuses the project routes that were built and then switched off.

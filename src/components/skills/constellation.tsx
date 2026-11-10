@@ -2,34 +2,42 @@
 
 import { PlayIcon } from '@phosphor-icons/react/ssr'
 import Image from 'next/image'
-import Link from 'next/link'
 import {
+  memo,
   useCallback,
   useEffect,
   useLayoutEffect,
   useMemo,
   useRef,
   useState,
+  useSyncExternalStore,
   type CSSProperties,
   type ReactNode
 } from 'react'
-import {
-  ILLUSTRATIONS,
-  Illustration
-} from '@/components/illustrations/registry'
+import { Illustration } from '@/components/illustrations/registry'
 import { RichText } from '@/components/site/rich-text'
 import {
   bubbleWhen,
   PROFILE,
-  PROJECT_PAGES_ENABLED,
+  storyPath,
   type Accent,
   type Project,
   type Satellite,
   type Skill,
   type WorkNode
 } from '@/content/profile'
+import type { Story } from '@/content/types'
+import { StoryPanel } from '@/components/story/story-panel'
+import {
+  onPageCovered,
+  pageCovered,
+  setPageCovered,
+  useBodyLock,
+  useSwipeToClose
+} from '@/components/site/overlay'
 import { ACCENT_BG } from '@/lib/accent'
 import { cn } from '@/lib/cn'
+import { discAccent } from './disc'
 import { INTRO, type Intro } from './intro'
 import { LAYOUT, OFF_BOARD, type BubbleSize, type Layout } from './layouts'
 import photo from '../../../public/profile-picture.jpg'
@@ -436,14 +444,42 @@ function useCursorGravity(
     if (!el || window.matchMedia('(prefers-reduced-motion: reduce)').matches)
       return
 
-    const pointer = { x: 0, y: 0, inside: false }
-    const offset = new Map<string, { x: number; y: number }>()
-    // Each node's idle float, eased to a stop while it's the open one so its popover stays put.
-    const calm = new Map<string, number>()
+    // The pointer as the browser reports it; the board's own corner is read once a frame (in
+    // tick), not on every pointer event.
+    const pointer = { cx: 0, cy: 0, x: 0, y: 0, inside: false }
+    // What the loop keeps for each node between frames: its glide toward the cursor, how calm its
+    // float is (eased to a stop while it's the open one, so its popover stays put), where it is
+    // this frame, and its own period and phase (worked out once, not every frame).
+    type Kept = {
+      ox: number
+      oy: number
+      calm: number
+      x: number
+      y: number
+      period: number
+      phase: number
+    }
+    const kept = new Map<string, Kept>()
+    const keep = (id: string) => {
+      let k = kept.get(id)
+      if (!k) {
+        const r = hash(id)
+        k = {
+          ox: 0,
+          oy: 0,
+          calm: 1,
+          x: 0,
+          y: 0,
+          period: 9 + r * 6,
+          phase: r * Math.PI * 2
+        }
+        kept.set(id, k)
+      }
+      return k
+    }
     const onMove = (e: PointerEvent) => {
-      const r = el.getBoundingClientRect()
-      pointer.x = e.clientX - r.left
-      pointer.y = e.clientY - r.top
+      pointer.cx = e.clientX
+      pointer.cy = e.clientY
       pointer.inside = true
     }
     const onLeave = () => {
@@ -460,20 +496,40 @@ function useCursorGravity(
     let lineEls: SVGLineElement[] = []
     let frame = 0
     const written = new WeakMap<Element, string>()
+    // Quarter-pixel steps: smooth to the eye, and far fewer writes than every tiny change.
+    const q = (n: number) => Math.round(n * 4) / 4
+    const half = (n: number) => String(Math.round(n * 2) / 2)
     let raf = 0
+    // The loop only runs while there's a board to move: from `lg` up (below that the board isn't
+    // drawn at all) and while no Story covers the page. The time it spent stopped is left out of
+    // the float's clock, so every node carries on from exactly where it was.
+    const wide = window.matchMedia('(min-width: 64rem)')
+    const wanted = () => wide.matches && !pageCovered()
+    let stoppedAt = 0
+    let held = 0
     const tick = (now: number) => {
+      if (!wanted()) {
+        raf = 0
+        stoppedAt = now
+        return
+      }
       const { nodes, active, ready } = state.current
       if (frame++ % 30 === 0) {
         nodeEls = [...el.querySelectorAll<HTMLElement>('[data-node]')]
         lineEls = [...el.querySelectorAll<SVGLineElement>('line[data-a]')]
       }
-      const t = now / 1000
+      const t = (now - held) / 1000
       const w = el.clientWidth
       const h = el.clientHeight
+      if (pointer.inside) {
+        const r = el.getBoundingClientRect()
+        pointer.x = pointer.cx - r.left
+        pointer.y = pointer.cy - r.top
+      }
 
       for (const id in nodes) {
         const n = nodes[id]
-        const o = offset.get(id) ?? { x: 0, y: 0 }
+        const o = keep(id)
         // Where gravity wants the node: how far it leans toward the cursor depends smoothly on
         // how far the cursor is from its edge, so there's no jump anywhere as the cursor moves.
         let tx = 0
@@ -502,36 +558,23 @@ function useCursorGravity(
         }
         // Glide there (and home again once the cursor moves on): a plain ease, no spring, so it
         // never overshoots or wobbles.
-        o.x += (tx - o.x) * GLIDE
-        o.y += (ty - o.y) * GLIDE
-        if (!tx && !ty && Math.abs(o.x) + Math.abs(o.y) < 0.02) o.x = o.y = 0
-        offset.set(id, o)
-      }
+        o.ox += (tx - o.ox) * GLIDE
+        o.oy += (ty - o.oy) * GLIDE
+        if (!tx && !ty && Math.abs(o.ox) + Math.abs(o.oy) < 0.02)
+          o.ox = o.oy = 0
 
-      // The idle float: each node traces its own small, slow ellipse, never a real orbit.
-      const at = new Map<string, { x: number; y: number }>()
-      for (const id in nodes) {
-        const n = nodes[id]
-        const o = offset.get(id)!
-        const g =
-          (calm.get(id) ?? 1) +
-          ((id === active ? 0 : 1) - (calm.get(id) ?? 1)) * 0.08
-        calm.set(id, g)
-        const r = hash(id)
-        const period = 9 + r * 6
-        const phase = r * Math.PI * 2
-        const amp = lite ? 0 : FLOAT_PX * n.weight * g
-        at.set(id, {
-          x: o.x + Math.sin((t / period) * Math.PI * 2 + phase) * amp,
-          y: o.y + Math.cos((t / period) * Math.PI * 2 + phase) * amp * 0.7
-        })
+        // The idle float: each node traces its own small, slow ellipse, never a real orbit.
+        o.calm += ((id === active ? 0 : 1) - o.calm) * 0.08
+        const amp = lite ? 0 : FLOAT_PX * n.weight * o.calm
+        const turn = (t / o.period) * Math.PI * 2 + o.phase
+        o.x = o.ox + Math.sin(turn) * amp
+        o.y = o.oy + Math.cos(turn) * amp * 0.7
       }
 
       for (const node of nodeEls) {
-        const o = at.get(node.dataset.node!)
+        const id = node.dataset.node!
+        const o = id in nodes ? kept.get(id) : undefined
         if (!o) continue
-        // Quarter-pixel steps: smooth to the eye, and far fewer writes than every tiny change.
-        const q = (n: number) => Math.round(n * 4) / 4
         const v = `translate3d(${q(o.x)}px, ${q(o.y)}px, 0)`
         if (written.get(node) === v) continue
         written.set(node, v)
@@ -541,10 +584,9 @@ function useCursorGravity(
         if (!line.isConnected) continue
         const A = nodes[line.dataset.a!]
         const B = nodes[line.dataset.b!]
-        const oa = at.get(line.dataset.a!) ?? { x: 0, y: 0 }
-        const ob = at.get(line.dataset.b!) ?? { x: 0, y: 0 }
         if (!A || !B) continue
-        const half = (n: number) => String(Math.round(n * 2) / 2)
+        const oa = kept.get(line.dataset.a!)!
+        const ob = kept.get(line.dataset.b!)!
         const x1 = half((A.x / 100) * w + oa.x)
         const y1 = half((A.y / 100) * h + oa.y)
         const x2 = half((B.x / 100) * w + ob.x)
@@ -559,9 +601,19 @@ function useCursorGravity(
       }
       raf = requestAnimationFrame(tick)
     }
-    raf = requestAnimationFrame(tick)
+    const run = () => {
+      if (raf || !wanted()) return
+      if (stoppedAt) held += performance.now() - stoppedAt
+      stoppedAt = 0
+      raf = requestAnimationFrame(tick)
+    }
+    run()
+    wide.addEventListener('change', run)
+    const offCovered = onPageCovered(run)
     return () => {
       cancelAnimationFrame(raf)
+      wide.removeEventListener('change', run)
+      offCovered()
       el.removeEventListener('pointermove', onMove)
       el.removeEventListener('pointerleave', onLeave)
     }
@@ -619,9 +671,9 @@ function useIntentHover(
     const p = { x: 0, y: 0, vx: 0, vy: 0, seen: false }
     let raf = 0
 
-    const distance = (node: HTMLElement, x: number, y: number) => {
-      const r = node.getBoundingClientRect()
-      if (node.dataset.shape === 'circle') {
+    // Each shape is measured once per pick, then asked about both points.
+    const distance = (r: DOMRect, circle: boolean, x: number, y: number) => {
+      if (circle) {
         const rad = r.width / 2
         return Math.max(
           0,
@@ -648,9 +700,11 @@ function useIntentHover(
             ? 'me'
             : (key.slice(0, key.indexOf(':')) as keyof typeof REACH)
         const held = key === now ? STICK : 0
-        const d = distance(node, p.x, p.y)
+        const rect = node.getBoundingClientRect()
+        const circle = node.dataset.shape === 'circle'
+        const d = distance(rect, circle, p.x, p.y)
         if (d > REACH[kind] + held) continue
-        const score = 0.65 * d + 0.35 * distance(node, ax, ay) - held
+        const score = 0.65 * d + 0.35 * distance(rect, circle, ax, ay) - held
         if (score < bestScore) {
           bestScore = score
           best = key
@@ -737,21 +791,6 @@ function Portrait({ className, hit }: { className?: string; hit?: string }) {
 const LIT_RING =
   'border-brand shadow-[0_0_0_5px_color-mix(in_oklab,var(--brand)_16%,transparent)]'
 
-/**
- * The disc's colour: every disc is lit by a soft radial glow of its drawing's colour, on white in
- * light mode and on near-black in dark (globals.css, .node-disc), a step brighter while it's
- * hovered or lit.
- */
-function discAccent(key: string): CSSProperties {
-  const accent = ILLUSTRATIONS[key]?.accent
-  return accent
-    ? ({
-        '--disc-accent': `var(--af-${accent})`,
-        '--disc-deep': `var(--af-${accent}-deep)`
-      } as CSSProperties)
-    : {}
-}
-
 /** A bubble's disc with its illustration. */
 function BubbleDisc({
   bubble,
@@ -770,6 +809,8 @@ function BubbleDisc({
     <span
       data-hit={hit}
       data-shape="circle"
+      // Where its Story grows from and shrinks back into (components/story/story-panel.tsx).
+      data-disc={bubble.slug}
       className={cn(
         'node-disc flex shrink-0 items-center justify-center rounded-full border-2 transition-[border-color,box-shadow,background-color] duration-200',
         lit && LIT_RING,
@@ -882,11 +923,9 @@ function Explain({
         <p className="mt-2 text-sm text-pretty text-foreground/85">
           {bubble.summary}
         </p>
-        {outLink(bubble) && (
-          <p className="mt-3 text-xs font-semibold text-link">
-            Click to open the {outLink(bubble)!.label.toLowerCase()} ↗
-          </p>
-        )}
+        <p className="mt-3 text-xs font-semibold text-link">
+          Click to read the story
+        </p>
         {used.length > 0 && (
           <p className="mt-3 text-xs text-muted-foreground">
             Built with{' '}
@@ -913,12 +952,6 @@ function Explain({
   return null
 }
 
-/** Where a bubble's click goes when project pages are off: its first link that isn't source code (a live site), if any. */
-const outLink = (b: Bubble) =>
-  b.kind === 'project' && 'links' in b
-    ? (b.links.find((l) => !/source/i.test(l.label)) ?? null)
-    : null
-
 /** The popover's eyebrow for a bubble: work or project, and when (or the tagline, if no date). */
 const eyebrow = (b: Bubble, withTagline: boolean) =>
   [
@@ -929,70 +962,594 @@ const eyebrow = (b: Bubble, withTagline: boolean) =>
     .filter(Boolean)
     .join(' · ')
 
-/** A bubble's own link or button: a page link when project pages are on. */
+/**
+ * A bubble's own link: to its Story's address, so it works as a plain link too (a new tab, an
+ * agent), while a click opens the Story in place over the constellation.
+ */
 function BubbleTarget({
   bubble,
   className,
   style,
   handlers,
+  onOpen,
+  lit,
   children
 }: {
   bubble: Bubble
   className: string
   style?: CSSProperties
   handlers: Record<string, () => void>
+  onOpen: (slug: string) => void
+  /** Lit: it stays bright while the rest of the board dims. */
+  lit?: boolean
   children: ReactNode
 }) {
-  if (bubble.kind === 'project' && PROJECT_PAGES_ENABLED)
-    return (
-      <Link
-        href={`/projects/${bubble.slug}`}
-        {...handlers}
-        className={className}
-        style={style}
-      >
-        {children}
-      </Link>
-    )
-  const out = outLink(bubble)
-  if (out)
-    return (
-      <a
-        href={out.href}
-        target="_blank"
-        rel="noopener noreferrer"
-        {...handlers}
-        className={className}
-        style={style}
-      >
-        {children}
-      </a>
-    )
   return (
-    // Clicking only opens what hovering already shows, so no pointer cursor (taps and keys still work).
-    <button
-      type="button"
+    <a
+      href={storyPath(bubble.slug)}
+      data-on={lit || undefined}
       {...handlers}
-      className={cn('cursor-default', className)}
+      onClick={(e) => {
+        if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0)
+          return
+        e.preventDefault()
+        onOpen(bubble.slug)
+      }}
+      className={className}
       style={style}
     >
       {children}
-    </button>
+    </a>
   )
 }
 
+/* ---------- the board's pieces ---------- */
+
+/*
+ * Each kind of thing on the board is its own memoized piece, so hovering re-renders only what
+ * actually changes (the node that lights up, the ones tied to it), not all of it. What dims while
+ * something else is hovered is left to CSS (globals.css, .board-node and .board-line).
+ */
+
+/** A node's flight out of the core in the intro, as CSS variables (see Board's `fly`). */
+type Fly = (
+  x: number,
+  y: number,
+  id: string,
+  px?: [number, number]
+) => CSSProperties
+const NO_FLIGHT: CSSProperties = {}
+
+type Open = (a: NonNullable<Active>) => void
+
+/** The lines of every area's figure. */
+const FigureLines = memo(function FigureLines({
+  lines,
+  nodes,
+  w,
+  h,
+  introAt,
+  chaos
+}: {
+  lines: { a: string; b: string }[]
+  nodes: Record<string, MotionNode>
+  w: number
+  h: number
+  /** When the lines start catching on in the intro (ms), or null once it has played. */
+  introAt: number | null
+  chaos: number
+}) {
+  return lines.map((l) => {
+    const A = nodes[l.a]
+    const B = nodes[l.b]
+    return (
+      <line
+        key={`${l.a}-${l.b}`}
+        data-a={l.a}
+        data-b={l.b}
+        x1={(A.x / 100) * w}
+        y1={(A.y / 100) * h}
+        x2={(B.x / 100) * w}
+        y2={(B.y / 100) * h}
+        className={cn(
+          'board-line transition-opacity duration-300',
+          introAt !== null && 'intro-line',
+          l.a === ME_ID ? 'stroke-foreground/20' : 'stroke-foreground/15'
+        )}
+        style={
+          introAt !== null
+            ? ({
+                '--line-delay': `${Math.round(introAt + (hash(`${l.a}|${l.b}`) - 0.3) * 228 * chaos)}ms`
+              } as CSSProperties)
+            : undefined
+        }
+        strokeWidth={1.5}
+      />
+    )
+  })
+})
+
+type Spark = {
+  id: string
+  dx: number
+  dy: number
+  size: number
+  tone: string
+  speed: number
+  wait: number
+  rest: number
+  twinkle: number
+}
+
+/**
+ * Debris: sparks thrown out by the blast that stay on as faint, twinkling dust, floating and
+ * pulled by the cursor like everything else.
+ */
+const Dust = memo(function Dust({
+  sparks,
+  me,
+  live,
+  ms,
+  blast
+}: {
+  sparks: Spark[]
+  me: readonly [number, number]
+  live: boolean
+  ms: number
+  blast: number
+}) {
+  return sparks.map((sp, i) => (
+    <span
+      key={sp.id}
+      aria-hidden
+      data-extra={i % 2 === 1 || undefined}
+      className="pointer-events-none absolute"
+      style={{
+        left: `calc(${me[0]}% + ${sp.dx}px)`,
+        top: `calc(${me[1]}% + ${sp.dy}px)`
+      }}
+    >
+      <span data-node={sp.id} className="block will-change-transform">
+        <span
+          className={cn(
+            'block rounded-full',
+            live ? 'intro-spark' : 'spark-twinkle'
+          )}
+          style={
+            {
+              width: sp.size,
+              height: sp.size,
+              marginLeft: -sp.size / 2,
+              marginTop: -sp.size / 2,
+              background: `var(--spark-${sp.tone})`,
+              opacity: sp.rest,
+              '--dx': `${sp.dx}px`,
+              '--dy': `${sp.dy}px`,
+              '--rest': sp.rest,
+              animationDuration: live
+                ? `${Math.round(ms * sp.speed)}ms`
+                : `${sp.twinkle}ms`,
+              animationDelay: live
+                ? `${Math.round(blast + sp.wait)}ms`
+                : `${-sp.wait * 20}ms`
+            } as CSSProperties
+          }
+        />
+      </span>
+    </span>
+  ))
+})
+
+/** A bubble on the board: its disc, title, tagline and dates, linking to its Story. */
+const BubbleNode = memo(function BubbleNode({
+  bubble: b,
+  lit,
+  live,
+  fly,
+  open,
+  close,
+  onOpen
+}: {
+  bubble: Bubble
+  lit: boolean
+  live: boolean
+  fly: Fly
+  open: Open
+  close: () => void
+  onOpen: (slug: string) => void
+}) {
+  const style = BUBBLE_STYLE[b.size]
+  // The pointer is handled by useIntentHover; these keep the keyboard working.
+  const handlers = useMemo(
+    () => ({
+      onFocus: () => open({ kind: 'project', id: b.slug }),
+      onBlur: close
+    }),
+    [open, close, b.slug]
+  )
+  const flight = useMemo(() => fly(b.x, b.y, b.slug), [fly, b.x, b.y, b.slug])
+  return (
+    <div
+      className="absolute z-10"
+      style={{
+        left: `${b.x}%`,
+        top: `${b.y}%`,
+        // Put the disc's center (inside 0.5rem of padding) on the bubble's point.
+        translate: `-50% calc(-${style.disc / 2}rem - 0.5rem)`
+      }}
+    >
+      <div
+        data-node={bubbleId(b.slug)}
+        className="will-change-transform"
+        style={{ scale: 'var(--node-k, 1)' }}
+      >
+        <BubbleTarget
+          bubble={b}
+          handlers={handlers}
+          onOpen={onOpen}
+          lit={lit}
+          className={cn(
+            live && 'intro-piece',
+            'board-node group flex flex-col items-center rounded-xl p-2 focus-ring transition-opacity duration-300'
+          )}
+          style={flight}
+        >
+          <BubbleDisc
+            bubble={b}
+            rem={style.disc}
+            lit={lit}
+            hit={`project:${b.slug}`}
+          />
+          <span
+            data-hit={`project:${b.slug}`}
+            className={cn(
+              'mt-2 font-semibold whitespace-nowrap',
+              style.label,
+              lit && 'text-link'
+            )}
+          >
+            {b.title}
+          </span>
+          <span
+            data-hit={`project:${b.slug}`}
+            className="max-w-40 text-center text-xs leading-snug text-muted-foreground"
+          >
+            {b.tagline}
+          </span>
+          {bubbleWhen(b) && (
+            <span
+              data-hit={`project:${b.slug}`}
+              className="mt-0.5 text-[0.6875rem] leading-snug font-medium text-muted-foreground/75"
+            >
+              {bubbleWhen(b)}
+            </span>
+          )}
+        </BubbleTarget>
+      </div>
+    </div>
+  )
+})
+
+/** A star on the board: its dot and its skill's name. */
+const StarNode = memo(function StarNode({
+  star: s,
+  lit,
+  isActive,
+  live,
+  fly,
+  open,
+  close
+}: {
+  star: Star
+  lit: boolean
+  isActive: boolean
+  live: boolean
+  fly: Fly
+  open: Open
+  close: () => void
+}) {
+  const flight = useMemo(() => fly(s.x, s.y, s.name), [fly, s.x, s.y, s.name])
+  return (
+    <div
+      className="absolute"
+      style={{
+        left: `${s.x}%`,
+        top: `${s.y}%`,
+        // Put the dot (0.75rem, inside 0.25rem of padding) exactly on the star.
+        translate: s.above ? '-50% calc(-100% + 0.625rem)' : '-50% -0.625rem'
+      }}
+    >
+      <div
+        data-node={starId(s.name)}
+        className="will-change-transform"
+        // Labels stay legible: stars shrink less than everything else.
+        style={{ scale: 'max(0.85, var(--node-k, 1))' }}
+      >
+        <button
+          type="button"
+          onFocus={() => open({ kind: 'skill', id: s.name })}
+          onBlur={close}
+          onClick={() => open({ kind: 'skill', id: s.name })}
+          aria-pressed={isActive}
+          data-on={lit || undefined}
+          className={cn(
+            live && 'intro-piece',
+            'board-node group relative flex cursor-default items-center gap-1.5 rounded-md px-1.5 py-1 focus-ring transition-opacity duration-300',
+            s.above ? 'flex-col-reverse' : 'flex-col'
+          )}
+          style={flight}
+        >
+          <span
+            data-hit={`skill:${s.name}`}
+            data-shape="circle"
+            className={cn(
+              'size-3 rounded-full border-2 border-foreground transition-[background-color,border-color] duration-200',
+              lit ? 'border-brand bg-brand' : ACCENT_BG[AREAS[s.area].accent]
+            )}
+          />
+          <span
+            data-hit={`skill:${s.name}`}
+            className={cn(
+              'text-[13px] leading-tight font-medium whitespace-nowrap',
+              lit
+                ? 'font-semibold text-link'
+                : 'text-muted-foreground group-hover:text-foreground'
+            )}
+          >
+            {s.name}
+          </span>
+        </button>
+      </div>
+    </div>
+  )
+})
+
+/** A satellite on the board, orbiting the Me node. */
+const SatelliteNode = memo(function SatelliteNode({
+  satellite: s,
+  x,
+  y,
+  ox,
+  oy,
+  isActive,
+  live,
+  fly,
+  open,
+  close
+}: {
+  satellite: Satellite
+  /** Its spot (% of the board), and its offset from the photo (px). */
+  x: number
+  y: number
+  ox: number
+  oy: number
+  isActive: boolean
+  live: boolean
+  fly: Fly
+  open: Open
+  close: () => void
+}) {
+  const flight = useMemo(
+    () => fly(x, y, s.kind, [ox, oy]),
+    [fly, x, y, s.kind, ox, oy]
+  )
+  return (
+    <div
+      className="absolute z-10"
+      style={{ left: `${x}%`, top: `${y}%`, translate: '-50% -2.25rem' }}
+    >
+      <div
+        data-node={satId(s.kind)}
+        className="will-change-transform"
+        style={{ scale: 'var(--node-k, 1)' }}
+      >
+        <a
+          href={s.href}
+          data-sat={s.kind}
+          {...(s.kind === 'github' || s.kind === 'press'
+            ? { target: '_blank', rel: 'noopener noreferrer' }
+            : {})}
+          onFocus={() => open({ kind: 'satellite', id: s.kind })}
+          onBlur={close}
+          aria-label={
+            s.kind === 'press'
+              ? `Press: ${s.title}, ${s.detail}`
+              : `${s.title}: ${s.detail}`
+          }
+          data-on={isActive || undefined}
+          className={cn(
+            live && 'intro-piece',
+            'board-node group flex flex-col items-center rounded-lg p-1 focus-ring transition-opacity duration-300'
+          )}
+          style={flight}
+        >
+          <SatelliteDisc
+            satellite={s}
+            lit={isActive}
+            hit={`satellite:${s.kind}`}
+            className="size-16"
+          />
+          <span
+            data-hit={`satellite:${s.kind}`}
+            className={cn(
+              'mt-1 text-xs font-semibold',
+              isActive && 'text-link'
+            )}
+          >
+            {s.label}
+          </span>
+        </a>
+      </div>
+    </div>
+  )
+})
+
+/** The Me node. Clicking does nothing; a tap opens the About on touch screens. */
+const MeNode = memo(function MeNode({
+  me,
+  meOpen,
+  live,
+  open,
+  close
+}: {
+  me: readonly [number, number]
+  meOpen: boolean
+  live: boolean
+  open: Open
+  close: () => void
+}) {
+  return (
+    <div
+      className="absolute z-20"
+      style={{
+        left: `${me[0]}%`,
+        top: `${me[1]}%`,
+        translate: '-50% -4.5rem'
+      }}
+    >
+      <div data-node={ME_ID} className="will-change-transform">
+        <div
+          role="button"
+          tabIndex={0}
+          aria-expanded={meOpen}
+          aria-describedby="me-about"
+          onFocus={() => open({ kind: 'me' })}
+          onBlur={close}
+          onPointerUp={(e) => {
+            if (e.pointerType !== 'mouse')
+              if (meOpen) close()
+              else open({ kind: 'me' })
+          }}
+          className={cn(
+            live && 'intro-me',
+            'flex w-max cursor-default flex-col items-center rounded-2xl pb-2 text-center focus-ring'
+          )}
+          // Scales with the layout, around the photo's centre.
+          style={{
+            transform: 'scale(var(--node-k, 1))',
+            transformOrigin: '50% 4.5rem'
+          }}
+        >
+          <Portrait
+            hit="me"
+            className={cn(
+              'size-36 transition-[border-color,box-shadow] duration-300',
+              meOpen &&
+                'border-brand shadow-[0_0_0_8px_color-mix(in_oklab,var(--brand)_14%,transparent)]'
+            )}
+          />
+          <p
+            data-hit="me"
+            className="mt-4 text-2xl font-semibold tracking-tight whitespace-nowrap"
+          >
+            {PROFILE.name}
+          </p>
+          <p
+            data-hit="me"
+            className="mt-1 text-sm whitespace-nowrap text-muted-foreground"
+          >
+            {PROFILE.role} · {PROFILE.location.split(',')[0]}
+          </p>
+        </div>
+
+        {/* The bio, always in the markup; shown only while the Me node itself is hovered. */}
+        <div
+          id="me-about"
+          role="tooltip"
+          className={cn(
+            'dark ink-pop pointer-events-none absolute left-1/2 w-[34rem] -translate-x-1/2 rounded-lg bg-background p-5 text-foreground shadow-pop transition-[opacity,translate] duration-200',
+            meOpen ? 'translate-y-0 opacity-100' : 'translate-y-1 opacity-0'
+          )}
+          // Just under your name as drawn (the block above is scaled), at full size itself.
+          style={{ top: 'calc(4.5rem + (100% - 4.5rem) * var(--node-k, 1))' }}
+        >
+          <About />
+        </div>
+      </div>
+    </div>
+  )
+})
+
 /* ---------- the constellation ---------- */
+
+/** The bubble a Story's address names: /projects/<slug> or /work/<slug>. */
+const slugAt = (path: string) =>
+  path.match(/^\/(?:projects|work)\/([\w-]+)\/?$/)?.[1] ?? null
+
+type OpenStory = { slug: string; instant: boolean; closing: boolean }
+
+/** From `lg` up the board shows; below it, the column. */
+const WIDE = '(min-width: 64rem)'
+const onWideChange = (cb: () => void) => {
+  const mq = window.matchMedia(WIDE)
+  mq.addEventListener('change', cb)
+  return () => mq.removeEventListener('change', cb)
+}
+
+/**
+ * Keeps only the layout this screen shows. The server sends both the board and the column (it
+ * can't know the screen, and CSS hides the other one, so nothing flashes and the page reads the
+ * same without JavaScript). In the browser, the one that isn't showing is never brought to life:
+ * its server markup is left alone while the page hydrates, then dropped, so a phone doesn't carry
+ * the whole board (or a laptop the column) in the page and in every render. If the window later
+ * crosses the breakpoint, the other layout is built then, and both stay from there on.
+ *
+ * `children` is told whether its layout is arriving late like that (true) or was there from the
+ * start (false).
+ */
+function OneLayout({
+  wide,
+  children
+}: {
+  wide: boolean
+  children: (late: boolean) => ReactNode
+}) {
+  // Whether this layout was the hidden one when the page loaded (always false on the server).
+  const [skipped] = useState(
+    () =>
+      typeof window !== 'undefined' && window.matchMedia(WIDE).matches !== wide
+  )
+  // null on the server and while hydrating; then whether the screen shows this layout.
+  const fits = useSyncExternalStore<boolean | null>(
+    onWideChange,
+    () => window.matchMedia(WIDE).matches === wide,
+    () => null
+  )
+  const [kept, setKept] = useState(false)
+  if (fits && !kept) setKept(true)
+
+  if (fits === null)
+    return skipped ? (
+      // Hydrating the hidden layout: claim the server's markup as is, without rendering into it.
+      <div
+        className="contents"
+        suppressHydrationWarning
+        dangerouslySetInnerHTML={{ __html: '' }}
+      />
+    ) : (
+      <div className="contents">{children(false)}</div>
+    )
+  return fits || kept ? (
+    <div className="contents">{children(skipped)}</div>
+  ) : null
+}
 
 export function Constellation({
   skills,
   projects,
   work,
-  satellites
+  satellites,
+  stories,
+  initialStory
 }: {
   skills: Skill[]
   projects: Project[]
   work: WorkNode[]
   satellites: Satellite[]
+  /** Every Story that has been written, by bubble slug. */
+  stories: Record<string, Story>
+  /** The Story the address opened (/projects/<slug>, /work/<slug>): open from the start, no intro. */
+  initialStory?: string
 }) {
   const layout = LAYOUT
   // The replay button plays the intro again by remounting the board.
@@ -1008,18 +1565,111 @@ export function Constellation({
       ]),
     [layout, projects, work]
   )
+
+  // The open Story, and whether this page put its address in the history (so closing can go Back).
+  const [story, setStory] = useState<OpenStory | null>(
+    initialStory ? { slug: initialStory, instant: true, closing: false } : null
+  )
+  const pushed = useRef(false)
+  const openStory = useCallback((slug: string) => {
+    if (window.location.pathname !== storyPath(slug)) {
+      window.history.pushState(null, '', storyPath(slug))
+      pushed.current = true
+    }
+    setStory({ slug, instant: false, closing: false })
+  }, [])
+  const closeStory = useCallback(
+    () => setStory((s) => s && { ...s, closing: true }),
+    []
+  )
+  const storyClosed = useCallback(() => {
+    setStory(null)
+    if (!slugAt(window.location.pathname)) return
+    if (pushed.current) {
+      pushed.current = false
+      window.history.back()
+    } else window.history.replaceState(null, '', '/')
+  }, [])
+  // Back and Forward open and close Stories too.
+  useEffect(() => {
+    const onPop = () => {
+      const slug = slugAt(window.location.pathname)
+      pushed.current = false
+      setStory((s) =>
+        slug
+          ? s?.slug === slug
+            ? s
+            : { slug, instant: false, closing: false }
+          : s && { ...s, closing: true }
+      )
+    }
+    window.addEventListener('popstate', onPop)
+    return () => window.removeEventListener('popstate', onPop)
+  }, [])
+  const storyBubble = story && bubbles.find((b) => b.slug === story.slug)
+  const storySlug = story?.slug
+  const storySkills = useMemo(
+    () => skills.filter((s) => storySlug && s.projects.includes(storySlug)),
+    [skills, storySlug]
+  )
+  // While a Story is open the page behind it holds still (overlay.ts); it starts moving again as
+  // the Story begins to close, so the panel lands on a bubble that's already drifting.
+  const covering = Boolean(story && storyBubble && !story.closing)
+  useLayoutEffect(() => {
+    setPageCovered(covering)
+    return () => setPageCovered(false)
+  }, [covering])
+  useEffect(() => {
+    if (!storyBubble) return
+    document.title = `${storyBubble.title} · ${PROFILE.name}`
+    return () => {
+      // Back to the home page's title (layout.tsx), even when the page loaded on a Story.
+      document.title = `${PROFILE.name} · ${PROFILE.role}`
+    }
+  }, [storyBubble])
+
   return (
     <>
-      <Board
-        key={replays}
-        layout={layout}
-        intro={INTRO}
-        stars={stars}
-        bubbles={bubbles}
-        satellites={satellites}
-      />
+      <OneLayout wide>
+        {(late) => (
+          <Board
+            key={replays}
+            layout={layout}
+            intro={INTRO}
+            // Settled from the start when the page opened on a Story, or when the board first
+            // appears because a narrow window was widened: the supernova is for arriving.
+            skipIntro={(late || Boolean(initialStory)) && replays === 0}
+            stars={stars}
+            bubbles={bubbles}
+            satellites={satellites}
+            onOpenStory={openStory}
+          />
+        )}
+      </OneLayout>
 
-      <Column stars={stars} bubbles={bubbles} satellites={satellites} />
+      <OneLayout wide={false}>
+        {() => (
+          <Column
+            stars={stars}
+            bubbles={bubbles}
+            satellites={satellites}
+            onOpenStory={openStory}
+          />
+        )}
+      </OneLayout>
+
+      {story && storyBubble && (
+        <StoryPanel
+          key={story.slug}
+          bubble={storyBubble}
+          story={stories[story.slug] ?? null}
+          skills={storySkills}
+          instant={story.instant}
+          closing={story.closing}
+          onRequestClose={closeStory}
+          onClosed={storyClosed}
+        />
+      )}
 
       {/* Replay the supernova: beside the light/dark switch, on the full-screen board only. */}
       {INTRO.ms > 0 && (
@@ -1037,19 +1687,27 @@ export function Constellation({
   )
 }
 
-/** The constellation from `lg` up: one screen, Me node at the center. */
-function Board({
+/**
+ * The constellation from `lg` up: one screen, Me node at the center. Memoized (as is Column): a
+ * Story opening or closing over it changes nothing in it, so it isn't rendered again for that.
+ */
+const Board = memo(function Board({
   layout,
   intro,
+  skipIntro,
   stars,
   bubbles: placed,
-  satellites
+  satellites,
+  onOpenStory
 }: {
   layout: Layout
   intro: Intro
+  /** Start settled, as if the intro had played (a Story opened from its address). */
+  skipIntro: boolean
   stars: Star[]
   bubbles: Bubble[]
   satellites: Satellite[]
+  onOpenStory: (slug: string) => void
 }) {
   const [active, setActive] = useState<Active>(null)
   const { open, close } = useHoverIntent(setActive)
@@ -1071,12 +1729,6 @@ function Board({
       }),
     [placed, layout, scale, boardSize]
   )
-  // The pointer is handled by useIntentHover (below); these keep the keyboard working.
-  const hover = (a: NonNullable<Active>) => ({
-    onFocus: () => open(a),
-    onBlur: () => close()
-  })
-
   const linked = useMemo(
     () => linksOf(active, stars, satellites),
     [active, stars, satellites]
@@ -1162,8 +1814,8 @@ function Board({
   // Hover comes back as soon as the nodes are out on the board (mostly flown, still settling), long
   // before the rest of the intro is done.
   const readyAt = blast + intro.spread * 0.5 + intro.ms * 0.4
-  const [played, setPlayed] = useState(false)
-  const [ready, setReady] = useState(readyAt <= 0)
+  const [played, setPlayed] = useState(skipIntro)
+  const [ready, setReady] = useState(skipIntro || readyAt <= 0)
   const live = !played
 
   // The intro doubles as the loader. Until the page has loaded (scripts, fonts, your photo), the
@@ -1171,7 +1823,7 @@ function Board({
   // frame (globals.css, .intro-wait). Once loaded (or after a few seconds at most), the whole
   // supernova plays from the start, and its timers start with it, so the burst is never lost to a
   // busy page.
-  const [waiting, setWaiting] = useState(true)
+  const [waiting, setWaiting] = useState(!skipIntro)
   // How far into the intro to pick up when the wait ends (ms): the core keeps swelling while it
   // waits (globals.css, core-grow), so the intro carries on from the size it has reached instead of
   // shrinking back to the start.
@@ -1225,48 +1877,51 @@ function Board({
   // `chaos` each one goes its own way: its own speed and start, a spin, a curve off the straight
   // line, a different size at the start and a harder or softer overshoot. Seeded by the node's id,
   // so it's the same on the server and in the browser.
-  const far = Math.hypot(50 * 1.6, 50)
-  const delayAt = (x: number, y: number) =>
-    Math.round((Math.hypot((x - ME[0]) * 1.6, y - ME[1]) / far) * intro.spread)
+  const delayAt = useCallback(
+    (x: number, y: number) =>
+      Math.round(
+        (Math.hypot((x - ME[0]) * 1.6, y - ME[1]) / Math.hypot(50 * 1.6, 50)) *
+          intro.spread
+      ),
+    [ME, intro.spread]
+  )
   // `px` gives a satellite's offset from the photo in px, which (unlike its % spot) is known
   // before the board is measured, so its flight never changes mid-air.
-  const fly = (
-    x: number,
-    y: number,
-    id: string,
-    px?: [number, number]
-  ): CSSProperties => {
-    if (!live) return {}
-    const c = intro.chaos
-    const r = (k: string) => hash(`${id}/${k}`) - 0.5 // -0.5 … 0.5
-    const dx = px ? px[0] : (x - ME[0]) * 1.6
-    const dy = px ? px[1] : y - ME[1]
-    const len = Math.hypot(dx, dy) || 1
-    const swirl = r('swirl') * 140 * c // px, across the line of flight
-    const at: [number, number] = px ? ME : [x, y]
-    const vars: Record<string, string> = {
-      ...(px
-        ? {
-            '--gx': (-px[0] * intro.burst).toFixed(1),
-            '--gy': (-px[1] * intro.burst).toFixed(1)
-          }
-        : {
-            '--fx': ((ME[0] - x) * intro.burst).toFixed(2),
-            '--fy': ((ME[1] - y) * intro.burst).toFixed(2)
-          }),
-      '--sx': ((-dy / len) * swirl).toFixed(1),
-      '--sy': ((dx / len) * swirl).toFixed(1),
-      '--spin': `${(r('spin') * 80 * c).toFixed(1)}deg`,
-      '--s0': Math.min(
-        0.9,
-        intro.scale * (1 + (r('size') + 0.5) * 4 * c)
-      ).toFixed(2),
-      '--ov': (intro.overshoot * (1 + r('kick') * 1.2 * c)).toFixed(2),
-      '--dur': `${Math.round(intro.ms * (1.1 + r('speed') * 0.7 * c))}ms`,
-      '--intro-delay': `${Math.max(0, Math.round(blast + delayAt(at[0], at[1]) + r('start') * 123 * c))}ms`
-    }
-    return vars as CSSProperties
-  }
+  const fly: Fly = useCallback(
+    (x, y, id, px) => {
+      if (!live) return NO_FLIGHT
+      const c = intro.chaos
+      const r = (k: string) => hash(`${id}/${k}`) - 0.5 // -0.5 … 0.5
+      const dx = px ? px[0] : (x - ME[0]) * 1.6
+      const dy = px ? px[1] : y - ME[1]
+      const len = Math.hypot(dx, dy) || 1
+      const swirl = r('swirl') * 140 * c // px, across the line of flight
+      const at: [number, number] = px ? ME : [x, y]
+      const vars: Record<string, string> = {
+        ...(px
+          ? {
+              '--gx': (-px[0] * intro.burst).toFixed(1),
+              '--gy': (-px[1] * intro.burst).toFixed(1)
+            }
+          : {
+              '--fx': ((ME[0] - x) * intro.burst).toFixed(2),
+              '--fy': ((ME[1] - y) * intro.burst).toFixed(2)
+            }),
+        '--sx': ((-dy / len) * swirl).toFixed(1),
+        '--sy': ((dx / len) * swirl).toFixed(1),
+        '--spin': `${(r('spin') * 80 * c).toFixed(1)}deg`,
+        '--s0': Math.min(
+          0.9,
+          intro.scale * (1 + (r('size') + 0.5) * 4 * c)
+        ).toFixed(2),
+        '--ov': (intro.overshoot * (1 + r('kick') * 1.2 * c)).toFixed(2),
+        '--dur': `${Math.round(intro.ms * (1.1 + r('speed') * 0.7 * c))}ms`,
+        '--intro-delay': `${Math.max(0, Math.round(blast + delayAt(at[0], at[1]) + r('start') * 123 * c))}ms`
+      }
+      return vars as CSSProperties
+    },
+    [live, intro, ME, blast, delayAt]
+  )
   // An area's title starts fading in as its stars arrive and finishes as they settle.
   const titleDelay = (x: number, y: number) =>
     Math.round(blast + delayAt(x, y) + intro.ms * 0.3)
@@ -1404,15 +2059,17 @@ function Board({
   }
 
   // The lines: each area's figure always; the active node's links on hover.
-  const fixedLines: { a: string; b: string }[] = [
-    ...Object.keys(AREAS).flatMap((area) => {
-      const list = stars.filter((s) => s.area === area)
-      return figure(list, w && h ? w / h : 1.6).map(([a, b]) => ({
-        a: starId(list[a].name),
-        b: starId(list[b].name)
-      }))
-    })
-  ]
+  const fixedLines = useMemo<{ a: string; b: string }[]>(
+    () =>
+      Object.keys(AREAS).flatMap((area) => {
+        const list = stars.filter((s) => s.area === area)
+        return figure(list, w && h ? w / h : 1.6).map(([a, b]) => ({
+          a: starId(list[a].name),
+          b: starId(list[b].name)
+        }))
+      }),
+    [stars, w, h]
+  )
   const hoverLines: { a: string; b: string }[] =
     activeId && activeId in motionNodes
       ? [...linkedIds].map((id) => ({ a: activeId, b: id }))
@@ -1424,8 +2081,6 @@ function Board({
       .filter((s) => activeStar?.name === s.name || linked.skills.has(s.name))
       .map((s) => s.area as string)
   )
-
-  const dimmed = (lit: boolean) => active !== null && !lit && 'opacity-30'
 
   const anchor = activeStar ?? activeBubble
   const satAnchor = activeSat ? satPos[activeSat.kind] : undefined
@@ -1441,6 +2096,8 @@ function Board({
         // Nothing on the board can be hovered or clicked until it has landed.
         !ready && 'intro-lock [&_*]:pointer-events-none'
       )}
+      // While something is hovered, everything unrelated dims (globals.css, .board-node).
+      data-hovering={active !== null || undefined}
       style={
         {
           '--node-k': scale,
@@ -1470,38 +2127,15 @@ function Board({
           aria-hidden
           focusable="false"
         >
-          {fixedLines.map((l) => {
-            const A = px(l.a)
-            const B = px(l.b)
-            return (
-              <line
-                key={`${l.a}-${l.b}`}
-                data-a={l.a}
-                data-b={l.b}
-                x1={A.x}
-                y1={A.y}
-                x2={B.x}
-                y2={B.y}
-                className={cn(
-                  'transition-opacity duration-300',
-                  on('intro-line'),
-                  l.a === ME_ID
-                    ? 'stroke-foreground/20'
-                    : 'stroke-foreground/15',
-                  active && 'opacity-40'
-                )}
-                // Each line of a figure catches at its own moment, like a constellation lighting up.
-                style={
-                  live
-                    ? ({
-                        '--line-delay': `${Math.round(blast + intro.lines + (hash(`${l.a}|${l.b}`) - 0.3) * 228 * intro.chaos)}ms`
-                      } as CSSProperties)
-                    : undefined
-                }
-                strokeWidth={1.5}
-              />
-            )
-          })}
+          <FigureLines
+            lines={fixedLines}
+            nodes={motionNodes}
+            w={w}
+            h={h}
+            // Each line of a figure catches at its own moment, like a constellation lighting up.
+            introAt={live ? blast + intro.lines : null}
+            chaos={intro.chaos}
+          />
           {hoverLines.map((l) => {
             const A = px(l.a)
             const B = px(l.b)
@@ -1538,46 +2172,7 @@ function Board({
           off every edge of the screen. All gone in well under a second. */}
       {/* Debris: sparks thrown out by the blast that stay on as faint, twinkling dust, floating and
           pulled by the cursor like everything else. */}
-      {sparks.map((sp, i) => (
-        <span
-          key={sp.id}
-          aria-hidden
-          data-extra={i % 2 === 1 || undefined}
-          className="pointer-events-none absolute"
-          style={{
-            left: `calc(${ME[0]}% + ${sp.dx}px)`,
-            top: `calc(${ME[1]}% + ${sp.dy}px)`
-          }}
-        >
-          <span data-node={sp.id} className="block will-change-transform">
-            <span
-              className={cn(
-                'block rounded-full',
-                live ? 'intro-spark' : 'spark-twinkle'
-              )}
-              style={
-                {
-                  width: sp.size,
-                  height: sp.size,
-                  marginLeft: -sp.size / 2,
-                  marginTop: -sp.size / 2,
-                  background: `var(--spark-${sp.tone})`,
-                  opacity: sp.rest,
-                  '--dx': `${sp.dx}px`,
-                  '--dy': `${sp.dy}px`,
-                  '--rest': sp.rest,
-                  animationDuration: live
-                    ? `${Math.round(intro.ms * sp.speed)}ms`
-                    : `${sp.twinkle}ms`,
-                  animationDelay: live
-                    ? `${Math.round(blast + sp.wait)}ms`
-                    : `${-sp.wait * 20}ms`
-                } as CSSProperties
-              }
-            />
-          </span>
-        </span>
-      ))}
+      <Dust sparks={sparks} me={ME} live={live} ms={intro.ms} blast={blast} />
       {/* The build-up: a churning ball of colour where your photo will be, light gathering
           around it and specks falling into it. At the blast it bursts and your photo is there. */}
       {live && intro.buildup > 0 && (
@@ -1808,263 +2403,59 @@ function Board({
       ))}
 
       {/* Bubbles: work and projects around the Me node. */}
-      {bubbles.map((b) => {
-        const style = BUBBLE_STYLE[b.size]
-        const isActive = activeBubble?.slug === b.slug
-        const lit = isActive || linked.projects.has(b.slug)
-        return (
-          <div
-            key={b.slug}
-            className="absolute z-10"
-            style={{
-              left: `${b.x}%`,
-              top: `${b.y}%`,
-              // Put the disc's center (inside 0.5rem of padding) on the bubble's point.
-              translate: `-50% calc(-${style.disc / 2}rem - 0.5rem)`
-            }}
-          >
-            <div
-              data-node={bubbleId(b.slug)}
-              className="will-change-transform"
-              style={{ scale: 'var(--node-k, 1)' }}
-            >
-              <BubbleTarget
-                bubble={b}
-                handlers={{
-                  ...hover({ kind: 'project', id: b.slug }),
-                  onClick: () => open({ kind: 'project', id: b.slug })
-                }}
-                className={cn(
-                  on('intro-piece'),
-                  'group flex flex-col items-center rounded-xl p-2 focus-ring transition-opacity duration-300',
-                  dimmed(lit)
-                )}
-                style={fly(b.x, b.y, b.slug)}
-              >
-                <BubbleDisc
-                  bubble={b}
-                  rem={style.disc}
-                  lit={lit}
-                  hit={`project:${b.slug}`}
-                />
-                <span
-                  data-hit={`project:${b.slug}`}
-                  className={cn(
-                    'mt-2 font-semibold whitespace-nowrap',
-                    style.label,
-                    lit && 'text-link'
-                  )}
-                >
-                  {b.title}
-                </span>
-                <span
-                  data-hit={`project:${b.slug}`}
-                  className="max-w-40 text-center text-xs leading-snug text-muted-foreground"
-                >
-                  {b.tagline}
-                </span>
-                {bubbleWhen(b) && (
-                  <span
-                    data-hit={`project:${b.slug}`}
-                    className="mt-0.5 text-[0.6875rem] leading-snug font-medium text-muted-foreground/75"
-                  >
-                    {bubbleWhen(b)}
-                  </span>
-                )}
-              </BubbleTarget>
-            </div>
-          </div>
-        )
-      })}
+      {bubbles.map((b) => (
+        <BubbleNode
+          key={b.slug}
+          bubble={b}
+          lit={activeBubble?.slug === b.slug || linked.projects.has(b.slug)}
+          live={live}
+          fly={fly}
+          open={open}
+          close={close}
+          onOpen={onOpenStory}
+        />
+      ))}
 
       {/* Stars. */}
       {stars.map((s) => {
         const isActive = activeStar?.name === s.name
-        const lit = isActive || linked.skills.has(s.name)
         return (
-          <div
+          <StarNode
             key={s.name}
-            className="absolute"
-            style={
-              {
-                left: `${s.x}%`,
-                top: `${s.y}%`,
-                // Put the dot (0.75rem, inside 0.25rem of padding) exactly on the star.
-                translate: s.above
-                  ? '-50% calc(-100% + 0.625rem)'
-                  : '-50% -0.625rem'
-              } as CSSProperties
-            }
-          >
-            <div
-              data-node={starId(s.name)}
-              className="will-change-transform"
-              // Labels stay legible: stars shrink less than everything else.
-              style={{ scale: 'max(0.85, var(--node-k, 1))' }}
-            >
-              <button
-                type="button"
-                {...hover({ kind: 'skill', id: s.name })}
-                onClick={() => open({ kind: 'skill', id: s.name })}
-                aria-pressed={isActive}
-                className={cn(
-                  on('intro-piece'),
-                  'group relative flex cursor-default items-center gap-1.5 rounded-md px-1.5 py-1 focus-ring transition-opacity duration-300',
-                  s.above ? 'flex-col-reverse' : 'flex-col',
-                  dimmed(lit)
-                )}
-                style={fly(s.x, s.y, s.name)}
-              >
-                <span
-                  data-hit={`skill:${s.name}`}
-                  data-shape="circle"
-                  className={cn(
-                    'size-3 rounded-full border-2 border-foreground transition-[background-color,border-color] duration-200',
-                    lit
-                      ? 'border-brand bg-brand'
-                      : ACCENT_BG[AREAS[s.area].accent]
-                  )}
-                />
-                <span
-                  data-hit={`skill:${s.name}`}
-                  className={cn(
-                    'text-[13px] leading-tight font-medium whitespace-nowrap',
-                    lit
-                      ? 'font-semibold text-link'
-                      : 'text-muted-foreground group-hover:text-foreground'
-                  )}
-                >
-                  {s.name}
-                </span>
-              </button>
-            </div>
-          </div>
+            star={s}
+            isActive={isActive}
+            lit={isActive || linked.skills.has(s.name)}
+            live={live}
+            fly={fly}
+            open={open}
+            close={close}
+          />
         )
       })}
 
       {/* Satellites, orbiting the Me node. */}
       {satellites.map((s) => {
         const [x, y] = satPos[s.kind]
-        const isActive = activeSat?.kind === s.kind
+        const [ox, oy] = satOffset(s.kind)
         return (
-          <div
+          <SatelliteNode
             key={s.kind}
-            className="absolute z-10"
-            style={{ left: `${x}%`, top: `${y}%`, translate: '-50% -2.25rem' }}
-          >
-            <div
-              data-node={satId(s.kind)}
-              className="will-change-transform"
-              style={{ scale: 'var(--node-k, 1)' }}
-            >
-              <a
-                href={s.href}
-                data-sat={s.kind}
-                {...(s.kind === 'github' || s.kind === 'press'
-                  ? { target: '_blank', rel: 'noopener noreferrer' }
-                  : {})}
-                {...hover({ kind: 'satellite', id: s.kind })}
-                aria-label={
-                  s.kind === 'press'
-                    ? `Press: ${s.title}, ${s.detail}`
-                    : `${s.title}: ${s.detail}`
-                }
-                className={cn(
-                  on('intro-piece'),
-                  'group flex flex-col items-center rounded-lg p-1 focus-ring transition-opacity duration-300',
-                  dimmed(isActive)
-                )}
-                style={fly(x, y, s.kind, satOffset(s.kind))}
-              >
-                <SatelliteDisc
-                  satellite={s}
-                  lit={isActive}
-                  hit={`satellite:${s.kind}`}
-                  className="size-16"
-                />
-                <span
-                  data-hit={`satellite:${s.kind}`}
-                  className={cn(
-                    'mt-1 text-xs font-semibold',
-                    isActive && 'text-link'
-                  )}
-                >
-                  {s.label}
-                </span>
-              </a>
-            </div>
-          </div>
+            satellite={s}
+            x={x}
+            y={y}
+            ox={ox}
+            oy={oy}
+            isActive={activeSat?.kind === s.kind}
+            live={live}
+            fly={fly}
+            open={open}
+            close={close}
+          />
         )
       })}
 
       {/* The Me node. Clicking does nothing; a tap opens the About on touch screens. */}
-      <div
-        className="absolute z-20"
-        style={{
-          left: `${ME[0]}%`,
-          top: `${ME[1]}%`,
-          translate: '-50% -4.5rem'
-        }}
-      >
-        <div data-node={ME_ID} className="will-change-transform">
-          <div
-            role="button"
-            tabIndex={0}
-            aria-expanded={meOpen}
-            aria-describedby="me-about"
-            {...hover({ kind: 'me' })}
-            onPointerUp={(e) => {
-              if (e.pointerType !== 'mouse')
-                if (meOpen) setActive(null)
-                else open({ kind: 'me' })
-            }}
-            className={cn(
-              on('intro-me'),
-              'flex w-max cursor-default flex-col items-center rounded-2xl pb-2 text-center focus-ring'
-            )}
-            // Scales with the layout, around the photo's centre.
-            style={{
-              transform: 'scale(var(--node-k, 1))',
-              transformOrigin: '50% 4.5rem'
-            }}
-          >
-            <Portrait
-              hit="me"
-              className={cn(
-                'size-36 transition-[border-color,box-shadow] duration-300',
-                meOpen &&
-                  'border-brand shadow-[0_0_0_8px_color-mix(in_oklab,var(--brand)_14%,transparent)]'
-              )}
-            />
-            <p
-              data-hit="me"
-              className="mt-4 text-2xl font-semibold tracking-tight whitespace-nowrap"
-            >
-              {PROFILE.name}
-            </p>
-            <p
-              data-hit="me"
-              className="mt-1 text-sm whitespace-nowrap text-muted-foreground"
-            >
-              {PROFILE.role} · {PROFILE.location.split(',')[0]}
-            </p>
-          </div>
-
-          {/* The bio, always in the markup; shown only while the Me node itself is hovered. */}
-          <div
-            id="me-about"
-            role="tooltip"
-            className={cn(
-              'dark ink-pop pointer-events-none absolute left-1/2 w-[34rem] -translate-x-1/2 rounded-lg bg-background p-5 text-foreground shadow-pop transition-[opacity,translate] duration-200',
-              meOpen ? 'translate-y-0 opacity-100' : 'translate-y-1 opacity-0'
-            )}
-            // Just under your name as drawn (the block above is scaled), at full size itself.
-            style={{ top: 'calc(4.5rem + (100% - 4.5rem) * var(--node-k, 1))' }}
-          >
-            <About />
-          </div>
-        </div>
-      </div>
+      <MeNode me={ME} meOpen={meOpen} live={live} open={open} close={close} />
 
       {/* The ink popover beside the active star, bubble or satellite. */}
       {(anchor || satAnchor) && (
@@ -2115,7 +2506,7 @@ function Board({
       </p>
     </div>
   )
-}
+})
 
 /* ---------- below lg: the column ---------- */
 
@@ -2143,53 +2534,38 @@ function honeycombColumn(i: number) {
   return cycle < 3 ? 1 + cycle * 2 : 2 + (cycle - 3) * 2
 }
 
-type Picked =
-  | { kind: 'me' }
-  | { kind: 'bubble'; slug: string }
-  | { kind: 'star'; name: string }
+type Picked = { kind: 'me' } | { kind: 'star'; name: string }
 
 /**
  * The constellation for phones and small tablets, made to be tapped, not hovered. Your photo, name
  * and role up top with the satellites; then work and projects packed in a honeycomb; then each skill
- * area as a cluster of stars. Tap anything and a sheet rises from the bottom with what it is and
- * what it connects to, as chips you can tap to keep exploring without scrolling; the page behind
- * lights up whatever's related. Gentle drift only.
+ * area as a cluster of stars. Tap a bubble and its Story opens; tap your photo or a star and a
+ * sheet rises from the bottom with what it is and what it connects to (a star's bubbles as chips
+ * that open their Stories); the page behind lights up whatever's related. Gentle drift only.
  */
-function Column({
+const Column = memo(function Column({
   stars,
   bubbles,
-  satellites
+  satellites,
+  onOpenStory
 }: {
   stars: Star[]
   bubbles: Bubble[]
   satellites: Satellite[]
+  onOpenStory: (slug: string) => void
 }) {
   const [picked, setPicked] = useState<Picked | null>(null)
   // Stable, so the sheet's open effect (focus and the Escape key) runs once per opening.
   const closeSheet = useCallback(() => setPicked(null), [])
   const ranked = [...bubbles].sort((a, b) => rank(a.slug) - rank(b.slug))
-  const pickedBubble =
-    picked?.kind === 'bubble'
-      ? bubbles.find((b) => b.slug === picked.slug)
-      : undefined
   const pickedStar =
     picked?.kind === 'star'
       ? stars.find((s) => s.name === picked.name)
       : undefined
 
   // What lights up on the page behind the sheet.
-  const litStars = new Set(
-    pickedBubble
-      ? stars
-          .filter((s) => s.projects.includes(pickedBubble.slug))
-          .map((s) => s.name)
-      : pickedStar
-        ? [pickedStar.name]
-        : []
-  )
-  const litBubbles = new Set(
-    pickedStar ? pickedStar.projects : pickedBubble ? [pickedBubble.slug] : []
-  )
+  const litStars = new Set(pickedStar ? [pickedStar.name] : [])
+  const litBubbles = new Set(pickedStar ? pickedStar.projects : [])
 
   return (
     <div className="px-5 pt-10 pb-28 lg:hidden">
@@ -2253,9 +2629,12 @@ function Column({
               className="col-span-2"
               style={{ gridColumnStart: honeycombColumn(i) }}
             >
-              <button
-                type="button"
-                onClick={() => setPicked({ kind: 'bubble', slug: b.slug })}
+              <a
+                href={storyPath(b.slug)}
+                onClick={(e) => {
+                  e.preventDefault()
+                  onOpenStory(b.slug)
+                }}
                 className={cn(
                   'flex w-full flex-col items-center rounded-xl p-1 text-center focus-ring transition-opacity duration-300',
                   picked && !on && 'opacity-45'
@@ -2280,7 +2659,7 @@ function Column({
                     {bubbleWhen(b)}
                   </span>
                 )}
-              </button>
+              </a>
             </li>
           )
         })}
@@ -2333,16 +2712,17 @@ function Column({
 
       <Sheet
         picked={picked}
-        bubble={pickedBubble}
         star={pickedStar}
-        stars={stars}
         bubbles={ranked}
-        onPick={setPicked}
+        onOpenStory={(slug) => {
+          setPicked(null)
+          onOpenStory(slug)
+        }}
         onClose={closeSheet}
       />
     </div>
   )
-}
+})
 
 /**
  * The sheet that rises from the bottom on mobile: what's tapped, and its connections as chips that
@@ -2351,19 +2731,15 @@ function Column({
  */
 function Sheet({
   picked,
-  bubble,
   star,
-  stars,
   bubbles,
-  onPick,
+  onOpenStory,
   onClose
 }: {
   picked: Picked | null
-  bubble?: Bubble
   star?: Star
-  stars: Star[]
   bubbles: Bubble[]
-  onPick: (p: Picked) => void
+  onOpenStory: (slug: string) => void
   onClose: () => void
 }) {
   const close = useRef<HTMLButtonElement>(null)
@@ -2378,91 +2754,8 @@ function Sheet({
     return () => window.removeEventListener('keydown', onKey)
   }, [open, onClose])
 
-  // The page behind stays put while the sheet is up. iOS ignores overflow: hidden on the body for
-  // touch scrolling, so the body is pinned in place and the scroll position restored on close.
-  useEffect(() => {
-    if (!open) return
-    const { body } = document
-    const y = window.scrollY
-    const prev = body.style.cssText
-    Object.assign(body.style, {
-      position: 'fixed',
-      top: `-${y}px`,
-      left: '0',
-      right: '0',
-      overflow: 'hidden'
-    })
-    return () => {
-      body.style.cssText = prev
-      window.scrollTo({ top: y, behavior: 'instant' })
-    }
-  }, [open])
-
-  // Swipe down to dismiss, like a native sheet: once the content is scrolled to the top, pulling
-  // down drags the whole sheet with the finger (the scrim fading with it). Let go past a quarter of
-  // its height, or with a quick flick, and it closes; otherwise it springs back.
-  useEffect(() => {
-    const el = sheet.current
-    if (!el || !open) return
-    let startY = 0
-    let startT = 0
-    let offset = 0
-    let dragging = false
-    const set = (px: number) => {
-      offset = px
-      el.style.translate = `0 ${px}px`
-      if (scrim.current)
-        scrim.current.style.opacity = String(1 - px / el.offsetHeight)
-    }
-    const reset = () => {
-      el.style.transition = ''
-      el.style.translate = ''
-      if (scrim.current) {
-        scrim.current.style.transition = ''
-        scrim.current.style.opacity = ''
-      }
-    }
-    const onStart = (e: TouchEvent) => {
-      startY = e.touches[0].clientY
-      startT = e.timeStamp
-      dragging = false
-      offset = 0
-    }
-    const onMove = (e: TouchEvent) => {
-      const y = e.touches[0].clientY
-      if (!dragging) {
-        if (y <= startY || el.scrollTop > 0) return
-        // Start the drag from here, so a scroll that reached the top doesn't jump the sheet.
-        dragging = true
-        startY = y
-        startT = e.timeStamp
-        el.style.transition = 'none'
-        if (scrim.current) scrim.current.style.transition = 'none'
-      }
-      e.preventDefault()
-      set(Math.max(0, y - startY))
-    }
-    const onEnd = (e: TouchEvent) => {
-      if (!dragging) return
-      dragging = false
-      const speed = offset / Math.max(1, e.timeStamp - startT)
-      const dismiss =
-        offset > el.offsetHeight * 0.25 || (speed > 0.5 && offset > 12)
-      reset()
-      if (dismiss) onClose()
-    }
-    el.addEventListener('touchstart', onStart, { passive: true })
-    el.addEventListener('touchmove', onMove, { passive: false })
-    el.addEventListener('touchend', onEnd)
-    el.addEventListener('touchcancel', onEnd)
-    return () => {
-      el.removeEventListener('touchstart', onStart)
-      el.removeEventListener('touchmove', onMove)
-      el.removeEventListener('touchend', onEnd)
-      el.removeEventListener('touchcancel', onEnd)
-      reset()
-    }
-  }, [open, onClose])
+  useBodyLock(open)
+  useSwipeToClose(sheet, scrim, open, onClose)
 
   // A new pick starts at the top of the sheet.
   useEffect(() => {
@@ -2485,7 +2778,6 @@ function Sheet({
         role="dialog"
         aria-modal="true"
         aria-label={
-          bubble?.title ??
           star?.name ??
           (picked?.kind === 'me' ? `About ${PROFILE.name}` : 'Details')
         }
@@ -2511,58 +2803,6 @@ function Sheet({
 
         {picked?.kind === 'me' && <About />}
 
-        {bubble && (
-          <>
-            <div className="flex items-center gap-3 pr-8">
-              <BubbleDisc bubble={bubble} rem={3} />
-              <div>
-                <p className="text-xs font-medium text-muted-foreground">
-                  {eyebrow(bubble, true)}
-                </p>
-                <p className="text-lg font-semibold">{bubble.title}</p>
-              </div>
-            </div>
-            <p className="mt-3 text-sm text-pretty text-foreground/85">
-              {bubble.summary}
-            </p>
-            {outLink(bubble) && (
-              <a
-                href={outLink(bubble)!.href}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="mt-3 inline-block text-sm font-semibold text-link focus-ring"
-              >
-                {outLink(bubble)!.label} ↗
-              </a>
-            )}
-            <p className="mt-4 text-xs font-medium text-muted-foreground">
-              Built with
-            </p>
-            <ul className="mt-2 flex flex-wrap gap-1.5">
-              {stars
-                .filter((s) => s.projects.includes(bubble.slug))
-                .map((s) => (
-                  <li key={s.name}>
-                    <button
-                      type="button"
-                      onClick={() => onPick({ kind: 'star', name: s.name })}
-                      className="flex items-center gap-1.5 rounded-full bg-foreground/10 px-3 py-1.5 text-sm font-medium focus-ring"
-                    >
-                      <span
-                        className={cn(
-                          'size-2.5 rounded-full',
-                          ACCENT_BG[AREAS[s.area].accent]
-                        )}
-                        aria-hidden
-                      />
-                      {s.name}
-                    </button>
-                  </li>
-                ))}
-            </ul>
-          </>
-        )}
-
         {star && (
           <>
             <p className="pr-8 text-xs font-medium text-muted-foreground">
@@ -2584,9 +2824,7 @@ function Sheet({
                       <li key={b.slug}>
                         <button
                           type="button"
-                          onClick={() =>
-                            onPick({ kind: 'bubble', slug: b.slug })
-                          }
+                          onClick={() => onOpenStory(b.slug)}
                           className="flex items-center gap-2 rounded-full bg-foreground/10 py-1 pr-3 pl-1 text-sm font-medium focus-ring"
                         >
                           <BubbleDisc bubble={b} rem={1.75} />

@@ -24,6 +24,14 @@ _Avoid_: Link node, CTA, contact button
 A job or a project, shown as a disc sized by how much it matters. Every bubble is implicitly Jackson's, so none is tied to the Me node.
 _Avoid_: Project node, card, tile
 
+**Story**:
+The long write-up a bubble opens into: why the work exists, what Jackson built, how it went and what he took from it, shown with the screenshots, recordings and links that prove it. Every bubble has one; a small bubble's is short.
+_Avoid_: Case study, brief, project page, overview, dialog, modal
+
+**Gallery**:
+The slideshow of screenshots and clips at the top of a Story, the proof that comes before the telling. A Story's text can pull any of its pictures in among the paragraphs.
+_Avoid_: Carousel, slider, media
+
 **Star**:
 One skill, placed in its area's cluster and tied to the bubbles where it was used.
 _Avoid_: Skill node, tag, chip

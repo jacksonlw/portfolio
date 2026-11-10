@@ -13,15 +13,35 @@ export type DateRange = {
   label?: string
 }
 
-/** One part of a project's story, written by Jackson. */
-export type StorySection = {
+/**
+ * One picture or clip in a Story's gallery. `frame` says what it was taken from, so it can be
+ * shown at its own shape: a phone screen, a browser window, or a plain image (a logo, a mockup).
+ */
+export type GalleryItem = {
+  /** How the Story's text pulls it in among the paragraphs: `![](#id)`. */
   id: string
-  heading: string
-  /** Plain paragraphs, in order. */
-  paragraphs: string[]
-  /** The illustration drawn for this part (a key in the illustration registry), once it exists. */
-  illustration: string | null
+  /** A file in /public. A .mp4 or .webm is a clip: muted, looping, playing while it's in view. */
+  src: string
+  kind: 'image' | 'video'
+  /** A clip's still, shown before it plays and under reduced motion. */
+  poster: string | null
+  /** One line on what it shows. */
+  caption: string
+  frame: 'phone' | 'browser' | 'plain'
 }
+
+/** A run of a Story's text: a paragraph (light **bold** markup) or one of its gallery items. */
+export type StoryBlock =
+  { kind: 'text'; text: string } | { kind: 'media'; id: string }
+
+/** One beat of a Story: why it exists, what Jackson built, how it went, what he took from it. */
+export type StorySection = { heading: string; blocks: StoryBlock[] }
+
+/**
+ * A bubble's Story: the long write-up it opens into (src/content/stories/<slug>.md), its gallery
+ * first, then its beats. A bubble with no file yet opens to its recap alone.
+ */
+export type Story = { gallery: GalleryItem[]; sections: StorySection[] }
 
 /** The brand's pastel accents: each project wears one (its art's swash and its tinted panels). */
 export type Accent =
@@ -42,11 +62,6 @@ export type Project = {
   links: Link[]
   /** Short, factual points (from the resume or Jackson), shown in the facts box. */
   highlights: string[]
-  /** The long-form write-up, filled in together with Jackson. */
-  story: StorySection[]
-  /** A screenshot in /public, for the project page. */
-  image: string | null
-  imageKind: 'mobile' | 'web' | null
 }
 
 export type Experience = {
@@ -77,7 +92,7 @@ export type Skill = {
   projects: string[]
 }
 
-/** Work shown beside the projects in the skills constellation, with no page of its own. */
+/** A job, shown beside the projects in the constellation. */
 export type WorkNode = {
   slug: string
   title: string
@@ -86,7 +101,10 @@ export type WorkNode = {
   tagline: string
   /** When the role ran, from the resume. */
   dates: DateRange
+  /** The role, as the Story's recap shows it. */
+  role: string
   summary: string
+  links: Link[]
 }
 
 /** Something written about Jackson by someone else: an article, a profile, an interview. */
