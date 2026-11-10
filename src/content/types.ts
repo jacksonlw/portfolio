@@ -84,6 +84,8 @@ export type WorkNode = {
   accent: Accent
   /** A few words under the bubble: the role. */
   tagline: string
+  /** When the role ran, from the resume. */
+  dates: DateRange
   summary: string
 }
 

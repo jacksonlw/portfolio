@@ -13,9 +13,13 @@ import {
   type CSSProperties,
   type ReactNode
 } from 'react'
-import { Illustration } from '@/components/illustrations/registry'
+import {
+  ILLUSTRATIONS,
+  Illustration
+} from '@/components/illustrations/registry'
 import { RichText } from '@/components/site/rich-text'
 import {
+  bubbleWhen,
   PROFILE,
   PROJECT_PAGES_ENABLED,
   type Accent,
@@ -672,8 +676,10 @@ function Portrait({ className, hit }: { className?: string; hit?: string }) {
         priority
         placeholder="blur"
         sizes="200px"
-        className="origin-[62%_31%] scale-[1.6] object-cover object-top"
+        className="portrait-photo origin-[62%_31%] scale-[1.6] object-cover object-top"
       />
+      {/* A light grade that ties the photo to the theme (globals.css, .portrait-grade). */}
+      <span aria-hidden className="portrait-grade" />
     </span>
   )
 }
@@ -683,11 +689,18 @@ const LIT_RING =
   'border-brand shadow-[0_0_0_5px_color-mix(in_oklab,var(--brand)_16%,transparent)]'
 
 /**
- * A disc's chrome rim, lit from `light` (degrees on screen, from where the light comes): its bright
- * arc faces the light, the way the glyph inside it does (globals.css, .node-chrome).
+ * The disc's colour: every disc is lit by a soft radial glow of its drawing's colour, on white in
+ * light mode and on near-black in dark (globals.css, .node-disc), a step brighter while it's
+ * hovered or lit.
  */
-function discLight(light: number): CSSProperties {
-  return { '--light': `${Math.round(light + 90)}deg` } as CSSProperties
+function discAccent(key: string): CSSProperties {
+  const accent = ILLUSTRATIONS[key]?.accent
+  return accent
+    ? ({
+        '--disc-accent': `var(--af-${accent})`,
+        '--disc-deep': `var(--af-${accent}-deep)`
+      } as CSSProperties)
+    : {}
 }
 
 /** A bubble's disc with its illustration. */
@@ -696,14 +709,11 @@ function BubbleDisc({
   rem,
   lit,
   hit,
-  light = -90,
   className
 }: {
   bubble: Bubble
   rem: number
   lit?: boolean
-  /** Where the light comes from (degrees on screen): from you, on the board. */
-  light?: number
   hit?: string
   className?: string
 }) {
@@ -712,7 +722,7 @@ function BubbleDisc({
       data-hit={hit}
       data-shape="circle"
       className={cn(
-        'node-chrome flex shrink-0 items-center justify-center rounded-full border-2 transition-[border-color,box-shadow,background-color] duration-200',
+        'node-disc flex shrink-0 items-center justify-center rounded-full border-2 transition-[border-color,box-shadow,background-color] duration-200',
         lit && LIT_RING,
         className
       )}
@@ -720,12 +730,11 @@ function BubbleDisc({
       style={{
         width: `${rem}rem`,
         height: `${rem}rem`,
-        ...discLight(light)
+        ...discAccent(bubble.slug)
       }}
     >
       <Illustration
         name={bubble.slug}
-        light={light}
         decorative
         className="h-auto"
         style={{ width: `${rem * 0.6}rem` }}
@@ -739,13 +748,10 @@ function SatelliteDisc({
   satellite,
   lit,
   hit,
-  light = -90,
   className
 }: {
   satellite: Satellite
   lit?: boolean
-  /** Where the light comes from (degrees on screen): from you, on the board. */
-  light?: number
   hit?: string
   className?: string
 }) {
@@ -754,19 +760,14 @@ function SatelliteDisc({
       data-hit={hit}
       data-shape="circle"
       className={cn(
-        'node-chrome flex items-center justify-center rounded-full border-2 transition-[border-color,box-shadow,background-color] duration-200',
+        'node-disc flex items-center justify-center rounded-full border-2 transition-[border-color,box-shadow,background-color] duration-200',
         lit && LIT_RING,
         className
       )}
       data-lit={lit || undefined}
-      style={discLight(light)}
+      style={discAccent(satellite.kind)}
     >
-      <Illustration
-        name={satellite.kind}
-        light={light}
-        decorative
-        className="w-[58%]"
-      />
+      <Illustration name={satellite.kind} decorative className="w-[58%]" />
     </span>
   )
 }
@@ -826,12 +827,17 @@ function Explain({
     return (
       <>
         <p className="text-xs font-medium text-muted-foreground">
-          {bubble.kind === 'work' ? 'Work' : 'Project'} · {bubble.tagline}
+          {eyebrow(bubble, false)}
         </p>
         <p className="mt-0.5 text-lg font-semibold">{bubble.title}</p>
         <p className="mt-2 text-sm text-pretty text-foreground/85">
           {bubble.summary}
         </p>
+        {outLink(bubble) && (
+          <p className="mt-3 text-xs font-semibold text-link">
+            Click to open the {outLink(bubble)!.label.toLowerCase()} ↗
+          </p>
+        )}
         {used.length > 0 && (
           <p className="mt-3 text-xs text-muted-foreground">
             Built with{' '}
@@ -858,6 +864,20 @@ function Explain({
   return null
 }
 
+/** Where a bubble's click goes when project pages are off: its first link (source, site), if any. */
+const outLink = (b: Bubble) =>
+  b.kind === 'project' && 'links' in b ? (b.links[0] ?? null) : null
+
+/** The popover's eyebrow for a bubble: work or project, and when (or the tagline, if no date). */
+const eyebrow = (b: Bubble, withTagline: boolean) =>
+  [
+    b.kind === 'work' ? 'Work' : 'Project',
+    withTagline && b.tagline,
+    bubbleWhen(b)
+  ]
+    .filter(Boolean)
+    .join(' · ')
+
 /** A bubble's own link or button: a page link when project pages are on. */
 function BubbleTarget({
   bubble,
@@ -882,6 +902,20 @@ function BubbleTarget({
       >
         {children}
       </Link>
+    )
+  const out = outLink(bubble)
+  if (out)
+    return (
+      <a
+        href={out.href}
+        target="_blank"
+        rel="noopener noreferrer"
+        {...handlers}
+        className={className}
+        style={style}
+      >
+        {children}
+      </a>
     )
   return (
     // Clicking only opens what hovering already shows, so no pointer cursor (taps and keys still work).
@@ -1700,7 +1734,6 @@ function Board({
                   rem={style.disc}
                   lit={lit}
                   hit={`project:${b.slug}`}
-                  light={b.deg + 180}
                 />
                 <span
                   data-hit={`project:${b.slug}`}
@@ -1718,6 +1751,14 @@ function Board({
                 >
                   {b.tagline}
                 </span>
+                {bubbleWhen(b) && (
+                  <span
+                    data-hit={`project:${b.slug}`}
+                    className="mt-0.5 text-[0.6875rem] leading-snug font-medium text-muted-foreground/75"
+                  >
+                    {bubbleWhen(b)}
+                  </span>
+                )}
               </BubbleTarget>
             </div>
           </div>
@@ -1827,7 +1868,6 @@ function Board({
                   satellite={s}
                   lit={isActive}
                   hit={`satellite:${s.kind}`}
-                  light={layout.satellites[s.kind].deg + 180}
                   className="size-16"
                 />
                 <span
@@ -2119,6 +2159,11 @@ function Column({
                 >
                   {b.title}
                 </span>
+                {bubbleWhen(b) && (
+                  <span className="mt-0.5 text-[0.6875rem] leading-tight text-muted-foreground">
+                    {bubbleWhen(b)}
+                  </span>
+                )}
               </button>
             </li>
           )
@@ -2260,8 +2305,7 @@ function Sheet({
               <BubbleDisc bubble={bubble} rem={3} />
               <div>
                 <p className="text-xs font-medium text-muted-foreground">
-                  {bubble.kind === 'work' ? 'Work' : 'Project'} ·{' '}
-                  {bubble.tagline}
+                  {eyebrow(bubble, true)}
                 </p>
                 <p className="text-lg font-semibold">{bubble.title}</p>
               </div>
@@ -2269,6 +2313,16 @@ function Sheet({
             <p className="mt-3 text-sm text-pretty text-foreground/85">
               {bubble.summary}
             </p>
+            {outLink(bubble) && (
+              <a
+                href={outLink(bubble)!.href}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-3 inline-block text-sm font-semibold text-link focus-ring"
+              >
+                {outLink(bubble)!.label} ↗
+              </a>
+            )}
             <p className="mt-4 text-xs font-medium text-muted-foreground">
               Built with
             </p>

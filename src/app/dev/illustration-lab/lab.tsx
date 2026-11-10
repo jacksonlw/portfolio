@@ -2,40 +2,37 @@
 
 import { useEffect, useState, type CSSProperties } from 'react'
 import { DRAWINGS } from '@/components/illustrations/drawings'
-import { DrawingSvg } from '@/components/illustrations/render'
+import { Illustration } from '@/components/illustrations/registry'
 import { cn } from '@/lib/cn'
-import { GLYPHS } from '@/components/illustrations/glyphs'
-import { GlyphSvg, TREATMENTS, type TreatmentName } from './treatments'
 
 /*
  * The illustration lab (development only). Every direction side by side (columns) for every subject
- * (rows), inside the same disc the site uses. Rate the directions, heart the drawings that work,
- * pick a favourite, note what's off, and save: it lands in docs/illustration-lab/feedback.json,
+ * (rows), inside the same chrome disc the site uses. Rate the directions, heart the drawings that
+ * work, pick a favourite, note what's off, and save: it lands in docs/illustration-lab/feedback.json,
  * which the next round is designed from.
  */
 
 /** What this round is asking. Updated each round, with what changed since the last. */
 const ROUND = {
-  number: 6,
+  number: 9,
   changes:
-    'The current illustrations read as childish next to the chrome, the constellation and the supernova. This round redraws every subject as a spare line glyph and finishes it seven ways, from polished chrome to starlight. The site’s current drawing is first for comparison. Try them on the coloured discs, on plain chrome discs and with no disc, in light and dark.',
-  ask: 'Which direction feels as refined as the rest of the page? Rate them, heart what works, pick a favourite, and say if two should be combined or a subject needs redrawing.'
+    'Back to the original illustrations and coloured discs, now in softer pastel tones. The chrome glyphs and scene experiments are retired. This round is a baseline: every drawing as it stands on the site.',
+  ask: 'Heart the drawings that work and note any that should be redrawn (Trailblaze, for one, still shows a mountain rather than a recruiting app).'
 }
 
-type Column = 'current' | TreatmentName
-const COLUMNS: Column[] = [
-  'current',
-  ...(Object.keys(TREATMENTS) as TreatmentName[])
-]
-const titleOf = (c: Column) =>
-  c === 'current' ? 'Current' : TREATMENTS[c].title
-const noteOf = (c: Column) =>
-  c === 'current'
-    ? 'The glossy cut-paper pieces the site draws now.'
-    : TREATMENTS[c].note
+const COLUMNS = ['live'] as const
+type Column = (typeof COLUMNS)[number]
+const INFO: Record<Column, { title: string; note: string }> = {
+  live: {
+    title: 'On the site',
+    note: 'The original drawings in pastel, on their coloured discs.'
+  }
+}
+const titleOf = (c: Column) => INFO[c].title
+const noteOf = (c: Column) => INFO[c].note
 
-const SIZES = [56, 80, 112] as const
-const DISCS = ['colour', 'chrome', 'none'] as const
+const SIZES = [64, 96, 128] as const
+const DISCS = ['colour', 'none'] as const
 type Disc = (typeof DISCS)[number]
 
 type Saved = {
@@ -60,29 +57,24 @@ const blank = (): Saved => ({
 
 function Cell({
   subject,
-  column,
   size,
   disc
 }: {
   subject: string
-  column: Column
   size: number
   disc: Disc
 }) {
   const d = DRAWINGS[subject]
-  const glyph = GLYPHS[subject]
-  const art =
-    column === 'current' ? (
-      <DrawingSvg drawing={d} />
-    ) : glyph ? (
-      <GlyphSvg glyph={glyph} treatment={column} />
-    ) : null
+  const art = (
+    <span className="block" style={{ width: size * 0.6 }}>
+      <Illustration name={subject} decorative />
+    </span>
+  )
   return (
     <span
       className={cn(
-        'flex items-center justify-center rounded-full',
-        disc === 'colour' && 'node-disc border-2',
-        disc === 'chrome' && 'chrome-rim border-2 bg-card'
+        'flex items-center justify-center overflow-hidden rounded-full',
+        disc === 'colour' && 'node-disc border-2'
       )}
       style={
         {
@@ -93,14 +85,14 @@ function Cell({
         } as CSSProperties
       }
     >
-      <span style={{ width: size * (disc === 'none' ? 0.8 : 0.6) }}>{art}</span>
+      {art}
     </span>
   )
 }
 
 export function Lab() {
   const [state, setState] = useState<Saved>(blank)
-  const [size, setSize] = useState<(typeof SIZES)[number]>(80)
+  const [size, setSize] = useState<(typeof SIZES)[number]>(96)
   const [disc, setDisc] = useState<Disc>('colour')
   const [dark, setDark] = useState(false)
   const [status, setStatus] = useState('')
@@ -321,7 +313,7 @@ export function Lab() {
                             : 'border-transparent hover:border-border'
                         )}
                       >
-                        <Cell subject={k} column={n} size={size} disc={disc} />
+                        <Cell subject={k} size={size} disc={disc} />
                         <span
                           className={cn(
                             'absolute top-0.5 right-1 text-xs',

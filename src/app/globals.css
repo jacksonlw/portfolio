@@ -36,7 +36,7 @@
   --paper: #f4f5f7;
   --paper-card: #f9fafb;
   --ink: #1c1e23;
-  --night: #0c0d10;
+  --night: #040507;
   --night-card: #18191e;
   --night-text: #e6e8ec;
   /* The colours that play across chrome: the oil-slick rainbow in its reflections. */
@@ -85,52 +85,15 @@ body {
   background-attachment: fixed;
 }
 
+/* Dark mode is deep space: near-black, with the faintest lift around you. */
 html.dark body {
   background-image: radial-gradient(
     ellipse 110% 90% at 50% 46%,
-    #1c1e24 0%,
-    #121317 36%,
-    #0c0d10 72%,
-    #08090b 100%
+    #0d0e14 0%,
+    #07080c 34%,
+    #030406 68%,
+    #000000 100%
   );
-}
-
-/* A node's disc: a card in a polished chrome rim, the rim's bright arc turned to face the light
-   (--light, set per node so the light comes from the Me node). A step brighter when lit. */
-.node-chrome {
-  border-color: transparent;
-  background:
-    linear-gradient(var(--card), var(--card)) padding-box,
-    conic-gradient(
-        from var(--light, 0deg),
-        #ffffff,
-        color-mix(in oklab, var(--iri-cyan) 25%, #c9ced6) 12%,
-        #8b919b 30%,
-        color-mix(in oklab, var(--iri-violet) 30%, #6e7580) 45%,
-        #a2a8b1 55%,
-        color-mix(in oklab, var(--iri-magenta) 22%, #b4bac3) 72%,
-        color-mix(in oklab, var(--iri-gold) 25%, #e6e9ed) 88%,
-        #ffffff
-      )
-      border-box;
-  box-shadow: 0 6px 18px -8px rgb(15 16 20 / 0.35);
-}
-html.dark .node-chrome {
-  background:
-    linear-gradient(var(--card), var(--card)) padding-box,
-    conic-gradient(
-        from var(--light, 0deg),
-        #e6e9ed,
-        color-mix(in oklab, var(--iri-cyan) 30%, #8b919b) 12%,
-        #3a3e45 30%,
-        color-mix(in oklab, var(--iri-violet) 30%, #2a2d33) 45%,
-        #5c636e 55%,
-        color-mix(in oklab, var(--iri-magenta) 25%, #4a505a) 72%,
-        color-mix(in oklab, var(--iri-gold) 20%, #a9afb8) 88%,
-        #e6e9ed
-      )
-      border-box;
-  box-shadow: 0 6px 18px -8px rgb(0 0 0 / 0.6);
 }
 
 /* A polished chrome rim on any bordered element (the photo, the corner buttons). */
@@ -1195,4 +1158,41 @@ html.dark {
   --spark-magenta: var(--iri-magenta);
   --spark-cyan: var(--iri-cyan);
   --spark-violet: var(--iri-violet);
+}
+
+/*
+ * The portrait's grade: a light touch so the photo sits in the theme without hiding the face.
+ * Light mode cools it toward the paper background with a faint brand-blue edge; dark mode lowers it
+ * into the night sky, with a cool blue cast from the top left (where the page's light comes from)
+ * and the edges falling off to ink. The face, in the middle, stays close to the original.
+ */
+.portrait-photo {
+  filter: saturate(0.9) contrast(1.02);
+}
+.portrait-grade {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background:
+    radial-gradient(
+      75% 75% at 55% 40%,
+      transparent 55%,
+      color-mix(in oklab, var(--brand) 20%, transparent) 100%
+    ),
+    linear-gradient(160deg, color-mix(in oklab, #dfe6ff 35%, transparent), transparent 60%);
+  mix-blend-mode: soft-light;
+}
+html.dark .portrait-photo {
+  filter: saturate(0.82) brightness(0.94) contrast(1.06);
+}
+html.dark .portrait-grade {
+  background:
+    radial-gradient(
+      75% 75% at 55% 40%,
+      transparent 50%,
+      color-mix(in oklab, #0b0b0c 65%, transparent) 100%
+    ),
+    linear-gradient(150deg, color-mix(in oklab, #5b8cff 30%, transparent), transparent 40%);
+  mix-blend-mode: soft-light;
 }

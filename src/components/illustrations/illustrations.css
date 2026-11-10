@@ -35,13 +35,13 @@
 }
 
 /*
- * Two tones against the disc: paper pieces a pale wash pushed toward the accent's deep shade,
- * accent pieces nearly the deep shade itself.
+ * Two pastel tones against the disc: paper pieces the accent's soft pastel, accent pieces a
+ * richer step toward its deep shade.
  */
 .ill-tint {
   fill: color-mix(
     in oklab,
-    var(--ill-deep, #685300) 42%,
+    var(--ill-deep, #685300) 14%,
     var(--ill-accent, #fddb72)
   );
 }
@@ -49,7 +49,7 @@
 .ill-accent {
   fill: color-mix(
     in oklab,
-    var(--ill-deep, #685300) 85%,
+    var(--ill-deep, #685300) 48%,
     var(--ill-accent, #fddb72)
   );
 }

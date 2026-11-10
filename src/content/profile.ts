@@ -52,10 +52,10 @@ export const PROFILE = {
    */
   about: {
     lead: [
-      'I’m a **software engineer** who puts early prototypes in front of the people I’m building for, then keeps improving the product until it works for them.'
+      'I’m a **software engineer** in San Francisco. At work I build AI agents that run in production, such as a workflow builder that handles thousands of Gen AI chats a day and a RAG pipeline that took in over 2 million documents in under a month.'
     ],
     more: [
-      'Right now I build AI agents in production: a workflow builder that handles thousands of Gen AI chats a day, and a RAG pipeline that took in over 2 million documents in under a month. On my own time I’m building AnyForm, The Cratest and Waltz.',
+      'On my own time I’m building AnyForm, The Cratest and Waltz. I learned design thinking in high school at Design Tech, and I still work that way, getting a prototype in front of the people I’m building for early and changing it until it works for them.',
       'Before that I co-founded Trailblaze, growing it past 10,000 users in its first year, and taught developers at CareerFoundry.'
     ]
   },
@@ -176,7 +176,7 @@ export const SKILLS: Skill[] = [
   skill(
     'RAG',
     'AI & agents',
-    'Grounding models in real documents. At Oracle I built and deployed an OCR + RAG pipeline that ingested over 2 million documents in under a month. As an intern I built the microservice that uploads documents for it. Underneath sit embeddings and a vector database, so a search matches on meaning instead of exact words.',
+    'Grounding models in real documents. At Oracle I built and deployed an OCR + RAG pipeline that ingested over 2 million documents in under a month. As an intern I built the microservice that uploads documents for it. The pipeline runs on embeddings and a vector database.',
     ['oracle']
   ),
   skill(
@@ -188,7 +188,7 @@ export const SKILLS: Skill[] = [
   skill(
     'AI Coding Tools',
     'AI & agents',
-    'I use Claude Code every day on AnyForm, The Cratest, Waltz and this site, and Codex at Oracle. I try new coding tools when they come out.',
+    'I use Claude Code every day on AnyForm, The Cratest, Waltz and this site, and Codex at Oracle.',
     ['oracle', 'anyform', 'cratest', 'waltz']
   ),
 
@@ -197,17 +197,7 @@ export const SKILLS: Skill[] = [
     'TypeScript',
     'Product & frontend',
     'My default language since KoiStream. Trailblaze, AnyForm, The Cratest, Waltz and this site are all TypeScript, and I use it at Oracle. Before that I wrote plain JavaScript, for Branch and the TEDx ticketing site, and JavaScript is what I taught at CareerFoundry.',
-    [
-      'oracle',
-      'careerfoundry',
-      'anyform',
-      'cratest',
-      'waltz',
-      'trailblaze',
-      'koistream',
-      'tedx',
-      'branch'
-    ]
+    ['oracle', 'anyform', 'cratest', 'waltz', 'trailblaze', 'koistream']
   ),
   skill(
     'React / Next.js',
@@ -286,7 +276,7 @@ export const SKILLS: Skill[] = [
   skill(
     'Python',
     'Backend & data',
-    'I use it at Oracle for scripts and AI tooling, since new AI libraries usually come out for Python first.',
+    'I use it at Oracle for scripts and AI tooling.',
     ['oracle']
   ),
   skill(
@@ -309,7 +299,7 @@ export const SKILLS: Skill[] = [
   skill(
     'REST & GraphQL',
     'Backend & data',
-    'Almost everything I’ve built talks over REST. At Oracle I automated testing for over 90% of scenarios in a REST microservice that handles LLM queries and file uploads. Trailblaze used GraphQL, so the app could ask for exactly the data it needed.',
+    'Almost everything I’ve built talks over REST. At Oracle I automated testing for over 90% of scenarios in a REST microservice that handles LLM queries and file uploads. Trailblaze’s app used GraphQL.',
     [
       'oracle',
       'anyform',
@@ -368,10 +358,10 @@ export const PROJECTS: Project[] = [
     title: 'AnyForm',
     tagline: 'AI session replays',
     summary:
-      'See what your users saw, and fix what got in their way. It plays each visit back as a trace a model can read, and Scouts, AI users you describe, rehearse your app before real users do.',
+      'AnyForm plays each visit to your app back as a trace a model can read, and models write findings from those traces about what got in your users’ way. Scouts, AI users you describe, try the app before real users do. I’m building it with a Go API and a Next.js dashboard.',
     status: 'in-development',
     role: null,
-    dates: null,
+    dates: { start: 'October 2026', end: null },
     stack: ['Go', 'Next.js', 'TypeScript', 'PostgreSQL', 'Playwright'],
     links: [],
     highlights: [],
@@ -384,10 +374,11 @@ export const PROJECTS: Project[] = [
     accent: 'sun',
     title: 'The Cratest',
     tagline: 'Music reviews',
-    summary: 'A social platform for reviewing songs, albums and artists.',
+    summary:
+      'A social platform for reviewing songs, albums and artists. I’m building the iOS app in SwiftUI and UIKit, with two music games, Crate Digger and Cover Story, and a Go API behind it.',
     status: 'in-development',
     role: null,
-    dates: null,
+    dates: { start: 'September 2026', end: null },
     stack: ['Go', 'PostgreSQL', 'SwiftUI', 'UIKit', 'Next.js'],
     links: [],
     highlights: [],
@@ -401,7 +392,7 @@ export const PROJECTS: Project[] = [
     title: 'Waltz',
     tagline: 'Agent software factory',
     summary:
-      'A desktop app where a team of agents does the work and a human steers the why.',
+      'A desktop app where a team of agents does the work and a human steers the why. I’m building it in Rust inside Tauri, with its own client for the Anthropic API.',
     status: 'in-development',
     role: null,
     dates: { start: 'October 2026', end: null },
@@ -418,7 +409,7 @@ export const PROJECTS: Project[] = [
     title: 'KoiStream',
     tagline: 'Livestreaming',
     summary:
-      'A livestream platform for my high school’s students, staff and families.',
+      'A livestream platform for my high school’s students, staff and families, with viewing, chat and moderation. I built it during COVID, along with the school’s broadcast studio.',
     status: 'archived',
     role: 'Director & Full-Stack Developer',
     dates: { start: 'March 2020', end: 'June 2021' },
@@ -443,10 +434,11 @@ export const PROJECTS: Project[] = [
     accent: 'rose',
     title: 'TEDx Design Tech',
     tagline: 'Event ticketing',
-    summary: 'Sell and manage tickets for a high school TEDx event.',
+    summary:
+      'A site for selling and managing tickets to my high school’s TEDx event.',
     status: 'archived',
     role: null,
-    dates: null,
+    dates: { start: '2019', end: '2019', label: '2019' },
     stack: [],
     links: [
       {
@@ -488,25 +480,28 @@ export const WORK: WorkNode[] = [
     slug: 'oracle',
     title: 'Oracle',
     tagline: 'Software Engineer',
+    dates: { start: 'June 2025', end: null },
     accent: 'rose',
     summary:
-      'Software engineer on a small R&D team since June 2025, after two summer internships. I own AI agents in production that handle thousands of Gen AI chats a day, built an OCR and RAG pipeline for documents, and worked on handing chats from AI agents to people.'
+      'Software engineer on a small R&D team, after two summer internships. I architected an agentic workflow builder that handles thousands of Gen AI chats a day, built an OCR and RAG pipeline that took in over 2 million documents in under a month, and worked with other teams on handing chats from AI agents to people.'
   },
   {
     slug: 'careerfoundry',
     title: 'CareerFoundry',
     tagline: 'Web Dev Instructor',
+    dates: { start: 'July 2022', end: 'May 2023' },
     accent: 'peach',
     summary:
-      'Web Development Instructor, July 2022 to May 2023. Taught new developers to build full-stack web apps, with feedback on every project within 24 hours.'
+      'I taught new developers to build full-stack web apps, and gave them feedback on their projects within 24 hours.'
   },
   {
     slug: 'trailblaze',
     title: 'Trailblaze',
     tagline: 'Co-Founder & CTO',
+    dates: { start: 'January 2021', end: 'April 2024' },
     accent: 'ocean',
     summary:
-      'Co-Founder & CTO, January 2021 to April 2024. Built the screens, services and database of our job-recruiting app in React Native and grew it past 10,000 users in under a year, and designed and built the company website in Next.js.'
+      'I built the screens, services and database of our job-recruiting app in React Native, and it passed 10,000 users in under a year. I designed and built the company website in Next.js too.'
   }
 ]
 
@@ -517,6 +512,18 @@ export const getProject = (slug: string) =>
 export const usedInTitle = (slug: string) =>
   PROJECTS.find((p) => p.slug === slug)?.title ??
   WORK.find((w) => w.slug === slug)?.title
+
+/**
+ * When a bubble's work happened, short enough to sit under it: the years ("2020–2021",
+ * "2025–now"). `null` when nothing is known.
+ */
+export const bubbleWhen = (b: { dates: DateRange | null }) => {
+  if (!b.dates) return null
+  const year = (m: string) => m.slice(-4)
+  const start = year(b.dates.start)
+  const end = b.dates.end ? year(b.dates.end) : 'now'
+  return start === end ? start : `${start}–${end}`
+}
 
 export const formatDates = (d: DateRange) =>
   d.label ?? `${d.start} – ${d.end ?? 'Present'}`
