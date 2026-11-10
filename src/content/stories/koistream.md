@@ -25,7 +25,7 @@ gallery:
 
 ## Why we built it
 
-COVID hit in March of my junior year at Design Tech High School, and my whole senior year was online. A good friend and I decided to build our own livestream platform so the school could see each other again. We called it KoiStream because koi are a big thing at d.tech. They grow to the size of their pond.
+COVID hit in March of my junior year at Design Tech High School, and my whole senior year was online. The school's community meetings couldn't happen in person any more. A good friend and I decided to build our own livestream platform so the whole school could keep meeting. We called it KoiStream because koi are a big thing at d.tech. They grow to the size of their pond.
 
 ## What I built
 
@@ -43,7 +43,7 @@ In August 2020 I moved the video onto AWS MediaLive and Amazon CloudFront. Toget
 
 Once KoiStream was running, over the summer we pitched the school on a real broadcasting studio, with cameras, audio and video switching. The school approved it and paid for it. I was cutting a hole in the wall when the principal walked by and asked, "Do you know what you're doing?" I said, "Yeah, I've got this."
 
-We formed a team of ten students and ran live broadcasts every week through senior year, including an awards show for the whole school at the end of 2020. The studio is still there for students to use.
+We formed a team of ten students and ran live broadcasts every week through senior year, including an awards show for the whole school at the end of 2020. Each stream reached 300 to 500 viewers, which was essentially the entire high school. The studio is still there for students to use.
 
 ## What I took from it
 

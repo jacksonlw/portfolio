@@ -393,7 +393,7 @@ export const PROJECTS: Project[] = [
     title: 'KoiStream',
     tagline: 'Livestreaming',
     summary:
-      'A livestream platform that kept my high school connected through COVID. A crew of ten students ran live broadcasts on it every week of my senior year, from a studio we built on campus.',
+      'A livestream platform that kept my high school’s community meetings going through COVID. Each weekly broadcast reached 300 to 500 viewers, essentially the whole school.',
     status: 'archived',
     role: 'Director & Full-Stack Developer',
     dates: { start: 'March 2020', end: 'June 2021' },
