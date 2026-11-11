@@ -2,6 +2,8 @@
 
 import {
   ArrowUpRightIcon,
+  ArrowsInSimpleIcon,
+  ArrowsOutSimpleIcon,
   CaretLeftIcon,
   CaretRightIcon,
   PlayIcon,
@@ -42,6 +44,11 @@ import { cn } from '@/lib/cn'
  * into it on close. The top recaps what hovering showed (what it is, when, the summary, links and
  * the skills behind it), then the gallery, then the beats, with pictures pulled in among the
  * paragraphs. Closes with its ✕, Escape, a click outside it, Back, or (on phones) a swipe down.
+ *
+ * Its header and footer stay put while the write-up scrolls between them. The header names the
+ * Story (its disc, title and what it was) and holds the controls, and shrinks to a slim bar once
+ * you scroll; the footer steps to the previous and next Story. From `lg` the card can be opened
+ * up to fill the window.
  */
 
 export type StoryBubble = (Project | WorkNode) & { kind: 'project' | 'work' }
@@ -180,6 +187,12 @@ export function StoryPanel({
   story,
   skills,
   instant,
+  stepped,
+  full,
+  onToggleFull,
+  prev,
+  next,
+  onStep,
   closing,
   onRequestClose,
   onClosed
@@ -190,6 +203,15 @@ export function StoryPanel({
   skills: Skill[]
   /** Opened from a link, not a click: it's simply there, with no growing out of the bubble. */
   instant: boolean
+  /** Reached with previous or next from another Story: which one, so focus stays on it. */
+  stepped?: 'prev' | 'next'
+  /** Filling the window (from `lg`) instead of sitting as a card. */
+  full: boolean
+  onToggleFull: () => void
+  /** The Stories either side of this one, if any. */
+  prev: StoryBubble | null
+  next: StoryBubble | null
+  onStep: (slug: string, dir: 'prev' | 'next') => void
   /** Set once something asks it to close: it plays its way out, then calls onClosed. */
   closing: boolean
   onRequestClose: () => void
@@ -203,17 +225,48 @@ export function StoryPanel({
   const content = useRef<HTMLDivElement>(null)
   const scrim = useRef<HTMLDivElement>(null)
   const closeBtn = useRef<HTMLButtonElement>(null)
+  const controls = useRef<HTMLDivElement>(null)
+  const prevBtn = useRef<HTMLButtonElement>(null)
+  const nextBtn = useRef<HTMLButtonElement>(null)
   const titleId = `story-${bubble.slug}-title`
 
   useBodyLock(true)
   useSwipeToClose(panel, scrim, !closing, onRequestClose, scroller)
 
+  // Once the write-up is scrolled the header shrinks to a slim bar. It grows back only at the
+  // very top: the gap between the two marks keeps it from flickering as its own change in height
+  // moves what's under it.
+  const [compact, setCompact] = useState(false)
+  const onScroll = useCallback(() => {
+    const y = scroller.current?.scrollTop ?? 0
+    setCompact((c) => (y > 32 ? true : y < 4 ? false : c))
+  }, [])
+
   // Open: grow out of the bubble, the disc's colour giving way to the page as the text fades in.
   useLayoutEffect(() => {
     const el = panel.current
     if (!el) return
-    closeBtn.current?.focus({ preventScroll: true })
+    // Stepped here from another Story: focus stays on the button that was pressed, if this
+    // Story has one too.
+    const first =
+      (stepped === 'prev' && prevBtn.current) ||
+      (stepped === 'next' && nextBtn.current) ||
+      closeBtn.current
+    first?.focus({ preventScroll: true })
     hideDiscs(bubble.slug, true)
+    if (stepped) {
+      // The new write-up eases in where the last one was.
+      const fade = prefersReducedMotion()
+        ? undefined
+        : content.current?.animate(
+            { opacity: [0, 1] },
+            { duration: 180, easing: 'ease-out' }
+          )
+      return () => {
+        fade?.cancel()
+        hideDiscs(bubble.slug, false)
+      }
+    }
     if (instant) return
     const found = prefersReducedMotion() ? null : visibleDisc(bubble.slug)
     const disc = found?.rect
@@ -293,7 +346,7 @@ export function StoryPanel({
         { opacity: [1, 0] },
         { duration: CLOSE_MS * 0.25, fill: 'forwards' }
       )
-      if (closeBtn.current) closeBtn.current.style.visibility = 'hidden'
+      if (controls.current) controls.current.style.visibility = 'hidden'
       const start = performance.now()
       const step = (now: number) => {
         const t = Math.min(1, (now - start) / CLOSE_MS)
@@ -334,9 +387,55 @@ export function StoryPanel({
     return () => window.removeEventListener('keydown', onKey)
   }, [onRequestClose])
 
+  const stepper = (
+    to: StoryBubble | null,
+    dir: 'prev' | 'next',
+    ref: React.RefObject<HTMLButtonElement | null>
+  ) =>
+    to ? (
+      <button
+        ref={ref}
+        type="button"
+        onClick={() => onStep(to.slug, dir)}
+        className={cn(
+          'flex min-w-0 items-center gap-2 rounded-full py-1.5 focus-ring transition-colors hover:bg-muted',
+          dir === 'prev'
+            ? 'pr-4 pl-2 text-left'
+            : 'flex-row-reverse pr-2 pl-4 text-right'
+        )}
+      >
+        {dir === 'prev' ? (
+          <CaretLeftIcon
+            weight="bold"
+            className="size-4 shrink-0"
+            aria-hidden
+          />
+        ) : (
+          <CaretRightIcon
+            weight="bold"
+            className="size-4 shrink-0"
+            aria-hidden
+          />
+        )}
+        <span className="min-w-0">
+          <span className="block text-[0.6875rem] leading-tight font-medium text-muted-foreground">
+            {dir === 'prev' ? 'Previous' : 'Next'}
+          </span>
+          <span className="block truncate text-sm leading-tight font-semibold">
+            {to.title}
+          </span>
+        </span>
+      </button>
+    ) : (
+      <span />
+    )
+
   return (
     <div
-      className="fixed inset-0 z-50 lg:flex lg:items-center lg:justify-center lg:p-6"
+      className={cn(
+        'fixed inset-0 z-50 motion-reduce:transition-none lg:flex lg:items-center lg:justify-center lg:transition-[padding] lg:duration-300',
+        full ? 'lg:p-0' : 'lg:p-4'
+      )}
       onClick={(e) => e.target === e.currentTarget && onRequestClose()}
     >
       <div
@@ -352,40 +451,90 @@ export function StoryPanel({
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
-        className="relative flex h-full w-full flex-col overflow-hidden bg-card text-card-foreground shadow-pop will-change-transform lg:h-[min(56rem,calc(100dvh-3rem))] lg:max-w-3xl lg:rounded-3xl lg:border lg:border-border"
+        data-compact={compact || undefined}
+        className={cn(
+          'group/panel relative flex h-full w-full flex-col overflow-hidden bg-card text-card-foreground shadow-pop will-change-transform motion-reduce:transition-none lg:border lg:transition-[max-width,height,border-radius] lg:duration-300',
+          // A little larger than the write-up alone needs: the header and footer are always there.
+          full
+            ? 'lg:h-[100dvh] lg:max-w-[100vw] lg:rounded-none lg:border-transparent'
+            : 'lg:h-[min(62rem,calc(100dvh-2rem))] lg:max-w-4xl lg:rounded-3xl lg:border-border'
+        )}
         style={discAccent(bubble.slug)}
       >
-        <button
-          ref={closeBtn}
-          type="button"
-          onClick={onRequestClose}
-          aria-label="Close"
-          className="absolute top-[max(0.75rem,env(safe-area-inset-top))] right-3 z-20 flex size-10 items-center justify-center rounded-full bg-card/80 text-foreground focus-ring backdrop-blur transition-colors hover:bg-muted"
+        {/* The controls: fixed in the panel's corner, so they never move as the header shrinks. */}
+        <div
+          ref={controls}
+          className="absolute top-[max(0.5rem,env(safe-area-inset-top))] right-3 z-30 flex gap-1.5"
         >
-          <XIcon weight="bold" className="size-4" aria-hidden />
-        </button>
+          <button
+            type="button"
+            onClick={onToggleFull}
+            aria-label={full ? 'Exit full screen' : 'Full screen'}
+            title={full ? 'Exit full screen' : 'Full screen'}
+            aria-pressed={full}
+            className="round-btn hidden size-10 items-center justify-center rounded-full bg-card/80 text-foreground focus-ring backdrop-blur hover:bg-muted lg:flex"
+          >
+            {full ? (
+              <ArrowsInSimpleIcon
+                weight="bold"
+                className="size-4"
+                aria-hidden
+              />
+            ) : (
+              <ArrowsOutSimpleIcon
+                weight="bold"
+                className="size-4"
+                aria-hidden
+              />
+            )}
+          </button>
+          <button
+            ref={closeBtn}
+            type="button"
+            onClick={onRequestClose}
+            aria-label="Close"
+            title="Close"
+            className="round-btn flex size-10 items-center justify-center rounded-full bg-card/80 text-foreground focus-ring backdrop-blur hover:bg-muted"
+          >
+            <XIcon weight="bold" className="size-4" aria-hidden />
+          </button>
+        </div>
+
+        <Heading bubble={bubble} titleId={titleId} />
 
         <div
           ref={scroller}
-          className="h-full overflow-y-auto overscroll-contain"
+          onScroll={onScroll}
+          className="min-h-0 flex-1 overflow-y-auto overscroll-contain"
         >
           <div ref={content}>
             <Body
               bubble={bubble}
               story={story}
               skills={skills}
-              titleId={titleId}
               // Clips wait for the panel to finish growing before they start.
               settleMs={instant ? 0 : OPEN_MS}
             />
           </div>
         </div>
 
+        {(prev || next) && (
+          <footer className="relative z-20 shrink-0 border-t border-border bg-card px-3 pt-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] sm:px-8">
+            <nav
+              aria-label="Stories"
+              className="mx-auto flex w-full max-w-4xl items-center justify-between gap-3"
+            >
+              {stepper(prev, 'prev', prevBtn)}
+              {stepper(next, 'next', nextBtn)}
+            </nav>
+          </footer>
+        )}
+
         {/* The disc's colour and drawing, filling the panel as it grows, then fading away. */}
         <div
           ref={bloom}
           aria-hidden
-          className="pointer-events-none absolute inset-0 z-30 flex items-center justify-center opacity-0"
+          className="pointer-events-none absolute inset-0 z-40 flex items-center justify-center opacity-0"
         >
           <div ref={bloomBg} className="story-bloom absolute inset-0" />
           {/* An exact copy of the bubble's disc goes here (placeReplica). */}
@@ -396,6 +545,63 @@ export function StoryPanel({
   )
 }
 
+/** What a Story is, in a line: its kind, the role or tagline, when, and where it stands. */
+function factsOf(b: StoryBubble) {
+  const role = 'role' in b && b.role ? b.role : null
+  const status =
+    b.kind === 'project' && 'status' in b && b.status
+      ? {
+          live: 'Live',
+          'in-development': 'In development',
+          archived: 'Archived'
+        }[b.status]
+      : null
+  return [
+    b.kind === 'work' ? 'Work' : 'Project',
+    role ?? b.tagline,
+    b.dates ? formatDates(b.dates) : bubbleWhen(b),
+    status
+  ].filter(Boolean)
+}
+
+/**
+ * The panel's header: the Story's disc, title and what it was. Full size at the top of the
+ * write-up; once it's scrolled (data-compact on the panel) everything in it eases down to a slim
+ * bar that stays over the text.
+ */
+const Heading = memo(function Heading({
+  bubble: b,
+  titleId
+}: {
+  bubble: StoryBubble
+  titleId: string
+}) {
+  return (
+    <header className="story-wash relative z-20 shrink-0 px-5 pt-[max(1.25rem,env(safe-area-inset-top))] pb-4 transition-[padding,box-shadow] duration-200 ease-out group-data-[compact]/panel:pt-[max(0.5rem,env(safe-area-inset-top))] group-data-[compact]/panel:pb-2 group-data-[compact]/panel:shadow-[0_1px_0_var(--border),0_10px_18px_-14px_rgb(12_13_16/0.5)] motion-reduce:transition-none sm:px-10">
+      <div className="mx-auto flex w-full max-w-4xl items-center gap-3 sm:gap-4">
+        <span
+          className="node-disc flex size-14 shrink-0 items-center justify-center rounded-full border-2 transition-[width,height] duration-200 ease-out group-data-[compact]/panel:size-10 motion-reduce:transition-none sm:size-[4.5rem] sm:group-data-[compact]/panel:size-10"
+          style={discAccent(b.slug)}
+        >
+          <Illustration name={b.slug} decorative className="h-auto w-[60%]" />
+        </span>
+        {/* Room on the right for the controls in the panel's corner. */}
+        <div className="min-w-0 flex-1 pr-12 lg:pr-24">
+          <h2
+            id={titleId}
+            className="truncate text-[1.75rem] leading-tight font-semibold tracking-tight transition-[font-size] duration-200 ease-out group-data-[compact]/panel:text-lg motion-reduce:transition-none sm:text-[2.25rem] sm:group-data-[compact]/panel:text-lg"
+          >
+            {b.title}
+          </h2>
+          <p className="mt-0.5 text-sm font-medium text-foreground/70 transition-[font-size] duration-200 ease-out group-data-[compact]/panel:mt-0 group-data-[compact]/panel:truncate group-data-[compact]/panel:text-xs motion-reduce:transition-none">
+            {factsOf(b).join(' · ')}
+          </p>
+        </div>
+      </div>
+    </header>
+  )
+})
+
 /**
  * Everything the panel scrolls: the recap, the gallery and the beats. Memoized, so the panel
  * starting to close doesn't render the whole write-up again on the first frame of its way out.
@@ -404,24 +610,22 @@ const Body = memo(function Body({
   bubble,
   story,
   skills,
-  titleId,
   settleMs
 }: {
   bubble: StoryBubble
   story: Story | null
   skills: Skill[]
-  titleId: string
   /** How long the panel takes to open (ms): nothing plays until then. */
   settleMs: number
 }) {
   const media = new Map(story?.gallery.map((g) => [g.id, g]))
   return (
     <>
-      <Recap bubble={bubble} skills={skills} titleId={titleId} />
+      <Recap bubble={bubble} skills={skills} />
       {story && story.gallery.length > 0 && (
         <Gallery items={story.gallery} settleMs={settleMs} />
       )}
-      <div className="space-y-12 px-5 pt-10 pb-[max(3rem,env(safe-area-inset-bottom))] sm:px-10">
+      <div className="mx-auto w-full max-w-4xl space-y-12 px-5 pt-10 pb-12 sm:px-10">
         {story && story.sections.length > 0 ? (
           story.sections.map((s) => (
             <section key={s.heading}>
@@ -449,91 +653,60 @@ const Body = memo(function Body({
   )
 })
 
-/** The top of a Story: what hovering showed, a little fuller. */
+/** The top of the write-up, under the header: the summary, its links and the skills behind it. */
 function Recap({
   bubble: b,
-  skills,
-  titleId
+  skills
 }: {
   bubble: StoryBubble
   skills: Skill[]
-  titleId: string
 }) {
-  const role = 'role' in b && b.role ? b.role : null
-  const status =
-    b.kind === 'project' && 'status' in b && b.status
-      ? {
-          live: 'Live',
-          'in-development': 'In development',
-          archived: 'Archived'
-        }[b.status]
-      : null
-  const facts = [
-    b.kind === 'work' ? 'Work' : 'Project',
-    role ?? b.tagline,
-    b.dates ? formatDates(b.dates) : bubbleWhen(b),
-    status
-  ].filter(Boolean)
   return (
-    <header className="story-wash px-5 pt-14 pb-8 sm:px-10 sm:pt-12">
-      <div className="flex items-center gap-4">
-        <span
-          className="node-disc flex size-16 shrink-0 items-center justify-center rounded-full border-2 sm:size-20"
-          style={discAccent(b.slug)}
-        >
-          <Illustration name={b.slug} decorative className="h-auto w-[60%]" />
-        </span>
-        <div className="min-w-0">
-          <h2 id={titleId} className="text-title sm:text-headline">
-            {b.title}
-          </h2>
-          <p className="mt-1 text-sm font-medium text-foreground/70">
-            {facts.join(' · ')}
-          </p>
-        </div>
-      </div>
-      <p className="mt-6 text-lg text-pretty text-foreground/90 sm:text-lede">
-        {b.summary}
-      </p>
-      {b.links.length > 0 && (
-        <ul className="mt-5 flex flex-wrap gap-2">
-          {b.links.map((l) => (
-            <li key={l.href}>
-              <a
-                href={l.href}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex h-9 items-center gap-1.5 rounded-full bg-primary px-4 text-sm font-medium text-primary-foreground focus-ring transition-colors hover:bg-brand hover:text-brand-foreground"
-              >
-                {l.label}
-                <ArrowUpRightIcon
-                  weight="bold"
-                  className="size-3.5"
-                  aria-hidden
-                />
-              </a>
-            </li>
-          ))}
-        </ul>
-      )}
-      {skills.length > 0 && (
-        <>
-          <p className="mt-6 text-xs font-medium text-foreground/60">
-            Built with
-          </p>
-          <ul className="mt-2 flex flex-wrap gap-1.5">
-            {skills.map((s) => (
-              <li
-                key={s.name}
-                className="rounded-full border border-foreground/15 bg-card/60 px-3 py-1 text-sm font-medium"
-              >
-                {s.name}
+    <div className="story-wash px-5 pt-2 pb-8 sm:px-10">
+      <div className="mx-auto w-full max-w-4xl">
+        <p className="text-lg text-pretty text-foreground/90 sm:text-lede">
+          {b.summary}
+        </p>
+        {b.links.length > 0 && (
+          <ul className="mt-5 flex flex-wrap gap-2">
+            {b.links.map((l) => (
+              <li key={l.href}>
+                <a
+                  href={l.href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex h-9 items-center gap-1.5 rounded-full bg-primary px-4 text-sm font-medium text-primary-foreground focus-ring transition-colors hover:bg-brand hover:text-brand-foreground"
+                >
+                  {l.label}
+                  <ArrowUpRightIcon
+                    weight="bold"
+                    className="size-3.5"
+                    aria-hidden
+                  />
+                </a>
               </li>
             ))}
           </ul>
-        </>
-      )}
-    </header>
+        )}
+        {skills.length > 0 && (
+          <>
+            <p className="mt-6 text-xs font-medium text-foreground/60">
+              Built with
+            </p>
+            <ul className="mt-2 flex flex-wrap gap-1.5">
+              {skills.map((s) => (
+                <li
+                  key={s.name}
+                  className="rounded-full border border-foreground/15 bg-card/60 px-3 py-1 text-sm font-medium"
+                >
+                  {s.name}
+                </li>
+              ))}
+            </ul>
+          </>
+        )}
+      </div>
+    </div>
   )
 }
 

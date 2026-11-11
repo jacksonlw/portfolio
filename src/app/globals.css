@@ -1055,6 +1055,26 @@ html.dark .intro-flash {
   );
 }
 
+/* The round buttons (the theme switch, the replay button, a Story's close): under the pointer
+   they lift a little and take a ring of the chrome's light, and they dip when pressed. */
+.round-btn {
+  transition:
+    scale 150ms ease-out,
+    box-shadow 150ms ease-out,
+    background-color 150ms ease-out;
+}
+@media (hover: hover) {
+  .round-btn:hover {
+    scale: 1.1;
+    box-shadow:
+      0 0 0 3px color-mix(in oklab, var(--iri-cyan) 40%, transparent),
+      var(--shadow-card-hover);
+  }
+}
+.round-btn:active {
+  scale: 0.94;
+}
+
 /* Popovers: graphite panels with a faint metallic sheen and a hairline highlight on top. */
 .ink-pop {
   background-image: linear-gradient(180deg, #2b2e35 0%, #1b1d22 100%);

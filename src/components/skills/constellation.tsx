@@ -1746,7 +1746,13 @@ const MeNode = memo(function MeNode({
 const slugAt = (path: string) =>
   path.match(/^\/(?:projects|work)\/([\w-]+)\/?$/)?.[1] ?? null
 
-type OpenStory = { slug: string; instant: boolean; closing: boolean }
+type OpenStory = {
+  slug: string
+  instant: boolean
+  closing: boolean
+  /** Reached with the panel's own previous/next: it swaps in place, with no growing out. */
+  stepped?: 'prev' | 'next'
+}
 
 /** From `lg` up the board shows; below it, the column. */
 const WIDE = '(min-width: 64rem)'
@@ -1852,6 +1858,20 @@ export function Constellation({
     () => setStory((s) => s && { ...s, closing: true }),
     []
   )
+  // The panel's previous and next: the Story changes where it is, taking over the address
+  // (replaced, not added to the history, so closing still goes back to the page in one step).
+  const stepStory = useCallback((slug: string, dir: 'prev' | 'next') => {
+    window.history.replaceState(null, '', storyPath(slug))
+    setStory({ slug, instant: true, closing: false, stepped: dir })
+  }, [])
+  // Whether Stories fill the window (from `lg`); kept here so it holds from one Story to the next.
+  const [storyFull, setStoryFull] = useState(false)
+  const toggleStoryFull = useCallback(() => setStoryFull((f) => !f), [])
+  // Stories in the page's own order (by time), for previous and next.
+  const storyOrder = useMemo(
+    () => [...bubbles].sort((a, b) => rank(a.slug) - rank(b.slug)),
+    [bubbles]
+  )
   const storyClosed = useCallback(() => {
     setStory(null)
     if (!slugAt(window.location.pathname)) return
@@ -1878,6 +1898,12 @@ export function Constellation({
   }, [])
   const storyBubble = story && bubbles.find((b) => b.slug === story.slug)
   const storySlug = story?.slug
+  const storyAt = storyOrder.findIndex((b) => b.slug === storySlug)
+  const storyPrev = storyAt > 0 ? storyOrder[storyAt - 1] : null
+  const storyNext =
+    storyAt >= 0 && storyAt < storyOrder.length - 1
+      ? storyOrder[storyAt + 1]
+      : null
   const storySkills = useMemo(
     () => skills.filter((s) => storySlug && s.projects.includes(storySlug)),
     [skills, storySlug]
@@ -1904,6 +1930,7 @@ export function Constellation({
         {(late) => (
           <Board
             key={replays}
+            run={replays}
             layout={layout}
             intro={INTRO}
             // Settled from the start when the page opened on a Story, or when the board first
@@ -1935,7 +1962,13 @@ export function Constellation({
           story={stories[story.slug] ?? null}
           skills={storySkills}
           instant={story.instant}
+          stepped={story.stepped}
           closing={story.closing}
+          full={storyFull}
+          onToggleFull={toggleStoryFull}
+          prev={storyPrev}
+          next={storyNext}
+          onStep={stepStory}
           onRequestClose={closeStory}
           onClosed={storyClosed}
         />
@@ -1948,7 +1981,7 @@ export function Constellation({
           onClick={() => setReplays((n) => n + 1)}
           aria-label="Replay the opening animation"
           title="Replay"
-          className="intro-chrome chrome-rim fixed right-[4.25rem] bottom-4 z-40 hidden size-10 items-center justify-center rounded-full border-2 text-foreground shadow-card-hover focus-ring transition-colors hover:border-foreground/40 lg:flex"
+          className="intro-chrome chrome-rim round-btn fixed right-[4.25rem] bottom-4 z-40 hidden size-10 items-center justify-center rounded-full border-2 text-foreground shadow-card-hover focus-ring lg:flex"
         >
           <PlayIcon weight="fill" className="size-4" aria-hidden />
         </button>
@@ -1964,6 +1997,7 @@ export function Constellation({
 const Board = memo(function Board({
   layout,
   intro,
+  run,
   skipIntro,
   stars,
   bubbles: placed,
@@ -1972,6 +2006,8 @@ const Board = memo(function Board({
 }: {
   layout: Layout
   intro: Intro
+  /** Which playing of the intro this is (0 the first, then one more for each replay). */
+  run: number
   /** Start settled, as if the intro had played (a Story opened from its address). */
   skipIntro: boolean
   stars: Star[]
@@ -2778,7 +2814,10 @@ const Board = memo(function Board({
         <style>{`.intro-wait, .intro-wait *, .intro-chrome { animation-play-state: running !important; }`}</style>
       </noscript>
       {live && intro.buildup > 0 && (
-        <style>{`@media (min-width: 64rem) and (prefers-reduced-motion: no-preference) { .intro-chrome { animation: intro-fade ${Math.round(intro.ms * 0.6)}ms ease-out ${chromeDelay}ms backwards; } }`}</style>
+        // The fade is named for this playing of the intro. Replayed while the last one is still
+        // going, the same name would be the same animation to the browser, already run, and the
+        // controls would sit there through the blast; a new name starts it again every time.
+        <style>{`@keyframes intro-chrome-${run} { from { opacity: 0 } } @media (min-width: 64rem) and (prefers-reduced-motion: no-preference) { .intro-chrome { animation: intro-chrome-${run} ${Math.round(intro.ms * 0.6)}ms ease-out ${chromeDelay}ms backwards; } }`}</style>
       )}
       <p className="intro-chrome pointer-events-none absolute bottom-4 left-5 text-xs text-muted-foreground/80">
         Hover anything to see how it connects.
