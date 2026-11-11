@@ -61,24 +61,20 @@ import { cn } from '@/lib/cn'
 
 export type StoryBubble = (Project | WorkNode) & { kind: 'project' | 'work' }
 
-const OPEN_MS = 460
+const OPEN_MS = 340
 /** How far past the top of the write-up's card the surface still runs, behind the card (px). */
 const SURFACE_SLACK = 240
-const CLOSE_MS = 360
+const CLOSE_MS = 320
 /**
- * A damped spring (about 4% overshoot) for the opening, so the panel lands with some weight and
- * settles instead of gliding to a stop. Sampled from a spring with damping 0.72.
+ * The one curve the panel moves on, both ways: a quick spring with a slight bounce (damping 0.76,
+ * about 2.5% past its mark, then settled). 0 → 1 over t in 0…1; it's most of the way there by a
+ * third of the run, so the morph reads as fast, and the rest is the settle.
  */
-const SPRING =
-  'linear(0, 0.0284, 0.1001, 0.198, 0.3089, 0.4228, 0.5328, 0.6342, 0.7241, 0.8014, 0.8656, 0.9174, 0.9578, 0.9881, 1.0097, 1.0243, 1.033, 1.0374, 1.0384, 1.037, 1.0341, 1.0303, 1.026, 1.0216, 1.0174, 1.0136, 1.0102, 1.0073, 1.0049, 1.0029, 1.0014, 1.0003, 0.9995, 0.999, 0.9987, 0.9986, 0.9985, 0.9986, 0.9987, 0.9989, 1)'
-/**
- * A firmer spring for closing (damping 0.82, about 1% overshoot): the panel snaps back toward the
- * bubble and settles into the disc with only a hint of give. 0 → 1 over t in 0…1.
- */
-function springBack(t: number) {
+function spring(t: number) {
+  if (t <= 0) return 0
   if (t >= 1) return 1
-  const z = 0.82
-  const w = (2 * Math.PI) / 0.55
+  const z = 0.76
+  const w = (2 * Math.PI) / 0.7
   const wd = w * Math.sqrt(1 - z * z)
   return (
     1 -
@@ -86,18 +82,29 @@ function springBack(t: number) {
       (Math.cos(wd * t) + ((z * w) / wd) * Math.sin(wd * t))
   )
 }
-
-/** One frame of the panel between its resting box (p = 0) and the disc (p = 1). */
-function between(to: DOMRect, radius: number, disc: DOMRect, p: number) {
+/**
+ * One frame of the panel between its resting box (p = 0) and the disc (p = 1): moved so its
+ * center sits on the disc's, and clipped toward a circle `rim` wider than the disc. No stretch,
+ * no spin: a rounded box becoming a circle. Past either end (the spring's bounce) the shape holds
+ * (the circle is never cut smaller than the disc) and only the give shows: opening, the card
+ * swells a touch past its size; closing, the circle rides a few pixels past the bubble and back.
+ */
+function between(
+  to: DOMRect,
+  radius: number,
+  disc: DOMRect,
+  p: number,
+  rim = 0
+) {
   const dx = disc.left + disc.width / 2 - (to.left + to.width / 2)
   const dy = disc.top + disc.height / 2 - (to.top + to.height / 2)
-  // It lands on a circle a little wider than the disc, with the panel's own fill faded out by then,
-  // so the copy's rim and ring are never cut and only the disc is left showing.
-  const ix = ((to.width - disc.width) / 2 - RIM) * p
-  const iy = ((to.height - disc.height) / 2 - RIM) * p
-  const r = radius + (disc.width / 2 + RIM - radius) * p
+  const shape = Math.min(1, Math.max(0, p))
+  const ix = ((to.width - disc.width) / 2 - rim) * shape
+  const iy = ((to.height - disc.height) / 2 - rim) * shape
+  const r = radius + (disc.width / 2 + rim - radius) * shape
+  const swell = 1 + Math.max(0, -p) * 0.6
   return {
-    transform: `translate(${dx * p}px, ${dy * p}px)`,
+    transform: `translate(${dx * p}px, ${dy * p}px) scale(${swell})`,
     clipPath: `inset(${iy}px ${ix}px round ${r}px)`
   }
 }
@@ -150,6 +157,14 @@ function placeReplica(
   copy.style.transition = 'none'
   copy.style.flex = 'none'
   copy.style.position = 'relative'
+  // What the disc takes from where it sits on the board: which way the light falls on it and how
+  // far the board has shrunk it. Without these the copy is lit from the top left, and the light
+  // jumps round the disc at the hand-off.
+  const from = getComputedStyle(disc)
+  for (const name of ['--lx', '--ly', '--node-k', '--text-k']) {
+    const value = from.getPropertyValue(name)
+    if (value) copy.style.setProperty(name, value)
+  }
   // The board scales its nodes to the screen; match what's actually drawn.
   copy.style.scale = String(rect.width / (disc.offsetWidth || rect.width))
   slot.replaceChildren(copy)
@@ -165,28 +180,25 @@ function syncReplica(slot: HTMLElement | null, disc: HTMLElement) {
   else copy.removeAttribute('data-lit')
 }
 
-/** Room around the disc for its rim and lit ring, so the clip never shaves them (px). */
-const RIM = 10
+/**
+ * How far past the disc the clip opens once the panel has landed on it, to let the copy's shadow
+ * and lit ring back in before the real disc takes over (px).
+ */
+const RIM = 28
+const EASE_OUT = (x: number) => 1 - (1 - x) ** 3
+/** How far into the close the panel has become the disc; the rest lets the shadow back in. */
+const LANDED = 0.5
 
 /**
  * The keyframes that take the panel from the disc's spot and size to its own resting box `to`:
- * it's moved so its center sits on the disc's, and clipped down to a circle the disc's size.
+ * a circle exactly the disc's size, opening out into the card. Sampled along the spring, so the
+ * bounce is in them and they play with a linear easing.
  */
 function morph(to: DOMRect, radius: number, disc: DOMRect) {
-  const dx = disc.left + disc.width / 2 - (to.left + to.width / 2)
-  const dy = disc.top + disc.height / 2 - (to.top + to.height / 2)
-  const ix = (to.width - disc.width) / 2
-  const iy = (to.height - disc.height) / 2
-  return [
-    {
-      transform: `translate(${dx}px, ${dy}px)`,
-      clipPath: `inset(${iy}px ${ix}px round ${disc.width / 2}px)`
-    },
-    {
-      transform: 'translate(0px, 0px)',
-      clipPath: `inset(0px 0px round ${radius}px)`
-    }
-  ]
+  const N = 40
+  return Array.from({ length: N + 1 }, (_, i) =>
+    between(to, radius, disc, 1 - spring(i / N))
+  )
 }
 
 const radiusOf = (el: HTMLElement) =>
@@ -326,16 +338,16 @@ export function StoryPanel({
       anims.push(
         el.animate(morph(el.getBoundingClientRect(), radiusOf(el), disc), {
           duration: OPEN_MS,
-          easing: SPRING
+          easing: 'linear'
         }),
         // The bubble's drawing is gone almost at once; the panel is what you watch.
         bloom.current?.animate(
           { opacity: [1, 0] },
-          { duration: 120, easing: 'ease-out', fill: 'forwards' }
+          { duration: 100, easing: 'ease-out', fill: 'forwards' }
         ),
         content.current?.animate(
-          { opacity: [0, 1], transform: ['translateY(0.75rem)', 'none'] },
-          { duration: 260, delay: 70, easing: EASE, fill: 'backwards' }
+          { opacity: [0, 1] },
+          { duration: 200, delay: 70, easing: EASE, fill: 'backwards' }
         )
       )
     // Measured from where things sit at rest, so a second run (React's dev double-mount) starts clean.
@@ -365,7 +377,10 @@ export function StoryPanel({
       done = true
       cancelAnimationFrame(raf)
       window.clearTimeout(fallback)
+      // The real disc is back and the panel gone in the same frame: React takes a moment to
+      // remove it, and until then the copy would sit on top of the disc, doubling its glow.
       hideDiscs(bubble.slug, false)
+      if (el.parentElement) el.parentElement.style.visibility = 'hidden'
       onClosed()
     }
     if (found) {
@@ -376,7 +391,7 @@ export function StoryPanel({
       const to = el.getBoundingClientRect()
       const radius = radiusOf(el)
       placeReplica(replica.current, found.el, found.rect)
-      // The disc's colour and drawing come up fast, so it's the bubble that springs home.
+      // The disc's colour and drawing come up fast, so it's the bubble that comes home.
       bloom.current?.animate(
         { opacity: [0, 1] },
         { duration: CLOSE_MS * 0.3, easing: 'ease-out', fill: 'forwards' }
@@ -393,17 +408,22 @@ export function StoryPanel({
       const start = performance.now()
       const step = (now: number) => {
         const t = Math.min(1, (now - start) / CLOSE_MS)
+        // First the panel becomes the disc: it stays solid the whole way down, ending as a circle
+        // exactly the disc's size with the copy filling it, so there is never a ring of panel
+        // round the bubble. Only then, with nothing of the panel left to see, is its fill dropped
+        // and the clip eased open a little, letting the copy's shadow back in softly. By the time
+        // the real disc takes over, the two look the same.
+        const landed = t >= LANDED
+        const rim = landed ? RIM * EASE_OUT((t - LANDED) / (1 - LANDED)) : 0
         Object.assign(
           el.style,
-          between(to, radius, found.el.getBoundingClientRect(), springBack(t))
+          between(to, radius, found.el.getBoundingClientRect(), spring(t), rim)
         )
-        // Over the last stretch the panel's fill, border and the glow behind the copy fade away.
-        const f = Math.min(1, Math.max(0, (t - 0.45) / 0.35))
-        el.style.backgroundColor = `color-mix(in oklab, var(--card) ${100 - f * 100}%, transparent)`
+        el.style.backgroundColor = landed ? 'transparent' : ''
         el.style.borderColor = 'transparent'
-        el.style.boxShadow = f > 0 ? 'none' : ''
-        if (bloomBg.current) bloomBg.current.style.opacity = String(1 - f)
-        if (surface.current) surface.current.style.opacity = String(1 - f)
+        el.style.boxShadow = 'none'
+        if (bloomBg.current) bloomBg.current.style.opacity = landed ? '0' : ''
+        if (surface.current) surface.current.style.opacity = landed ? '0' : ''
         syncReplica(replica.current, found.el)
         if (t >= 1) finish()
         else raf = requestAnimationFrame(step)
@@ -501,7 +521,7 @@ export function StoryPanel({
           // A little larger than the write-up alone needs: the header and footer are always there.
           full
             ? 'lg:h-[100dvh] lg:max-w-[100vw] lg:rounded-none lg:border-transparent'
-            : 'lg:h-[min(62rem,calc(100dvh-2rem))] lg:max-w-4xl lg:rounded-3xl lg:border-border'
+            : 'lg:h-[min(62rem,calc(100dvh-2rem))] lg:max-w-4xl lg:rounded-[2rem] lg:border-border'
         )}
         style={discAccent(bubble.slug)}
       >
@@ -647,7 +667,7 @@ const Heading = memo(function Heading({
           className="node-disc flex size-14 shrink-0 items-center justify-center rounded-full border-2 transition-[width,height] duration-200 ease-out group-data-[compact]/panel:size-10 motion-reduce:transition-none sm:size-[4.5rem] sm:group-data-[compact]/panel:size-10"
           style={discAccent(b.slug)}
         >
-          <Illustration name={b.slug} decorative className="h-auto w-[60%]" />
+          <Illustration name={b.slug} decorative className="h-auto w-[76%]" />
         </span>
         {/* Room on the right for the controls in the panel's corner. */}
         <div className="min-w-0 flex-1 pr-12 lg:pr-24">

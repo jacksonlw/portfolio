@@ -127,9 +127,9 @@ const BUBBLE_STYLE: Record<
   BubbleSize,
   { disc: number; art: number; label: string }
 > = {
-  lg: { disc: 6.25, art: 4.2, label: 'text-[0.9375em]/[1.4]' },
-  md: { disc: 5.4, art: 3.6, label: 'text-[0.9375em]/[1.4]' },
-  sm: { disc: 4.5, art: 3, label: 'text-[0.875em]/[1.4]' }
+  lg: { disc: 6.25, art: 4.9, label: 'text-[0.9375em]/[1.4]' },
+  md: { disc: 5.4, art: 4.2, label: 'text-[0.9375em]/[1.4]' },
+  sm: { disc: 4.5, art: 3.5, label: 'text-[0.875em]/[1.4]' }
 }
 
 type Star = Skill & {
@@ -1108,7 +1108,7 @@ function BubbleDisc({
 }: {
   bubble: Bubble
   rem: number
-  /** The illustration's width (rem); 60% of the disc unless given. */
+  /** The illustration's width (rem); 78% of the disc unless given. */
   art?: number
   lit?: boolean
   hit?: string
@@ -1136,7 +1136,7 @@ function BubbleDisc({
         name={bubble.slug}
         decorative
         className="h-auto"
-        style={{ width: `calc(${art ?? rem * 0.6}rem * var(--node-k, 1))` }}
+        style={{ width: `calc(${art ?? rem * 0.78}rem * var(--node-k, 1))` }}
       />
     </span>
   )
@@ -2043,6 +2043,9 @@ type OpenStory = {
   stepped?: 'prev' | 'next'
 }
 
+/** An angle as 0…360 clockwise from the right, however it was written (-145 and 215 are one place). */
+const turn = (deg: number) => ((deg % 360) + 360) % 360
+
 /** From `lg` up the board shows; below it, the column. */
 const WIDE = '(min-width: 64rem)'
 const onWideChange = (cb: () => void) => {
@@ -2165,9 +2168,21 @@ export function Constellation({
   const [storyFull, setStoryFull] = useState(false)
   const toggleStoryFull = useCallback(() => setStoryFull((f) => !f), [])
   // Stories in the page's own order (by time), for previous and next.
+  // Previous and next follow what the viewer is looking at. On the board the bubbles sit round
+  // the photo, so the Stories go round it too: next is the bubble clockwise, previous the one
+  // counterclockwise, and it never runs out. In the column they're a list, so the Stories go down
+  // it and stop at its ends. (Until the page knows the screen, the list's order.)
+  const onBoard = useSyncExternalStore<boolean | null>(
+    onWideChange,
+    () => window.matchMedia(WIDE).matches,
+    () => null
+  )
   const storyOrder = useMemo(
-    () => [...bubbles].sort((a, b) => rank(a.slug) - rank(b.slug)),
-    [bubbles]
+    () =>
+      [...bubbles].sort((a, b) =>
+        onBoard ? turn(a.deg) - turn(b.deg) : rank(a.slug) - rank(b.slug)
+      ),
+    [bubbles, onBoard]
   )
   const storyClosed = useCallback(() => {
     // Focus goes back to the bubble the Story shrank into (the one showing: the board's or the
@@ -2210,11 +2225,15 @@ export function Constellation({
   const storyBubble = story && bubbles.find((b) => b.slug === story.slug)
   const storySlug = story?.slug
   const storyAt = storyOrder.findIndex((b) => b.slug === storySlug)
-  const storyPrev = storyAt > 0 ? storyOrder[storyAt - 1] : null
-  const storyNext =
-    storyAt >= 0 && storyAt < storyOrder.length - 1
-      ? storyOrder[storyAt + 1]
-      : null
+  const storyStep = (by: 1 | -1) => {
+    const n = storyOrder.length
+    if (storyAt < 0 || n < 2) return null
+    const to = storyAt + by
+    if (onBoard) return storyOrder[(to + n) % n]
+    return storyOrder[to] ?? null
+  }
+  const storyPrev = storyStep(-1)
+  const storyNext = storyStep(1)
   const storySkills = useMemo(
     () => skills.filter((s) => storySlug && s.projects.includes(storySlug)),
     [skills, storySlug]
