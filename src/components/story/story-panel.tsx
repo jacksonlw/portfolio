@@ -29,7 +29,7 @@ import {
   useReducedMotion,
   useSwipeToClose
 } from '@/components/site/overlay'
-import { discAccent } from '@/components/skills/disc'
+import { discAccent, surfaceSeed } from '@/components/skills/disc'
 import {
   bubbleWhen,
   formatDates,
@@ -230,6 +230,7 @@ export function StoryPanel({
   const bloom = useRef<HTMLDivElement>(null)
   const replica = useRef<HTMLDivElement>(null)
   const bloomBg = useRef<HTMLDivElement>(null)
+  const surface = useRef<HTMLDivElement>(null)
   const content = useRef<HTMLDivElement>(null)
   const scrim = useRef<HTMLDivElement>(null)
   const closeBtn = useRef<HTMLButtonElement>(null)
@@ -245,11 +246,10 @@ export function StoryPanel({
   // Once the write-up is scrolled the header shrinks to a slim bar. It grows back only at the
   // very top: the gap between the two marks keeps it from flickering as its own change in height
   // moves what's under it.
-  // Once the panel has opened, the scrolling area gets a backdrop in the header's own colour
-  // (story-under). Pulled down past the top, as a trackpad or a phone lets you, the write-up
-  // leaves a gap under the header, and the gap shows whatever is behind: it has to be the same
-  // wash, not the card. Held back while the panel opens or closes, when the write-up itself is
-  // see-through for a moment.
+  // Once the panel has opened, the scrolling area gets a backdrop (story-under): clear above, so
+  // the gap that opens under the header when the write-up is pulled down past the top shows the
+  // panel's surface as the header does, and the card below, for a pull past the bottom. Held back
+  // while the panel opens or closes, when the write-up itself is see-through for a moment.
   const [opened, setOpened] = useState(instant)
   useEffect(() => {
     if (opened) return
@@ -257,6 +257,23 @@ export function StoryPanel({
     return () => window.clearTimeout(t)
   }, [opened])
   const [compact, setCompact] = useState(false)
+  // The surface's scrolling copy has to match the fixed one exactly: it's given the panel's height
+  // and starts a header's height above the write-up. The header is measured only at full size,
+  // which is how it stands whenever the write-up is at the top and the two have to line up.
+  useLayoutEffect(() => {
+    const el = panel.current
+    if (!el) return
+    const measure = () => {
+      el.style.setProperty('--panel-h', `${el.clientHeight}px`)
+      const head = el.querySelector('header')
+      if (head && !el.hasAttribute('data-compact'))
+        el.style.setProperty('--head-h', `${head.offsetHeight}px`)
+    }
+    measure()
+    const ro = new ResizeObserver(measure)
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [])
   const onScroll = useCallback(() => {
     const y = scroller.current?.scrollTop ?? 0
     setCompact((c) => (y > 32 ? true : y < 4 ? false : c))
@@ -382,6 +399,7 @@ export function StoryPanel({
         el.style.borderColor = 'transparent'
         el.style.boxShadow = f > 0 ? 'none' : ''
         if (bloomBg.current) bloomBg.current.style.opacity = String(1 - f)
+        if (surface.current) surface.current.style.opacity = String(1 - f)
         syncReplica(replica.current, found.el)
         if (t >= 1) finish()
         else raf = requestAnimationFrame(step)
@@ -483,6 +501,13 @@ export function StoryPanel({
         )}
         style={discAccent(bubble.slug)}
       >
+        {/* The grained gradient the bubble's disc wears, grown to the panel's size: the header and
+            the recap sit straight on it, and the write-up's card scrolls up over it. */}
+        <div
+          ref={surface}
+          aria-hidden
+          className="story-surface pointer-events-none absolute inset-0 -z-10"
+        />
         {/* The controls: fixed in the panel's corner, so they never move as the header shrinks. */}
         <div
           ref={controls}
@@ -538,7 +563,11 @@ export function StoryPanel({
             opened && !closing && 'story-under'
           )}
         >
-          <div ref={content} className="bg-card">
+          <div ref={content} className="relative isolate">
+            <div
+              aria-hidden
+              className="story-surface story-surface-scroll pointer-events-none absolute inset-x-0 -z-10"
+            />
             <Body
               bubble={bubble}
               story={story}
@@ -567,7 +596,7 @@ export function StoryPanel({
           aria-hidden
           className="pointer-events-none absolute inset-0 z-40 flex items-center justify-center opacity-0"
         >
-          <div ref={bloomBg} className="story-bloom absolute inset-0" />
+          <div ref={bloomBg} className="story-surface absolute inset-0" />
           {/* An exact copy of the bubble's disc goes here (placeReplica). */}
           <div ref={replica} className="contents" />
         </div>
@@ -608,7 +637,7 @@ const Heading = memo(function Heading({
   titleId: string
 }) {
   return (
-    <header className="story-wash relative z-20 shrink-0 px-5 pt-[max(1.25rem,env(safe-area-inset-top))] pb-4 transition-[padding,box-shadow] duration-200 ease-out group-data-[compact]/panel:pt-[max(0.5rem,env(safe-area-inset-top))] group-data-[compact]/panel:pb-2 group-data-[compact]/panel:shadow-[0_1px_0_var(--border),0_10px_18px_-14px_rgb(12_13_16/0.5)] motion-reduce:transition-none sm:px-10">
+    <header className="relative z-20 shrink-0 px-5 pt-[max(1.25rem,env(safe-area-inset-top))] pb-4 transition-[padding,box-shadow] duration-200 ease-out group-data-[compact]/panel:pt-[max(0.5rem,env(safe-area-inset-top))] group-data-[compact]/panel:pb-2 group-data-[compact]/panel:shadow-[0_1px_0_var(--border),0_10px_18px_-14px_rgb(12_13_16/0.5)] motion-reduce:transition-none sm:px-10">
       <div className="mx-auto flex w-full max-w-4xl items-center gap-3 sm:gap-4">
         <span
           className="node-disc flex size-14 shrink-0 items-center justify-center rounded-full border-2 transition-[width,height] duration-200 ease-out group-data-[compact]/panel:size-10 motion-reduce:transition-none sm:size-[4.5rem] sm:group-data-[compact]/panel:size-10"
@@ -658,29 +687,31 @@ const Body = memo(function Body({
       {story && story.gallery.length > 0 && (
         <Gallery items={story.gallery} settleMs={settleMs} />
       )}
-      <div className="mx-auto w-full max-w-4xl space-y-12 px-5 pt-10 pb-12 sm:px-10">
-        {story && story.sections.length > 0 ? (
-          story.sections.map((s) => (
-            <section key={s.heading}>
-              <h3 className="text-title">{s.heading}</h3>
-              <div className="mt-4 space-y-4 text-[1.0625rem] leading-relaxed text-pretty text-foreground/90">
-                {s.blocks.map((b, i) =>
-                  b.kind === 'text' ? (
-                    <p key={i}>
-                      <RichText text={b.text} />
-                    </p>
-                  ) : media.get(b.id) ? (
-                    <InlineMedia key={i} item={media.get(b.id)!} />
-                  ) : null
-                )}
-              </div>
-            </section>
-          ))
-        ) : (
-          <p className="text-muted-foreground">
-            The full story is still being written.
-          </p>
-        )}
+      <div className="bg-card">
+        <div className="mx-auto w-full max-w-4xl space-y-12 px-5 pt-10 pb-12 sm:px-10">
+          {story && story.sections.length > 0 ? (
+            story.sections.map((s) => (
+              <section key={s.heading}>
+                <h3 className="text-title">{s.heading}</h3>
+                <div className="mt-4 space-y-4 text-[1.0625rem] leading-relaxed text-pretty text-foreground/90">
+                  {s.blocks.map((b, i) =>
+                    b.kind === 'text' ? (
+                      <p key={i}>
+                        <RichText text={b.text} />
+                      </p>
+                    ) : media.get(b.id) ? (
+                      <InlineMedia key={i} item={media.get(b.id)!} />
+                    ) : null
+                  )}
+                </div>
+              </section>
+            ))
+          ) : (
+            <p className="text-muted-foreground">
+              The full story is still being written.
+            </p>
+          )}
+        </div>
       </div>
     </>
   )
@@ -695,7 +726,7 @@ function Recap({
   skills: Skill[]
 }) {
   return (
-    <div className="story-wash px-5 pt-2 pb-8 sm:px-10">
+    <div className="px-5 pt-2 pb-8 sm:px-10">
       <div className="mx-auto w-full max-w-4xl">
         <p className="text-lg text-pretty text-foreground/90 sm:text-lede">
           {b.summary}
@@ -901,9 +932,10 @@ function InlineMedia({ item }: { item: GalleryItem }) {
     <figure ref={el} className="!mt-8 !mb-8">
       <div
         className={cn(
-          'story-wash flex justify-center rounded-xl px-6 py-8',
+          'story-surface relative flex justify-center rounded-xl px-6 py-8',
           item.frame === 'browser' && 'px-4 sm:px-8'
         )}
+        style={surfaceSeed(`picture:${item.id}`)}
       >
         <Framed item={item} playing={seen} fit="width" />
       </div>
@@ -1025,7 +1057,7 @@ function Gallery({
     <section
       aria-roledescription="carousel"
       aria-label="Gallery"
-      className="story-wash relative"
+      className="relative"
     >
       <div
         ref={track}

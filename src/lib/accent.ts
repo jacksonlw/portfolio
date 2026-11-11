@@ -49,13 +49,17 @@ export const ACCENT_TEXT: Record<Accent, string> = {
   peach: 'text-illo-peach-deep dark:text-illo-peach'
 }
 
-/** A thin line in the accent, at the strength of the constellation's figure lines. */
+/**
+ * A constellation's figure line: it hands its area's colour to the line as `--tone` (the deep
+ * shade on the light page, the pastel on the dark one). The line itself is drawn nearly neutral
+ * with only a trace of it (globals.css, .board-line).
+ */
 export const ACCENT_STROKE: Record<Accent, string> = {
-  sky: 'stroke-illo-sky-deep/45 dark:stroke-illo-sky/40',
-  mint: 'stroke-illo-mint-deep/45 dark:stroke-illo-mint/40',
-  sun: 'stroke-illo-sun-deep/45 dark:stroke-illo-sun/40',
-  lavender: 'stroke-illo-lavender-deep/45 dark:stroke-illo-lavender/40',
-  rose: 'stroke-illo-rose-deep/45 dark:stroke-illo-rose/40',
-  ocean: 'stroke-illo-ocean-deep/45 dark:stroke-illo-ocean/40',
-  peach: 'stroke-illo-peach-deep/45 dark:stroke-illo-peach/40'
+  sky: '[--tone:var(--af-sky-deep)] dark:[--tone:var(--af-sky)]',
+  mint: '[--tone:var(--af-mint-deep)] dark:[--tone:var(--af-mint)]',
+  sun: '[--tone:var(--af-sun-deep)] dark:[--tone:var(--af-sun)]',
+  lavender: '[--tone:var(--af-lavender-deep)] dark:[--tone:var(--af-lavender)]',
+  rose: '[--tone:var(--af-rose-deep)] dark:[--tone:var(--af-rose)]',
+  ocean: '[--tone:var(--af-ocean-deep)] dark:[--tone:var(--af-ocean)]',
+  peach: '[--tone:var(--af-peach-deep)] dark:[--tone:var(--af-peach)]'
 }

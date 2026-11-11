@@ -1198,7 +1198,9 @@ type Fly = (
   x: number,
   y: number,
   id: string,
-  px?: [number, number]
+  px?: [number, number],
+  /** A star: it flies at the stars' own, quicker pace (intro.stars). */
+  star?: boolean
 ) => CSSProperties
 const NO_FLIGHT: CSSProperties = {}
 
@@ -1619,7 +1621,10 @@ const StarNode = memo(function StarNode({
   desc: string
 }) {
   const descId = useId()
-  const flight = useMemo(() => fly(s.x, s.y, s.name), [fly, s.x, s.y, s.name])
+  const flight = useMemo(
+    () => fly(s.x, s.y, s.name, undefined, true),
+    [fly, s.x, s.y, s.name]
+  )
   return (
     <li
       className="absolute"
@@ -2353,7 +2358,7 @@ const Board = memo(function Board({
   // `px` gives a satellite's offset from the photo in px, which (unlike its % spot) is known
   // before the board is measured, so its flight never changes mid-air.
   const fly: Fly = useCallback(
-    (x, y, id, px) => {
+    (x, y, id, px, star) => {
       if (!live) return NO_FLIGHT
       const c = intro.chaos
       const r = (k: string) => hash(`${id}/${k}`) - 0.5 // -0.5 … 0.5
@@ -2373,8 +2378,8 @@ const Board = memo(function Board({
           0.9,
           intro.scale * (1 + (r('size') + 0.5) * 4 * c)
         ).toFixed(2),
-        '--dur': `${Math.round(intro.ms * (1.1 + r('speed') * 0.7 * c))}ms`,
-        '--intro-delay': `${Math.max(0, Math.round(blast + delayAt(at[0], at[1]) + r('start') * 123 * c))}ms`
+        '--dur': `${Math.round(intro.ms * (star ? intro.stars : 1) * (1.1 + r('speed') * 0.7 * c))}ms`,
+        '--intro-delay': `${Math.max(0, Math.round(blast + delayAt(at[0], at[1]) + r('start') * intro.jitter * c))}ms`
       }
       return vars as CSSProperties
     },
@@ -2389,9 +2394,10 @@ const Board = memo(function Board({
       const r = (k: string) => hash(`${s.name}/${k}`) - 0.5
       const start = Math.max(
         0,
-        blast + delayAt(s.x, s.y) + r('start') * 123 * intro.chaos
+        blast + delayAt(s.x, s.y) + r('start') * intro.jitter * intro.chaos
       )
-      const dur = intro.ms * (1.1 + r('speed') * 0.7 * intro.chaos)
+      const dur =
+        intro.ms * intro.stars * (1.1 + r('speed') * 0.7 * intro.chaos)
       m[starId(s.name)] = start + dur * intro.lines
     }
     return m

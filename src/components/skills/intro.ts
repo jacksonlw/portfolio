@@ -1,6 +1,6 @@
 /*
  * The constellation's opening animation. Tune it in INTRO below. Everything is
- * short on purpose: people come to read, so the whole thing is over in about a second and a third, and
+ * short on purpose: people come to read, so the whole thing is over in a little over a second, and
  * nothing waits on it (it's CSS only, and under reduced motion there's none at all).
  */
 
@@ -14,8 +14,18 @@ export type Intro = {
   kick: number
   /** How long each node takes to arrive (ms). */
   ms: number
-  /** The extra delay for the farthest node; nearer ones arrive sooner (ms). */
+  /**
+   * The extra delay for the farthest node; nearer ones leave sooner (ms). Kept small: everything
+   * leaves the core nearly together, as the shockwave does, so the far stars aren't left trailing.
+   */
   spread: number
+  /** How much a node's start can differ from its neighbours' (ms, either way, scaled by chaos). */
+  jitter: number
+  /**
+   * The stars' flight time as a share of a node's (ms): under 1, because they have the farthest
+   * to go and would otherwise be the last things still moving.
+   */
+  stars: number
   /** How far each node starts toward the Me node: 1 = from its center, 0 = from its own spot. */
   burst: number
   /** The size each node starts at (1 = full size). */
@@ -44,10 +54,12 @@ export type Intro = {
 
 /** The opening animation the site uses: a supernova. */
 export const INTRO: Intro = {
-  buildup: 525,
+  buildup: 480,
   kick: 79,
-  ms: 640,
-  spread: 150,
+  ms: 560,
+  spread: 60,
+  jitter: 80,
+  stars: 0.78,
   burst: 1,
   scale: 0.1,
   flash: true,

@@ -239,14 +239,64 @@ html.dark .chrome-rim {
   );
   will-change: transform, opacity;
 }
-/* The orb's polished chrome shell, with a specular streak across the top. */
+/* The shockwave: not a clean line but a wide, soft band of light that breaks up into grain as it
+   tears outward. Kept dim and sparse (a hint of violet and cyan under a pale crest, and well
+   under half of it left by the grain), so it reads as thrown dust and never as a neon ring. The
+   second wave (--ring) is fainter still. */
+:root {
+  /* Sparse grain as alpha: a mask that leaves only scattered grains of a layer. */
+  --grain-sand: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3' seed='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 6 0 0 0 -3.25'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
 .intro-shock {
-  box-shadow:
-    0 0 18px 3px color-mix(in oklab, var(--iri-cyan) 70%, transparent),
-    0 0 48px 10px color-mix(in oklab, var(--iri-violet) 35%, transparent),
-    inset 0 0 16px 2px color-mix(in oklab, var(--iri-magenta) 55%, transparent);
+  --ring: 1;
+  /* On the light page pale grains would vanish into it: there the band is graphite, with deeper
+     violet and blue under it, and a little stronger. The pale version is for the dark page. */
+  --ring-in: color-mix(in oklab, var(--iri-violet) 55%, #2a2d33);
+  --ring-mid: color-mix(in oklab, var(--iri-cyan) 40%, #23262c);
+  --ring-crest: #23262c;
+  --ring-in-a: 38%;
+  --ring-mid-a: 52%;
+  --ring-crest-a: 62%;
+  border-color: transparent;
+  background: radial-gradient(
+    closest-side,
+    transparent 54%,
+    color-mix(
+        in oklab,
+        var(--ring-in) calc(var(--ring-in-a) * var(--ring)),
+        transparent
+      )
+      68%,
+    color-mix(
+        in oklab,
+        var(--ring-mid) calc(var(--ring-mid-a) * var(--ring)),
+        transparent
+      )
+      82%,
+    color-mix(
+        in oklab,
+        var(--ring-crest) calc(var(--ring-crest-a) * var(--ring)),
+        transparent
+      )
+      90%,
+    transparent 100%
+  );
+  mask-image: var(--grain-sand);
+  mask-size: 26px 26px;
+}
+html.dark .intro-shock {
+  --ring-in: var(--iri-violet);
+  --ring-mid: var(--iri-cyan);
+  --ring-crest: #fbfcfd;
+  --ring-in-a: 22%;
+  --ring-mid-a: 32%;
+  --ring-crest-a: 42%;
+}
+.intro-shock-2 {
+  --ring: 0.55;
 }
 
+/* The orb's polished chrome shell, with a specular streak across the top. */
 .core-orb {
   background:
     linear-gradient(
@@ -294,7 +344,8 @@ html.dark .chrome-rim {
    scaled there instead of being repainted every frame. */
 .intro-core,
 .intro-flash,
-.intro-bloom {
+.intro-bloom,
+.intro-shock {
   will-change: scale, opacity;
 }
 
@@ -898,6 +949,18 @@ html:has(.intro-lock) .intro-chrome {
   opacity: 0.4;
 }
 
+/* The lines of a constellation's figure: nearly neutral silver, with only a trace of the area's
+   colour (--tone, from ACCENT_STROKE), so the figures sit back and the colour is left to the
+   stars and the bubbles. */
+.board-line {
+  stroke: color-mix(in oklab, var(--tone, #8d949e) 14%, #8d949e);
+  stroke-opacity: 0.5;
+}
+html.dark .board-line {
+  stroke: color-mix(in oklab, var(--tone, #9aa0aa) 14%, #9aa0aa);
+  stroke-opacity: 0.4;
+}
+
 /* A node's rim: chrome in the node's own colour, its highlights and shadows tinted by it, with a
    touch of the rainbow sheen. */
 .node-disc {
@@ -1206,9 +1269,6 @@ html.dark .portrait-grade {
 .lite .core-orb::after {
   animation: none !important;
 }
-.lite .intro-shock {
-  box-shadow: 0 0 14px 2px color-mix(in oklab, var(--iri-cyan) 60%, transparent);
-}
 
 /* While a Story covers the page, the looping animations behind it pause (and the motion loop
    stops: components/site/overlay.ts), so the page under the scrim isn't redrawn every frame. They
@@ -1224,46 +1284,198 @@ html.still :is(.dust-group, .constellation-drift, .constellation-flow) {
   animation-play-state: paused;
 }
 
-/* A Story's panel as it grows out of its bubble: the disc's own glow, filling the panel, then
-   fading to the page (components/story/story-panel.tsx). */
-.story-bloom {
-  background: radial-gradient(
-    circle at 50% 45%,
-    color-mix(in oklab, var(--disc-accent, #ccdaff) 75%, #fbfcfd) 0%,
-    color-mix(in oklab, var(--disc-accent, #ccdaff) 50%, #eef0f3) 60%,
-    color-mix(in oklab, var(--disc-accent, #ccdaff) 35%, #e4e7eb) 100%
+/* The grained gradient: the one surface a bubble and its Story share. Soft pools of colour (the
+   drawing's own in one corner, and two neighbours of it on the colour wheel elsewhere) under heavy film
+   grain, so it reads as mottled and textured instead of a clean sweep. It's drawn in proportion to
+   whatever it fills, so the disc carries it in miniature and it's the same picture grown large
+   behind the Story: the panel opens out of the disc with it (story-panel.tsx). Where the pools sit
+   and how far the neighbours lean differs from one surface to the next (surfaceSeed in skills/disc.ts).
+   Text sits on it (a Story's title and summary), so the colour is held back enough to keep that
+   text above 4.5:1 everywhere: pale pools on the light page, dim and quiet ones on the dark. */
+:root {
+  --grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='1.1' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3CfeComponentTransfer%3E%3CfeFuncR type='linear' slope='1.7' intercept='-.35'/%3E%3CfeFuncG type='linear' slope='1.7' intercept='-.35'/%3E%3CfeFuncB type='linear' slope='1.7' intercept='-.35'/%3E%3CfeFuncA type='linear' slope='0' intercept='.8'/%3E%3C/feComponentTransfer%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  /* The same grain kept to pale greys, to be multiplied onto the light page's colours (overlaid
+     on colours that light, the dark grain all but vanishes). */
+  --grain-pale: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='1.1' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3CfeComponentTransfer%3E%3CfeFuncR type='linear' slope='.75' intercept='.42'/%3E%3CfeFuncG type='linear' slope='.75' intercept='.42'/%3E%3CfeFuncB type='linear' slope='.75' intercept='.42'/%3E%3CfeFuncA type='linear' slope='0' intercept='1'/%3E%3C/feComponentTransfer%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  --pool-own: 62%;
+  --pool-iri: 38%;
+}
+.dark {
+  --pool-own: 12%;
+  --pool-iri: 14%;
+}
+/* Each pool fades out along a long, eased tail (no edge to find), and there are several of
+   different shapes lapping over one another, with one pool of the surface's own colour laid over
+   them to bite a curve out of the rest. So what's left reads as soft, uneven drifts of colour,
+   not as ellipses. */
+.story-surface,
+.node-disc::before {
+  --k1: var(--disc-accent, #ccdaff);
+  --k2: oklch(
+    from var(--disc-accent, #ccdaff) l calc(c * 1.35) calc(h + var(--h2, 36))
+  );
+  --k3: oklch(
+    from var(--disc-accent, #ccdaff) calc(l * 0.9) calc(c * 1.35)
+      calc(h + var(--h3, -30))
+  );
+  --grain-on: var(--grain-pale);
+  --grain-blend: multiply;
+  --pools:
+    radial-gradient(
+      ellipse var(--s6, 45% 40%) at var(--p6, 40% 30%),
+      color-mix(in oklab, var(--surf-base) 70%, transparent) 0%,
+      color-mix(in oklab, var(--surf-base) calc(70% * 0.8), transparent) 20%,
+      color-mix(in oklab, var(--surf-base) calc(70% * 0.42), transparent) 40%,
+      color-mix(in oklab, var(--surf-base) calc(70% * 0.1), transparent) 60%,
+      transparent 82%
+    ),
+    radial-gradient(
+      ellipse var(--s4, 40% 55%) at var(--p4, 70% 45%),
+      color-mix(in oklab, var(--k2) var(--pool-iri), transparent) 0%,
+      color-mix(in oklab, var(--k2) calc(var(--pool-iri) * 0.8), transparent)
+        20%,
+      color-mix(in oklab, var(--k2) calc(var(--pool-iri) * 0.42), transparent)
+        40%,
+      color-mix(in oklab, var(--k2) calc(var(--pool-iri) * 0.1), transparent)
+        60%,
+      transparent 82%
+    ),
+    radial-gradient(
+      ellipse var(--s5, 55% 35%) at var(--p5, 25% 70%),
+      color-mix(in oklab, var(--k1) var(--pool-own), transparent) 0%,
+      color-mix(in oklab, var(--k1) calc(var(--pool-own) * 0.8), transparent)
+        20%,
+      color-mix(in oklab, var(--k1) calc(var(--pool-own) * 0.42), transparent)
+        40%,
+      color-mix(in oklab, var(--k1) calc(var(--pool-own) * 0.1), transparent)
+        60%,
+      transparent 82%
+    ),
+    radial-gradient(
+      ellipse var(--s1, 105% 75%) at var(--p1, 0% 0%),
+      color-mix(in oklab, var(--k1) var(--pool-own), transparent) 0%,
+      color-mix(in oklab, var(--k1) calc(var(--pool-own) * 0.8), transparent)
+        20%,
+      color-mix(in oklab, var(--k1) calc(var(--pool-own) * 0.42), transparent)
+        40%,
+      color-mix(in oklab, var(--k1) calc(var(--pool-own) * 0.1), transparent)
+        60%,
+      transparent 82%
+    ),
+    radial-gradient(
+      ellipse var(--s2, 90% 80%) at var(--p2, 100% 4%),
+      color-mix(in oklab, var(--k2) var(--pool-iri), transparent) 0%,
+      color-mix(in oklab, var(--k2) calc(var(--pool-iri) * 0.8), transparent)
+        20%,
+      color-mix(in oklab, var(--k2) calc(var(--pool-iri) * 0.42), transparent)
+        40%,
+      color-mix(in oklab, var(--k2) calc(var(--pool-iri) * 0.1), transparent)
+        60%,
+      transparent 82%
+    ),
+    radial-gradient(
+      ellipse var(--s3, 80% 65%) at var(--p3, 55% 62%),
+      color-mix(in oklab, var(--k3) var(--pool-iri), transparent) 0%,
+      color-mix(in oklab, var(--k3) calc(var(--pool-iri) * 0.8), transparent)
+        20%,
+      color-mix(in oklab, var(--k3) calc(var(--pool-iri) * 0.42), transparent)
+        40%,
+      color-mix(in oklab, var(--k3) calc(var(--pool-iri) * 0.1), transparent)
+        60%,
+      transparent 82%
+    );
+}
+.dark .story-surface,
+html.dark .node-disc::before {
+  --grain-on: var(--grain);
+  --grain-blend: overlay;
+}
+/* A disc is small, so it draws the whole recipe in one go: grain blended over the pools. */
+.node-disc::before {
+  background-color: var(--surf-base);
+  background-image: var(--grain-on), var(--pools);
+  background-blend-mode: var(--grain-blend), normal;
+}
+/* A Story's surfaces are large (the panel's size, three times over while it opens), and painting
+   six soft gradients with a blend at that size is the costly part on a slow phone. So there the
+   pools are painted at an eighth of the size (a sixty-fourth of the pixels) on a layer of their
+   own and scaled up by the GPU, which costs nothing and can't be told apart on shapes this soft;
+   the grain, which does need full sharpness, is a second layer that's only a small tile repeated.
+   Both are kept as GPU layers, so while the panel grows, shrinks or resizes they're moved and
+   scaled, never painted again. */
+.story-surface {
+  isolation: isolate;
+  overflow: clip;
+  background-color: var(--surf-base);
+}
+.story-surface::before,
+.story-surface::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+}
+.story-surface::before {
+  z-index: -2;
+  width: 12.5%;
+  height: 12.5%;
+  transform: scale(8);
+  transform-origin: 0 0;
+  will-change: transform;
+  background-image: var(--pools);
+}
+.story-surface::after {
+  z-index: -1;
+  width: 100%;
+  height: 100%;
+  background-image: var(--grain-on);
+  mix-blend-mode: var(--grain-blend);
+}
+.story-surface {
+  --surf-base: color-mix(
+    in oklab,
+    var(--disc-accent, #ccdaff) 30%,
+    var(--card)
   );
 }
-.dark .story-bloom {
-  background: radial-gradient(
-    circle at 50% 45%,
-    color-mix(in oklab, var(--disc-accent, #ccdaff) 35%, #16181c) 0%,
-    color-mix(in oklab, var(--disc-accent, #ccdaff) 18%, #0d0e11) 70%
+.dark .story-surface {
+  --surf-base: color-mix(
+    in oklab,
+    var(--disc-accent, #ccdaff) 7%,
+    color-mix(in oklab, var(--card) 80%, #000)
   );
 }
-
-/* A Story's tinted bands (its recap, gallery and pictures): the disc's colour washed into the card,
-   so they follow light and dark mode. */
-.story-wash {
-  background: color-mix(in oklab, var(--disc-accent, #ccdaff) 30%, var(--card));
+/* The copy of a Story's surface that scrolls with its write-up (story-panel.tsx): the same picture
+   at the same size as the one fixed behind the panel, lying exactly over it until you scroll. So
+   the header, the summary and the gallery read as one gradient, and the header's part stays put
+   as the rest moves off under it. */
+.story-surface-scroll {
+  top: calc(-1 * var(--head-h, 0px));
+  height: var(--panel-h, 100%);
 }
-.dark .story-wash {
-  background: color-mix(in oklab, var(--disc-accent, #ccdaff) 12%, var(--card));
+/* On a disc it lies over the silver body, inside the rim and under the drawing. */
+.node-disc {
+  position: relative;
+  isolation: isolate;
+}
+.node-disc::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  pointer-events: none;
+  --surf-base: color-mix(in oklab, var(--disc-accent, #ccdaff) 40%, #f3f5f7);
+}
+html.dark .node-disc::before {
+  --surf-base: color-mix(in oklab, var(--disc-accent, #2b3bff) 16%, #1f2126);
 }
 
-/* Behind a Story's write-up, for when it's pulled past its ends: the header's wash above (so the
-   gap that opens under the header is the header's colour) and the card below, as the footer is. */
+/* Behind a Story's write-up, for when it's pulled past its ends: nothing above (the gap that opens
+   under the header shows the surface, as the header does) and the card below, as the footer is. */
 .story-under {
-  background: linear-gradient(
-    color-mix(in oklab, var(--disc-accent, #ccdaff) 30%, var(--card)) 50%,
-    var(--card) 50%
-  );
-}
-.dark .story-under {
-  background: linear-gradient(
-    color-mix(in oklab, var(--disc-accent, #ccdaff) 12%, var(--card)) 50%,
-    var(--card) 50%
-  );
+  background: linear-gradient(transparent 50%, var(--card) 50%);
 }
 
 /* What lights up on hover takes the supernova's light, not the brand blue: chrome lines with
