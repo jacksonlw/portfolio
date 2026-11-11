@@ -2025,6 +2025,13 @@ type OpenStory = {
 /** An angle as 0…360 clockwise from the right, however it was written (-145 and 215 are one place). */
 const turn = (deg: number) => ((deg % 360) + 360) % 360
 
+/**
+ * Where an angle falls on the way round the board for the keyboard: 0 at nine o'clock, growing
+ * clockwise. Tab goes round each ring of nodes the way the eye does, starting at the upper left
+ * (where reading starts) and ending at the lower left.
+ */
+const clock = (deg: number) => turn(deg - 180)
+
 /** From `lg` up the board shows; below it, the column. */
 const WIDE = '(min-width: 64rem)'
 const onWideChange = (cb: () => void) => {
@@ -2285,24 +2292,7 @@ export function Constellation({
         />
       )}
 
-      {/* Replay the supernova: beside the light/dark switch, on the full-screen board only. */}
-      {INTRO.ms > 0 && (
-        <button
-          type="button"
-          onClick={() => setReplays((n) => n + 1)}
-          aria-label="Replay the opening animation"
-          title="Replay"
-          // Under reduced motion there's no animation to replay, so no button either.
-          className="intro-chrome chrome-rim round-btn fixed right-[4.25rem] bottom-4 z-40 hidden size-10 items-center justify-center rounded-full border-2 text-foreground shadow-card-hover focus-ring motion-reduce:hidden! lg:flex"
-        >
-          <ArrowCounterClockwiseIcon
-            weight="bold"
-            className="size-4"
-            aria-hidden
-          />
-        </button>
-      )}
-
+      {/* These two come in the order they sit, left to right, so Tab crosses them that way. */}
       {/* Pause the page's ambient motion (overlay.ts): beside the other round buttons. Not shown
           under reduced motion, where none of it runs to begin with, nor below `lg`, where the page
           is a plain column with nothing to pause. */}
@@ -2323,6 +2313,24 @@ export function Constellation({
           <PauseIcon weight="fill" className="size-4" aria-hidden />
         )}
       </button>
+
+      {/* Replay the supernova: beside the light/dark switch, on the full-screen board only. */}
+      {INTRO.ms > 0 && (
+        <button
+          type="button"
+          onClick={() => setReplays((n) => n + 1)}
+          aria-label="Replay the opening animation"
+          title="Replay"
+          // Under reduced motion there's no animation to replay, so no button either.
+          className="intro-chrome chrome-rim round-btn fixed right-[4.25rem] bottom-4 z-40 hidden size-10 items-center justify-center rounded-full border-2 text-foreground shadow-card-hover focus-ring motion-reduce:hidden! lg:flex"
+        >
+          <ArrowCounterClockwiseIcon
+            weight="bold"
+            className="size-4"
+            aria-hidden
+          />
+        </button>
+      )}
     </>
   )
 }
@@ -2545,6 +2553,36 @@ const Board = memo(function Board({
     return () => timers.forEach((x) => window.clearTimeout(x))
   }, [waiting, readyAt, introTotal])
   const on = (cls: string) => (live ? cls : '')
+
+  // The order things come in the page, which is the order Tab reaches them and a screen reader
+  // reads them. It follows the layout, not the data: you at the centre first, then each ring
+  // outward (the links round you, then the work round them), each gone round clockwise from the
+  // upper left, then the constellations, also clockwise from the upper left. Inside one, the stars
+  // keep their own order, which is the order its lines join them in.
+  const tabSatellites = useMemo(
+    () =>
+      [...satellites].sort(
+        (a, b) =>
+          clock(layout.satellites[a.kind].deg) -
+          clock(layout.satellites[b.kind].deg)
+      ),
+    [satellites, layout]
+  )
+  const tabBubbles = useMemo(
+    () => [...bubbles].sort((a, b) => clock(a.deg) - clock(b.deg)),
+    [bubbles]
+  )
+  const tabHubs = useMemo(() => {
+    const at = ([x, y]: readonly [number, number]) =>
+      clock(
+        (Math.atan2((y - ME[1]) * boardSize[1], (x - ME[0]) * boardSize[0]) *
+          180) /
+          Math.PI
+      )
+    return (
+      Object.entries(hubs) as [Skill['area'], readonly [number, number]][]
+    ).sort((a, b) => at(a[1]) - at(b[1]))
+  }, [hubs, ME, boardSize])
 
   // The intro: each node is thrown out from the Me node (by `burst`), nearer ones first, and with
   // `chaos` each one goes its own way: its own speed and start, a spin, a curve off the straight
@@ -3078,7 +3116,7 @@ const Board = memo(function Board({
       {/* Satellites, orbiting the Me node. */}
       <nav aria-label="Links">
         <ul role="list">
-          {satellites.map((s) => {
+          {tabSatellites.map((s) => {
             const [x, y] = satPos[s.kind]
             const [ox, oy] = satOffset(s.kind)
             const [lx, ly] = lightFrom(ME, x, y, boardSize[0], boardSize[1])
@@ -3107,7 +3145,7 @@ const Board = memo(function Board({
       <section>
         <h2 className="sr-only">Work and projects</h2>
         <ul role="list">
-          {bubbles.map((b) => {
+          {tabBubbles.map((b) => {
             const [lx, ly] = lightFrom(ME, b.x, b.y, boardSize[0], boardSize[1])
             return (
               <BubbleNode
@@ -3135,7 +3173,7 @@ const Board = memo(function Board({
           belongs to. */}
       <section>
         <h2 className="sr-only">Skills</h2>
-        {Object.entries(hubs).map(([area, hub]) => (
+        {tabHubs.map(([area, hub]) => (
           <section key={area}>
             <h3
               className={cn(
