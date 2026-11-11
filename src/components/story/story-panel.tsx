@@ -246,34 +246,7 @@ export function StoryPanel({
   // Once the write-up is scrolled the header shrinks to a slim bar. It grows back only at the
   // very top: the gap between the two marks keeps it from flickering as its own change in height
   // moves what's under it.
-  // Once the panel has opened, the scrolling area gets a backdrop (story-under): clear above, so
-  // the gap that opens under the header when the write-up is pulled down past the top shows the
-  // panel's surface as the header does, and the card below, for a pull past the bottom. Held back
-  // while the panel opens or closes, when the write-up itself is see-through for a moment.
-  const [opened, setOpened] = useState(instant)
-  useEffect(() => {
-    if (opened) return
-    const t = window.setTimeout(() => setOpened(true), OPEN_MS)
-    return () => window.clearTimeout(t)
-  }, [opened])
   const [compact, setCompact] = useState(false)
-  // The surface's scrolling copy has to match the fixed one exactly: it's given the panel's height
-  // and starts a header's height above the write-up. The header is measured only at full size,
-  // which is how it stands whenever the write-up is at the top and the two have to line up.
-  useLayoutEffect(() => {
-    const el = panel.current
-    if (!el) return
-    const measure = () => {
-      el.style.setProperty('--panel-h', `${el.clientHeight}px`)
-      const head = el.querySelector('header')
-      if (head && !el.hasAttribute('data-compact'))
-        el.style.setProperty('--head-h', `${head.offsetHeight}px`)
-    }
-    measure()
-    const ro = new ResizeObserver(measure)
-    ro.observe(el)
-    return () => ro.disconnect()
-  }, [])
   const onScroll = useCallback(() => {
     const y = scroller.current?.scrollTop ?? 0
     setCompact((c) => (y > 32 ? true : y < 4 ? false : c))
@@ -501,8 +474,10 @@ export function StoryPanel({
         )}
         style={discAccent(bubble.slug)}
       >
-        {/* The grained gradient the bubble's disc wears, grown to the panel's size: the header and
-            the recap sit straight on it, and the write-up's card scrolls up over it. */}
+        {/* The grained gradient the bubble's disc wears, grown to the panel's size. It stays put:
+            the header, the summary and the gallery all sit straight on this one layer, so they're
+            always the same picture (scrolled, or pulled past the top), and the write-up's card
+            scrolls up over it. */}
         <div
           ref={surface}
           aria-hidden
@@ -559,15 +534,10 @@ export function StoryPanel({
           role="region"
           aria-label={`${bubble.title}: the story`}
           className={cn(
-            'min-h-0 flex-1 overflow-y-auto overscroll-contain focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring short:overflow-visible',
-            opened && !closing && 'story-under'
+            'min-h-0 flex-1 overflow-y-auto overscroll-contain focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring short:overflow-visible'
           )}
         >
-          <div ref={content} className="relative isolate">
-            <div
-              aria-hidden
-              className="story-surface story-surface-scroll pointer-events-none absolute inset-x-0 -z-10"
-            />
+          <div ref={content}>
             <Body
               bubble={bubble}
               story={story}
@@ -687,7 +657,10 @@ const Body = memo(function Body({
       {story && story.gallery.length > 0 && (
         <Gallery items={story.gallery} settleMs={settleMs} />
       )}
-      <div className="bg-card">
+      {/* The card runs on below the write-up's end (a shadow, so it adds nothing to scroll): pulled
+          up past the bottom, the gap above the footer is the card, as the footer is, not the
+          surface behind. */}
+      <div className="bg-card shadow-[0_60vh_0_var(--card)]">
         <div className="mx-auto w-full max-w-4xl space-y-12 px-5 pt-10 pb-12 sm:px-10">
           {story && story.sections.length > 0 ? (
             story.sections.map((s) => (

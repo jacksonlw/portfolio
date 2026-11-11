@@ -1396,7 +1396,7 @@ html.dark .node-disc::before {
   background-image: var(--grain-on), var(--pools);
   background-blend-mode: var(--grain-blend), normal;
 }
-/* A Story's surfaces are large (the panel's size, three times over while it opens), and painting
+/* A Story's surfaces are large (the panel's size, twice over while it opens), and painting
    six soft gradients with a blend at that size is the costly part on a slow phone. So there the
    pools are painted at an eighth of the size (a sixty-fourth of the pixels) on a layer of their
    own and scaled up by the GPU, which costs nothing and can't be told apart on shapes this soft;
@@ -1446,14 +1446,6 @@ html.dark .node-disc::before {
     color-mix(in oklab, var(--card) 80%, #000)
   );
 }
-/* The copy of a Story's surface that scrolls with its write-up (story-panel.tsx): the same picture
-   at the same size as the one fixed behind the panel, lying exactly over it until you scroll. So
-   the header, the summary and the gallery read as one gradient, and the header's part stays put
-   as the rest moves off under it. */
-.story-surface-scroll {
-  top: calc(-1 * var(--head-h, 0px));
-  height: var(--panel-h, 100%);
-}
 /* On a disc it lies over the silver body, inside the rim and under the drawing. */
 .node-disc {
   position: relative;
@@ -1470,12 +1462,6 @@ html.dark .node-disc::before {
 }
 html.dark .node-disc::before {
   --surf-base: color-mix(in oklab, var(--disc-accent, #2b3bff) 16%, #1f2126);
-}
-
-/* Behind a Story's write-up, for when it's pulled past its ends: nothing above (the gap that opens
-   under the header shows the surface, as the header does) and the card below, as the footer is. */
-.story-under {
-  background: linear-gradient(transparent 50%, var(--card) 50%);
 }
 
 /* What lights up on hover takes the supernova's light, not the brand blue: chrome lines with
