@@ -4,8 +4,18 @@
 @import '../styles/brand-palette.css';
 
 /* The display type scale from the AnyForm brand (web/DESIGN.md): all semibold and tight, plus a
-   regular lede. Everything else uses Tailwind's default steps. */
+   regular lede. */
 @theme {
+  /* The small steps, each a pixel up from Tailwind's: on a portfolio nothing should be hard to
+     read. Nothing on the site is set smaller than 12px. */
+  --text-xs: 0.8125rem;
+  --text-xs--line-height: calc(1.125 / 0.8125);
+  --text-sm: 0.9375rem;
+  --text-sm--line-height: calc(1.3125 / 0.9375);
+  --text-base: 1.0625rem;
+  --text-base--line-height: 1.5;
+  --text-lg: 1.1875rem;
+  --text-lg--line-height: calc(1.75 / 1.1875);
   --text-display-xl: 4.5rem;
   --text-display-xl--line-height: 1;
   --text-display-xl--letter-spacing: -0.04em;
@@ -1003,8 +1013,14 @@ html.dark .board-line {
 }
 
 /* Node discs, in both themes: a silver body lit by a soft glow of the drawing's colour
-   (--disc-accent), a specular sheen across the top and a polished chrome rim. Graphite in dark mode.
-   Hovered or lit, the glow strengthens, the rim picks up the colour and the disc gives off light. */
+   (--disc-accent), graphite in dark mode. At rest a disc has no rim to speak of: its surface runs
+   to its edge, and what shapes it is light. The board's light is the photo at its centre, so each
+   disc is told which way that lies (--lx, --ly: a unit vector, set per node in constellation.tsx)
+   and is brightest on that side, with a hairline of light along that edge, a hairline of shade
+   along the far one, and its shadow thrown away from the centre (.node-disc::after, and the
+   box-shadow here). Off the board the light comes from the top left, as the page's does.
+   The polished chrome rim is kept for a disc that's hovered or lit, where it picks up the colour
+   and the disc gives off light, and for the one in a Story's header ([data-rim]). */
 .node-disc {
   border-color: transparent;
   background:
@@ -1028,10 +1044,10 @@ html.dark .board-line {
       padding-box,
     var(--node-rim) border-box;
   box-shadow:
-    0 1px 0 rgb(255 255 255 / 0.6) inset,
-    0 10px 22px -10px
-      color-mix(in oklab, var(--disc-deep, #1c1e23) 45%, rgb(28 30 35 / 0.5)),
-    0 2px 6px -2px rgb(28 30 35 / 0.18);
+    calc(var(--lx, -0.5) * -5px) calc(var(--ly, -0.7) * -5px) 14px -6px
+      color-mix(in oklab, var(--disc-deep, #1c1e23) 10%, rgb(28 30 35 / 0.2)),
+    calc(var(--lx, -0.5) * -1.5px) calc(var(--ly, -0.7) * -1.5px) 4px -1px
+      rgb(28 30 35 / 0.08);
 }
 
 .node-disc[data-lit] {
@@ -1086,9 +1102,10 @@ html.dark .node-disc {
       padding-box,
     var(--node-rim-dark) border-box;
   box-shadow:
-    0 8px 20px -10px rgb(0 0 0 / 0.7),
-    0 0 18px -4px
-      color-mix(in oklab, var(--disc-accent, #2b3bff) 22%, transparent);
+    calc(var(--lx, -0.5) * -7px) calc(var(--ly, -0.7) * -7px) 16px -5px
+      rgb(0 0 0 / 0.75),
+    calc(var(--lx, -0.5) * 5px) calc(var(--ly, -0.7) * 5px) 16px -8px
+      color-mix(in oklab, var(--disc-accent, #2b3bff) 30%, transparent);
 }
 
 html.dark .node-disc[data-lit] {
@@ -1217,48 +1234,654 @@ html.dark {
 }
 
 /*
- * The portrait's grade: a light touch so the photo sits in the theme without hiding the face.
- * Light mode cools it toward the paper background with a faint brand-blue edge; dark mode lowers it
- * into the night sky, with a cool blue cast from the top left (where the page's light comes from)
- * and the edges falling off to ink. The face, in the middle, stays close to the original.
+ * The portrait: you, cut out of the photo's room, standing in front of polished chrome. The photo
+ * was taken in warm, flat room light; the scene is cool metal lit from the top left. So the figure
+ * is relit to belong in it, in layers that fall only on the figure (masked by its outline,
+ * --figure-mask, set in constellation.tsx):
+ *   - the photo itself is given a little more contrast and colour (.portrait-photo);
+ *   - a key light from the top left and a falloff toward the bottom right shape it, and a faint
+ *     cast of the chrome's own tint ties its colours to the surface behind (.portrait-light);
+ *   - a faint rim of light runs along its top-left edges, where the key catches it, and a dimmer
+ *     violet one along the right, bounced off the chrome (.portrait-rim).
+ * Then the whole figure throws its shadow down and to the right onto the chrome: a tight one
+ * where it's nearest the surface and a wider soft one beyond, both light and tinted (never
+ * black), which is what lifts it off. Every drawing on a disc throws the same kind of light
+ * shadow (.node-disc > .ill, below). Sizes are in cqw, off the photo's own width, so it's the
+ * same picture at any size.
  */
-.portrait-photo {
-  filter: saturate(0.9) contrast(1.02);
+.portrait-disc {
+  container-type: inline-size;
 }
-.portrait-grade {
+/* A slim rim, as the discs around it have: a line of the chrome (it used to be a 3px band), just
+   enough to part the photo from the light moving round it. Hovered or open, it takes its rings of
+   light as well (.lit-light). */
+.portrait-disc::after {
+  content: '';
   position: absolute;
   inset: 0;
+  z-index: 1;
+  padding: 1.5px;
   border-radius: inherit;
   pointer-events: none;
-  background:
-    radial-gradient(
-      75% 75% at 55% 40%,
-      transparent 55%,
-      color-mix(in oklab, var(--brand) 20%, transparent) 100%
-    ),
-    linear-gradient(
-      160deg,
-      color-mix(in oklab, #dfe6ff 35%, transparent),
-      transparent 60%
-    );
-  mix-blend-mode: soft-light;
+  /* The darker chrome on both pages: pale chrome is lost against the light one. */
+  background: var(--chrome-rim-dark);
+  /* Only the padding is kept: the ring. */
+  mask:
+    linear-gradient(#000 0 0) content-box exclude,
+    linear-gradient(#000 0 0);
+}
+.portrait-figure {
+  position: absolute;
+  inset: 0;
+  filter: drop-shadow(0.5cqw 0.7cqw 0.8cqw rgb(52 48 92 / 0.2))
+    drop-shadow(3cqw 3cqw 3.5cqw rgb(52 48 92 / 0.32));
+}
+html.dark .portrait-figure {
+  filter: drop-shadow(0.5cqw 0.7cqw 0.8cqw rgb(10 10 24 / 0.3))
+    drop-shadow(3cqw 3cqw 3.5cqw rgb(10 10 24 / 0.45));
+}
+.portrait-photo {
+  filter: saturate(1.02) contrast(1.04) brightness(0.94);
 }
 html.dark .portrait-photo {
-  filter: saturate(0.82) brightness(0.94) contrast(1.06);
+  filter: saturate(0.98) contrast(1.05) brightness(0.91);
 }
-html.dark .portrait-grade {
+/* A thin line round the figure, as every drawing on the board has, but of polished metal, not
+   flat ink: the chrome rim's own sweep of silver and faint colour, so it catches the light
+   differently along its length, and a little see-through, so it reads as a drawn edge and never
+   as a strip of the old background left behind. It's the figure's outline, grown a hair's width
+   every way (the mask laid eight times, each nudged outward), sitting behind the photo so only
+   the sliver outside the figure shows. Dark ink on the light page, silver chrome on the dark. */
+.portrait-outline {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  --o: 0.45cqw;
+  --d: calc(var(--o) * 0.7);
+  /* On the light page it's the drawings' own dark ink, with a little sheen along it. */
+  background: linear-gradient(
+    135deg,
+    var(--ink, #1e1e24) 0%,
+    #454a54 35%,
+    var(--ink, #1e1e24) 60%,
+    #3a3e46 85%,
+    var(--ink, #1e1e24) 100%
+  );
+  opacity: 0.85;
+  mask-image:
+    var(--figure-mask), var(--figure-mask), var(--figure-mask),
+    var(--figure-mask), var(--figure-mask), var(--figure-mask),
+    var(--figure-mask), var(--figure-mask);
+  mask-size: 100% 100%;
+  mask-repeat: no-repeat;
+  mask-position:
+    var(--o) 0,
+    calc(var(--o) * -1) 0,
+    0 var(--o),
+    0 calc(var(--o) * -1),
+    var(--d) var(--d),
+    calc(var(--d) * -1) var(--d),
+    var(--d) calc(var(--d) * -1),
+    calc(var(--d) * -1) calc(var(--d) * -1);
+}
+html.dark .portrait-outline {
+  background: var(--chrome-rim);
+  opacity: 0.55;
+}
+.portrait-light,
+.portrait-rim,
+.portrait-rim::before,
+.portrait-rim::after {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.portrait-light {
+  mask: var(--figure-mask) center / 100% 100% no-repeat;
+  mix-blend-mode: soft-light;
+  /* Light on the face that's warm, not white: it lifts the skin and keeps its colour, where
+     plain brightening would wash it out. */
+  --face: radial-gradient(
+    ellipse 26% 30% at 51% 35%,
+    rgb(255 222 200 / 0.6) 0%,
+    rgb(255 222 200 / 0.3) 55%,
+    transparent 100%
+  );
   background:
-    radial-gradient(
-      75% 75% at 55% 40%,
-      transparent 50%,
-      color-mix(in oklab, #0b0b0c 65%, transparent) 100%
+    var(--face),
+    linear-gradient(
+      145deg,
+      rgb(232 240 255 / 0.38) 0%,
+      rgb(232 240 255 / 0.12) 30%,
+      transparent 52%
     ),
     linear-gradient(
-      150deg,
-      color-mix(in oklab, #5b8cff 30%, transparent),
-      transparent 40%
+      325deg,
+      rgb(56 52 96 / 0.5) 0%,
+      rgb(56 52 96 / 0.18) 30%,
+      transparent 55%
+    ),
+    linear-gradient(rgb(196 206 232 / 0.07), rgb(196 206 232 / 0.07));
+}
+html.dark .portrait-light {
+  background:
+    var(--face),
+    linear-gradient(
+      145deg,
+      rgb(214 226 255 / 0.34) 0%,
+      rgb(214 226 255 / 0.1) 28%,
+      transparent 48%
+    ),
+    linear-gradient(
+      325deg,
+      rgb(30 30 60 / 0.5) 0%,
+      rgb(30 30 60 / 0.2) 30%,
+      transparent 55%
+    ),
+    linear-gradient(rgb(120 128 190 / 0.12), rgb(120 128 190 / 0.12));
+}
+/* A rim is the figure's outline less the same outline nudged away from the light: what's left is
+   a sliver along the edges that face it. */
+.portrait-rim::before,
+.portrait-rim::after {
+  content: '';
+  mask-image: var(--figure-mask), var(--figure-mask);
+  mask-size: 100% 100%;
+  mask-repeat: no-repeat;
+  mask-composite: subtract;
+  mix-blend-mode: screen;
+  filter: blur(0.12cqw);
+}
+.portrait-rim::before {
+  mask-position:
+    0 0,
+    0.5cqw 0.4cqw;
+  background: linear-gradient(
+    145deg,
+    rgb(244 250 255 / 0.85) 0%,
+    rgb(206 236 255 / 0.5) 40%,
+    transparent 65%
+  );
+  opacity: 0.3;
+}
+.portrait-rim::after {
+  mask-position:
+    0 0,
+    -0.5cqw 0.2cqw;
+  background: linear-gradient(
+    270deg,
+    color-mix(in oklab, var(--iri-violet) 50%, rgb(255 255 255 / 0.45)) 0%,
+    transparent 60%
+  );
+  opacity: 0.3;
+}
+html.dark .portrait-rim::before {
+  background: linear-gradient(
+    145deg,
+    rgb(226 240 255 / 0.8) 0%,
+    color-mix(in oklab, var(--iri-cyan) 35%, rgb(200 220 255 / 0.4)) 45%,
+    transparent 65%
+  );
+  opacity: 0.45;
+}
+html.dark .portrait-rim::after {
+  background: linear-gradient(
+    270deg,
+    color-mix(in oklab, var(--iri-violet) 75%, rgb(255 255 255 / 0.5)) 0%,
+    transparent 62%
+  );
+  opacity: 0.5;
+}
+
+/* The sun's corona: what's left of the supernova, still burning round your photo. Not a glow
+   painted on (a box-shadow is a flat ring): it's the core's own blobs of colour (core-churn), lurching slowly about behind the disc so that soft light wells out past
+   the rim, now here, now there, like the surface of a sun. Three layers at different speeds (two of colour, one of chrome) never
+   line up twice the same way, Each blob is a soft gradient painted once and then only moved, so the GPU
+   slides a picture it already has. With motion unwelcome, or on a low-end device, it's simply a soft
+   still halo. */
+/* The corona's sizes are in cqw, off the photo's width. */
+/* The sun's light keeps to the cool end of the colour wheel: teal, cyan, blue, indigo and a
+   steel blue. No pink or violet, no yellow, orange or red: cold light on metal, never a rainbow. */
+.sun {
+  container-type: inline-size;
+  --sun-mint: #35c9c0;
+  --sun-cyan: var(--iri-cyan);
+  --sun-blue: #3f7dff;
+  --sun-violet: #4b55d6;
+  --sun-pink: #6f8fc4;
+  --sun-teal: #1fa6ad;
+  /* Silver patches among the colours, on the light page only: on the dark page they'd be the one
+     neutral thing in it. */
+  --sun-silver: #e8ebef;
+}
+html.dark .sun {
+  --sun-silver: transparent;
+}
+.sun-corona,
+.sun-corona > span,
+.sun-corona::before,
+.sun-corona::after,
+.sun-corona > span::before {
+  position: absolute;
+  border-radius: 50%;
+  pointer-events: none;
+}
+.sun-corona {
+  /* Close in: the light reaches only a little way past the rim. */
+  inset: -11%;
+  z-index: -1;
+  --corona: 1;
+  /* A feathered edge: the light thins out to nothing, with no outline to find. */
+  mask-image: radial-gradient(
+    circle closest-side,
+    #000 78%,
+    rgb(0 0 0 / 0.45) 89%,
+    transparent 100%
+  );
+}
+.sun-corona > span {
+  inset: 0;
+}
+.sun-corona::before,
+.sun-corona::after,
+.sun-corona > span::before {
+  content: '';
+  /* No blur filter: the gradients below fade out by themselves, and a filter on a moving layer is
+     run again every frame. Each patch of light sits on the disc's rim and fades to nothing before
+     the layer's own edge, so there's no edge to see. */
+  inset: 0;
+  --g: 17% 17%;
+  opacity: calc(var(--corona) * var(--blob, 0.6));
+  will-change: translate, scale;
+}
+/* Cyan and violet, wandering one way. */
+.sun-corona::after {
+  --blob: 0.85;
+  --j1x: -7%;
+  --j1y: -5%;
+  --j2x: 6%;
+  --j2y: -7%;
+  --j3x: 8%;
+  --j3y: 5%;
+  background:
+    radial-gradient(
+      var(--g) at 25% 25%,
+      var(--sun-cyan) 0%,
+      color-mix(in oklab, var(--sun-cyan) 55%, transparent) 45%,
+      transparent 100%
+    ),
+    radial-gradient(
+      var(--g) at 75% 75%,
+      var(--sun-violet) 0%,
+      color-mix(in oklab, var(--sun-violet) 55%, transparent) 45%,
+      transparent 100%
+    ),
+    radial-gradient(
+      var(--g) at 50% 15%,
+      var(--sun-mint) 0%,
+      color-mix(in oklab, var(--sun-mint) 55%, transparent) 45%,
+      transparent 100%
     );
-  mix-blend-mode: soft-light;
+}
+/* Chrome: patches of polished silver between the colours, with a little coral, so it reads as
+   lit metal and not only as a rainbow. Patches, never a ring. */
+.sun-corona::before {
+  --blob: 0.8;
+  --j1x: 5%;
+  --j1y: -6%;
+  --j2x: -6%;
+  --j2y: -3%;
+  --j3x: -3%;
+  --j3y: 7%;
+  background:
+    radial-gradient(
+      var(--g) at 15% 50%,
+      var(--sun-silver) 0%,
+      color-mix(in oklab, var(--sun-silver) 55%, transparent) 45%,
+      transparent 100%
+    ),
+    radial-gradient(
+      var(--g) at 85% 50%,
+      var(--sun-silver) 0%,
+      color-mix(in oklab, var(--sun-silver) 55%, transparent) 45%,
+      transparent 100%
+    ),
+    radial-gradient(
+      var(--g) at 50% 85%,
+      var(--sun-teal) 0%,
+      color-mix(in oklab, var(--sun-teal) 55%, transparent) 45%,
+      transparent 100%
+    ),
+    radial-gradient(
+      var(--g) at 36% 17%,
+      var(--sun-silver) 0%,
+      color-mix(in oklab, var(--sun-silver) 55%, transparent) 45%,
+      transparent 100%
+    );
+}
+/* Magenta and gold, wandering the other. */
+.sun-corona > span::before {
+  --blob: 0.75;
+  --j1x: 6%;
+  --j1y: 6%;
+  --j2x: -7%;
+  --j2y: 4%;
+  --j3x: -4%;
+  --j3y: -8%;
+  background:
+    radial-gradient(
+      var(--g) at 75% 25%,
+      var(--sun-pink) 0%,
+      color-mix(in oklab, var(--sun-pink) 55%, transparent) 45%,
+      transparent 100%
+    ),
+    radial-gradient(
+      var(--g) at 25% 75%,
+      var(--sun-blue) 0%,
+      color-mix(in oklab, var(--sun-blue) 55%, transparent) 45%,
+      transparent 100%
+    );
+}
+html.dark .sun-corona {
+  --corona: 0.8;
+}
+/* Inside the disc the backdrop is made of shapes: seven soft-edged blobs, one for each of the
+   corona's colours and one of chrome, each wandering its own long way round the disc (the core's
+   churn again, with far bigger steps, so a shape crosses most of the disc and swells and shrinks
+   as it goes). Each keeps its own time, so where the colours sit and which ones meet never
+   stops changing, and the eye can follow a shape as it travels. The gradients' film grain lies
+   over them (.sun-grain), so it's a grained gradient like every other disc's, only alive. Each
+   shape starts where its colour sits in the corona outside (cyan upper left, teal at the top,
+   steel blue upper right, indigo lower right, blue lower left) and is a
+   lopsided blob (.sun-shape), each a different shape and each turning slowly as it drifts, so its outline
+   keeps changing. Between them they cover most of the disc, with the metal showing through the
+   gaps that open and close as they move. With
+   motion unwelcome the shapes simply rest where they start. */
+.sun-surface {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0.92;
+}
+html.dark .sun-surface {
+  opacity: 0.72;
+}
+.sun-shape {
+  position: absolute;
+  /* The box is bigger than the blob (--w, --h): the colour fades out inside it. */
+  left: calc(var(--x) - var(--w) * 0.3);
+  top: calc(var(--y) - var(--h) * 0.3);
+  width: calc(var(--w) * 1.6);
+  height: calc(var(--h) * 1.6);
+  /* A blob with its blur built in: two lobes of colour, one off to a side (which is what makes
+     it lopsided), each fading out along a long tail. Painted once and then only moved, turned and
+     scaled by the GPU. A live blur filter here would be run again on every frame for every
+     blob, which is what this replaced. */
+  background:
+    radial-gradient(
+      ellipse 42% 40% at 45% 53%,
+      var(--c) 0%,
+      color-mix(in oklab, var(--c) 78%, transparent) 30%,
+      color-mix(in oklab, var(--c) 42%, transparent) 58%,
+      color-mix(in oklab, var(--c) 12%, transparent) 82%,
+      transparent 100%
+    ),
+    radial-gradient(
+      ellipse 30% 32% at var(--bx, 68%) var(--by, 36%),
+      var(--c) 0%,
+      color-mix(in oklab, var(--c) 60%, transparent) 40%,
+      color-mix(in oklab, var(--c) 18%, transparent) 75%,
+      transparent 100%
+    );
+  will-change: translate, scale, rotate;
+}
+.sun-shape:nth-child(1) {
+  --c: var(--sun-cyan);
+  --x: 0%;
+  --y: 2%;
+  --w: 50%;
+  --h: 44%;
+  --j1x: 50%;
+  --j1y: 30%;
+  --j2x: 15%;
+  --j2y: 75%;
+  --j3x: 80%;
+  --j3y: 5%;
+  --t: 16s;
+  --spin: 38s;
+  --turn: normal;
+  --bx: 68%;
+  --by: 36%;
+}
+.sun-shape:nth-child(2) {
+  --c: var(--sun-pink);
+  --x: 52%;
+  --y: -2%;
+  --w: 46%;
+  --h: 48%;
+  --j1x: -60%;
+  --j1y: 40%;
+  --j2x: -15%;
+  --j2y: 80%;
+  --j3x: 20%;
+  --j3y: 25%;
+  --t: 21s;
+  --spin: 46s;
+  --turn: reverse;
+  --bx: 30%;
+  --by: 34%;
+}
+.sun-shape:nth-child(3) {
+  --c: var(--sun-blue);
+  --x: -2%;
+  --y: 52%;
+  --w: 46%;
+  --h: 42%;
+  --j1x: 65%;
+  --j1y: -35%;
+  --j2x: 30%;
+  --j2y: -80%;
+  --j3x: 90%;
+  --j3y: 5%;
+  --t: 18s;
+  --spin: 52s;
+  --turn: normal;
+  --bx: 64%;
+  --by: 68%;
+}
+.sun-shape:nth-child(4) {
+  --c: var(--sun-violet);
+  --x: 48%;
+  --y: 46%;
+  --w: 52%;
+  --h: 48%;
+  --j1x: -60%;
+  --j1y: -20%;
+  --j2x: -30%;
+  --j2y: -70%;
+  --j3x: 5%;
+  --j3y: -45%;
+  --t: 24s;
+  --spin: 41s;
+  --turn: reverse;
+  --bx: 34%;
+  --by: 66%;
+}
+.sun-shape:nth-child(5) {
+  --c: var(--sun-mint);
+  --x: 30%;
+  --y: -6%;
+  --w: 40%;
+  --h: 38%;
+  --j1x: 60%;
+  --j1y: 55%;
+  --j2x: -60%;
+  --j2y: 50%;
+  --j3x: -30%;
+  --j3y: 95%;
+  --t: 14s;
+  --spin: 33s;
+  --turn: normal;
+  --bx: 70%;
+  --by: 50%;
+}
+.sun-shape:nth-child(6) {
+  --c: var(--sun-teal);
+  --x: 40%;
+  --y: 62%;
+  --w: 38%;
+  --h: 36%;
+  --j1x: -75%;
+  --j1y: -30%;
+  --j2x: 50%;
+  --j2y: -65%;
+  --j3x: 70%;
+  --j3y: 15%;
+  --t: 19s;
+  --spin: 57s;
+  --turn: reverse;
+  --bx: 48%;
+  --by: 28%;
+}
+.sun-shape:nth-child(7) {
+  --c: var(--sun-silver);
+  --x: 30%;
+  --y: 30%;
+  --w: 30%;
+  --h: 28%;
+  --j1x: 65%;
+  --j1y: -70%;
+  --j2x: -70%;
+  --j2y: 50%;
+  --j3x: 50%;
+  --j3y: 65%;
+  --t: 27s;
+  --spin: 44s;
+  --turn: normal;
+  --bx: 32%;
+  --by: 48%;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .sun-shape {
+    animation:
+      core-churn var(--t, 18s) cubic-bezier(0.45, 0, 0.55, 1) infinite alternate,
+      blob-turn var(--spin, 40s) linear infinite var(--turn, normal);
+  }
+}
+/* A lopsided shape turning slowly looks as if it's changing shape: no two moments alike, and
+   nothing repainted (the turn is the GPU's). */
+@keyframes blob-turn {
+  to {
+    rotate: 1turn;
+  }
+}
+/* The silver blob is clear on the dark page (--sun-silver): don't keep a layer moving for it. */
+html.dark .sun-shape:nth-child(7) {
+  display: none;
+}
+html[data-story-open] .sun-shape,
+html.still .sun-shape {
+  animation-play-state: paused;
+}
+.lite .sun-shape {
+  animation: none;
+}
+.sun-grain {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image: var(--grain-pale);
+  mix-blend-mode: multiply;
+}
+html.dark .sun-grain {
+  background-image: var(--grain);
+  mix-blend-mode: overlay;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .sun-corona::before,
+  .sun-corona::after,
+  .sun-corona > span::before {
+    animation: core-churn 11s cubic-bezier(0.6, 0, 0.4, 1) infinite alternate;
+  }
+  .sun-corona::after {
+    animation-duration: 13s;
+  }
+  .sun-corona::before {
+    animation-duration: 19s;
+    animation-delay: -9s;
+  }
+  .sun-corona > span::before {
+    animation-duration: 17s;
+    animation-delay: -6s;
+  }
+}
+/* It rests with everything else: under a Story, when the visitor pauses the page, and while the
+   intro waits. A low-end device gets the still halo. */
+html[data-story-open] :is(.sun-corona, .sun-corona *, .sun-corona > span),
+html.still :is(.sun-corona, .sun-corona *) {
+  animation-play-state: paused;
+}
+html[data-story-open] .sun-corona::before,
+html[data-story-open] .sun-corona::after,
+html[data-story-open] .sun-corona > span::before,
+html.still .sun-corona::before,
+html.still .sun-corona::after,
+html.still .sun-corona > span::before {
+  animation-play-state: paused;
+}
+.lite .sun-corona::before,
+.lite .sun-corona::after,
+.lite .sun-corona > span,
+.lite .sun-corona > span::before {
+  animation: none;
+}
+
+/* A satellite opens somewhere else, and says so when it's lit: a small arrow just off the disc's
+   top right. It comes in the way it points, sliding up and to the right as it's uncovered from
+   its bottom-left corner. It sits inside the link, so it floats and sways with the node. */
+.sat-arrow {
+  position: absolute;
+  /* The disc's centre is the link's centre line, 0.25rem (its padding) plus a radius down; the
+     arrow sits out along the 45-degree line, clear of the rim by most of its own width. */
+  left: calc(50% + 1.27rem * var(--node-k, 1) + 0.8rem);
+  top: calc(0.53rem * var(--node-k, 1) - 0.55rem);
+  width: 1.3rem;
+  height: 1.3rem;
+  color: var(--foreground);
+  pointer-events: none;
+  opacity: 0;
+  translate: calc(-50% - 0.55rem) calc(-50% + 0.55rem);
+  clip-path: inset(100% 100% 0 0);
+  transition:
+    translate 240ms cubic-bezier(0.2, 0.8, 0.2, 1),
+    clip-path 240ms cubic-bezier(0.2, 0.8, 0.2, 1),
+    opacity 120ms ease-out;
+}
+[data-on] > .sat-arrow {
+  opacity: 1;
+  translate: -50% -50%;
+  clip-path: inset(0);
+}
+@media (prefers-reduced-motion: reduce) {
+  .sat-arrow {
+    transition: none;
+  }
+}
+
+/* A drawing stands a little off its disc's surface too: a light, tinted shadow under it, from the
+   same top-left light. */
+.node-disc > .ill {
+  filter: drop-shadow(0.06rem 0.1rem 0.12rem rgb(52 48 92 / 0.18))
+    drop-shadow(0.12rem 0.22rem 0.4rem rgb(52 48 92 / 0.22));
+}
+html.dark .node-disc > .ill {
+  filter: drop-shadow(0.06rem 0.1rem 0.12rem rgb(6 6 16 / 0.3))
+    drop-shadow(0.12rem 0.22rem 0.45rem rgb(6 6 16 / 0.42));
+}
+/* Low-end devices skip it: a filter is one more layer to keep for every disc. */
+.lite .node-disc > .ill {
+  filter: none;
 }
 
 /* Low-end devices (.lite on <html>, set before paint in app/layout.tsx): the same intro with about
@@ -1285,38 +1908,40 @@ html.still :is(.dust-group, .constellation-drift, .constellation-flow) {
 }
 
 /* The grained gradient: the one surface a bubble and its Story share. Soft pools of colour (the
-   drawing's own in one corner, and two neighbours of it on the colour wheel elsewhere) under heavy film
-   grain, so it reads as mottled and textured instead of a clean sweep. It's drawn in proportion to
+   drawing's own in one corner, and elsewhere two distinct colours that go with it: two
+   others picked to sit well with it, never a red beside a green: COMBOS in skills/disc.ts) under a light film grain,
+   so it reads as textured and never as shades of one colour. It's drawn in proportion to
    whatever it fills, so the disc carries it in miniature and it's the same picture grown large
    behind the Story: the panel opens out of the disc with it (story-panel.tsx). Where the pools sit
-   and how far the neighbours lean differs from one surface to the next (surfaceSeed in skills/disc.ts).
+   and which pair of colours it has differs from one surface to the next (surfaceSeed in skills/disc.ts).
    Text sits on it (a Story's title and summary), so the colour is held back enough to keep that
    text above 4.5:1 everywhere: pale pools on the light page, dim and quiet ones on the dark. */
 :root {
-  --grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='1.1' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3CfeComponentTransfer%3E%3CfeFuncR type='linear' slope='1.7' intercept='-.35'/%3E%3CfeFuncG type='linear' slope='1.7' intercept='-.35'/%3E%3CfeFuncB type='linear' slope='1.7' intercept='-.35'/%3E%3CfeFuncA type='linear' slope='0' intercept='.8'/%3E%3C/feComponentTransfer%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  --grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='1.1' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3CfeComponentTransfer%3E%3CfeFuncR type='linear' slope='1.7' intercept='-.35'/%3E%3CfeFuncG type='linear' slope='1.7' intercept='-.35'/%3E%3CfeFuncB type='linear' slope='1.7' intercept='-.35'/%3E%3CfeFuncA type='linear' slope='0' intercept='.42'/%3E%3C/feComponentTransfer%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
   /* The same grain kept to pale greys, to be multiplied onto the light page's colours (overlaid
      on colours that light, the dark grain all but vanishes). */
-  --grain-pale: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='1.1' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3CfeComponentTransfer%3E%3CfeFuncR type='linear' slope='.75' intercept='.42'/%3E%3CfeFuncG type='linear' slope='.75' intercept='.42'/%3E%3CfeFuncB type='linear' slope='.75' intercept='.42'/%3E%3CfeFuncA type='linear' slope='0' intercept='1'/%3E%3C/feComponentTransfer%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
-  --pool-own: 62%;
-  --pool-iri: 38%;
+  --grain-pale: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='1.1' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3CfeComponentTransfer%3E%3CfeFuncR type='linear' slope='.4' intercept='.62'/%3E%3CfeFuncG type='linear' slope='.4' intercept='.62'/%3E%3CfeFuncB type='linear' slope='.4' intercept='.62'/%3E%3CfeFuncA type='linear' slope='0' intercept='1'/%3E%3C/feComponentTransfer%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  --pool-own: 58%;
+  --pool-iri: 52%;
 }
 .dark {
   --pool-own: 12%;
-  --pool-iri: 14%;
+  --pool-iri: 18%;
 }
 /* Each pool fades out along a long, eased tail (no edge to find), and there are several of
    different shapes lapping over one another, with one pool of the surface's own colour laid over
    them to bite a curve out of the rest. So what's left reads as soft, uneven drifts of colour,
    not as ellipses. */
 .story-surface,
-.node-disc::before {
+.node-disc::before,
+.portrait-disc::before {
   --k1: var(--disc-accent, #ccdaff);
   --k2: oklch(
-    from var(--disc-accent, #ccdaff) l calc(c * 1.35) calc(h + var(--h2, 36))
+    from var(--disc-accent, #ccdaff) l max(c * 1.35, 0.1) var(--h2, 300)
   );
   --k3: oklch(
-    from var(--disc-accent, #ccdaff) calc(l * 0.9) calc(c * 1.35)
-      calc(h + var(--h3, -30))
+    from var(--disc-accent, #ccdaff) calc(l * 0.94) max(c * 1.35, 0.1)
+      var(--h3, 65)
   );
   --grain-on: var(--grain-pale);
   --grain-blend: multiply;
@@ -1386,16 +2011,89 @@ html.still :is(.dust-group, .constellation-drift, .constellation-flow) {
     );
 }
 .dark .story-surface,
-html.dark .node-disc::before {
+html.dark .node-disc::before,
+html.dark .portrait-disc::before {
   --grain-on: var(--grain);
   --grain-blend: overlay;
 }
 /* A disc is small, so it draws the whole recipe in one go: grain blended over the pools. */
-.node-disc::before {
+.node-disc::before,
+.portrait-disc::before {
   background-color: var(--surf-base);
   background-image: var(--grain-on), var(--pools);
   background-blend-mode: var(--grain-blend), normal;
 }
+/* Behind your photo is polished chrome, the metal of the supernova's core (.core-orb) at rest: one
+   smooth sweep of silver, a shade deeper through the middle, with only a breath of the core's
+   four-colour sheen over it and a soft highlight from the top left. Nothing in it is abrupt, so
+   the figure in front is what the eye goes to. It's the board's light source: bright silver on the
+   light page, graphite pooled with coloured light on the dark one, brightest behind your head, and the
+   supernova's light still churns around its rim (.sun-corona, below). */
+.portrait-disc::before {
+  --chrome: linear-gradient(
+    180deg,
+    #ffffff 0%,
+    #f1f3f6 30%,
+    #dde1e7 58%,
+    #e6e9ee 80%,
+    #f6f8fa 100%
+  );
+  --sheen: 9%;
+  --shine: 70%;
+  --radiance: rgb(255 255 255 / 0.6);
+  /* Held a touch under full brightness, so the figure in front isn't washed out. */
+  filter: brightness(1.02);
+  background-image:
+    var(--grain-on),
+    radial-gradient(circle at 50% 40%, var(--radiance) 0%, transparent 68%),
+    linear-gradient(
+      155deg,
+      color-mix(in oklab, #fbfcfd var(--shine), transparent) 0%,
+      transparent 38%
+    ),
+    radial-gradient(
+      circle at 25% 22%,
+      color-mix(in oklab, var(--iri-cyan) var(--sheen), transparent) 0%,
+      transparent 70%
+    ),
+    radial-gradient(
+      circle at 80% 30%,
+      color-mix(in oklab, var(--sun-blue) var(--sheen), transparent) 0%,
+      transparent 70%
+    ),
+    radial-gradient(
+      circle at 35% 85%,
+      color-mix(in oklab, var(--sun-teal) var(--sheen), transparent) 0%,
+      transparent 70%
+    ),
+    radial-gradient(
+      circle at 82% 80%,
+      color-mix(in oklab, var(--sun-violet) var(--sheen), transparent) 0%,
+      transparent 70%
+    ),
+    var(--chrome);
+  background-blend-mode:
+    var(--grain-blend), normal, normal, color, color, color, color, normal;
+}
+html.dark .portrait-disc::before {
+  --chrome: linear-gradient(
+    180deg,
+    #4a4f59 0%,
+    #383c44 32%,
+    #282b31 60%,
+    #30343b 82%,
+    #40444d 100%
+  );
+  /* On the dark page it's graphite, as the discs around it are, with the four colours pooled on
+     it as light (laid over the metal, where the pale chrome takes them as a tint). */
+  --sheen: 9%;
+  --shine: 0%;
+  --radiance: color-mix(in oklab, var(--iri-cyan) 10%, transparent);
+  filter: brightness(1.05);
+  background-blend-mode:
+    var(--grain-blend), normal, normal, normal, normal, normal, normal, normal;
+}
+
 /* A Story's surfaces are large (the panel's size, twice over while it opens), and painting
    six soft gradients with a blend at that size is the costly part on a slow phone. So there the
    pools are painted at an eighth of the size (a sixty-fourth of the pixels) on a layer of their
@@ -1447,21 +2145,84 @@ html.dark .node-disc::before {
   );
 }
 /* On a disc it lies over the silver body, inside the rim and under the drawing. */
-.node-disc {
+.node-disc,
+.portrait-disc {
   position: relative;
   isolation: isolate;
 }
-.node-disc::before {
+.node-disc::before,
+.portrait-disc::before {
   content: '';
   position: absolute;
   inset: 0;
   z-index: -1;
   border-radius: inherit;
   pointer-events: none;
+}
+.node-disc::before {
   --surf-base: color-mix(in oklab, var(--disc-accent, #ccdaff) 40%, #f3f5f7);
+}
+/* Your photo is cut out of its room and stands on the same grained gradient, inside its chrome
+   rim (.portrait-disc): the sun of the board wears what its planets wear, only brighter. */
+/* At rest the surface covers the rim (the border is 2px, and stays, so nothing moves when the rim
+   shows): only a lit disc, or a Story's, has it on show. */
+.node-disc:not([data-lit], [data-rim])::before {
+  inset: -2px;
+}
+/* The light on a disc: a soft bloom on the side facing the centre, a hairline of light along that
+   edge and one of shade along the far edge. Above the surface, under the drawing. */
+.node-disc::after {
+  content: '';
+  position: absolute;
+  inset: -2px;
+  z-index: -1;
+  border-radius: inherit;
+  pointer-events: none;
+  --lit: rgb(255 255 255 / 0.95);
+  --bloom: rgb(255 255 255 / 0.5);
+  --shade: color-mix(
+    in oklab,
+    var(--disc-deep, #1c1e23) 22%,
+    rgb(28 30 35 / 0.32)
+  );
+  --hair: color-mix(
+    in oklab,
+    var(--disc-deep, #1c1e23) 30%,
+    rgb(28 30 35 / 0.14)
+  );
+  background: radial-gradient(
+    circle at calc(50% + var(--lx, -0.5) * 46%)
+      calc(50% + var(--ly, -0.7) * 46%),
+    var(--bloom) 0%,
+    transparent 62%
+  );
+  box-shadow:
+    inset calc(var(--lx, -0.5) * -1.5px) calc(var(--ly, -0.7) * -1.5px) 1px
+      var(--lit),
+    inset calc(var(--lx, -0.5) * 2px) calc(var(--ly, -0.7) * 2px) 2.5px
+      var(--shade),
+    inset 0 0 0 1px var(--hair);
+}
+html.dark .node-disc::after {
+  --lit: color-mix(
+    in oklab,
+    var(--disc-accent, #ccdaff) 45%,
+    rgb(255 255 255 / 0.75)
+  );
+  --bloom: color-mix(in oklab, var(--disc-accent, #ccdaff) 22%, transparent);
+  --shade: rgb(0 0 0 / 0.6);
+  --hair: color-mix(in oklab, var(--disc-accent, #ccdaff) 22%, transparent);
+}
+/* With the rim on show, the light stays inside it and the hairlines give way to the chrome. */
+.node-disc:is([data-lit], [data-rim])::after {
+  inset: 0;
+  box-shadow: none;
 }
 html.dark .node-disc::before {
   --surf-base: color-mix(in oklab, var(--disc-accent, #2b3bff) 16%, #1f2126);
+  /* No text sits on a disc, so on the dark page its colours can be fuller than a Story's. */
+  --pool-own: 26%;
+  --pool-iri: 34%;
 }
 
 /* What lights up on hover takes the supernova's light, not the brand blue: chrome lines with
@@ -1497,7 +2258,7 @@ html.dark .star-lit {
   box-shadow: 0 0 0 3px color-mix(in oklab, var(--iri-cyan) 35%, transparent);
 }
 
-/* The lit photo keeps its chrome rim and gains the light around it. */
+/* The lit photo: rings of light around it (it has no rim of its own at rest). */
 .lit-light {
   box-shadow:
     0 0 0 5px color-mix(in oklab, #fbfcfd 85%, transparent),

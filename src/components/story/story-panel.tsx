@@ -462,7 +462,7 @@ export function StoryPanel({
           />
         )}
         <span className="min-w-0">
-          <span className="block text-[0.6875rem] leading-tight font-medium text-muted-foreground">
+          <span className="block text-xs leading-tight font-medium text-muted-foreground">
             {dir === 'prev' ? 'Previous' : 'Next'}
           </span>
           <span className="block truncate text-sm leading-tight font-semibold">
@@ -642,6 +642,8 @@ const Heading = memo(function Heading({
     <header className="relative z-20 shrink-0 px-5 pt-[max(1.25rem,env(safe-area-inset-top))] pb-4 transition-[padding,box-shadow] duration-200 ease-out group-data-[compact]/panel:pt-[max(0.5rem,env(safe-area-inset-top))] group-data-[compact]/panel:pb-2 group-data-[compact]/panel:shadow-[0_1px_0_var(--border),0_10px_18px_-14px_rgb(12_13_16/0.5)] motion-reduce:transition-none sm:px-10">
       <div className="mx-auto flex w-full max-w-4xl items-center gap-3 sm:gap-4">
         <span
+          // The Story's own disc keeps its full chrome rim (globals.css, .node-disc[data-rim]).
+          data-rim
           className="node-disc flex size-14 shrink-0 items-center justify-center rounded-full border-2 transition-[width,height] duration-200 ease-out group-data-[compact]/panel:size-10 motion-reduce:transition-none sm:size-[4.5rem] sm:group-data-[compact]/panel:size-10"
           style={discAccent(b.slug)}
         >
@@ -695,7 +697,7 @@ const Body = memo(function Body({
             story.sections.map((s) => (
               <section key={s.heading}>
                 <h3 className="text-title">{s.heading}</h3>
-                <div className="mt-4 space-y-4 text-[1.0625rem] leading-relaxed text-pretty text-foreground/90">
+                <div className="mt-4 space-y-4 text-[1.125rem] leading-relaxed text-pretty text-foreground/90">
                   {s.blocks.map((b, i) =>
                     b.kind === 'text' ? (
                       <p key={i}>

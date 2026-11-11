@@ -19,19 +19,89 @@ const ACCENTS = new Map<string, CSSProperties>()
 
 function makeAccent(key: string): CSSProperties {
   const accent = ILLUSTRATIONS[key]?.accent
-  return accent
-    ? ({
-        '--disc-accent': `var(--af-${accent})`,
-        '--disc-deep': `var(--af-${accent}-deep)`,
-        ...surfaceSeed(key)
-      } as CSSProperties)
-    : surfaceSeed(key)
+  if (!accent) return surfaceSeed(key)
+  const [h2, h3] = comboFor(key, accent)
+  return {
+    '--disc-accent': `var(--af-${accent})`,
+    '--disc-deep': `var(--af-${accent}-deep)`,
+    '--h2': h2,
+    '--h3': h3,
+    ...surfaceSeed(key)
+  } as CSSProperties
+}
+
+/** Hues (oklch, degrees) the pools are drawn in: the palette's own, plus teal and pink. */
+const HUE = {
+  rose: 25,
+  peach: 65,
+  gold: 93,
+  mint: 165,
+  teal: 205,
+  ocean: 240,
+  sky: 268,
+  violet: 300,
+  pink: 345
+} as const
+
+/**
+ * The two colours that go with each of the palette's, chosen by eye, not by rule: a rule (the
+ * complement, say) pairs red with green, which fight. So each colour has a few pairs that sit
+ * well with it, and none puts a red beside a green. Several discs share a colour (three are
+ * rose): each takes the next pair in turn, so no two discs of one colour look the same.
+ */
+const COMBOS: Record<string, readonly (readonly [number, number])[]> = {
+  rose: [
+    [HUE.gold, HUE.violet],
+    [HUE.peach, HUE.sky],
+    [HUE.pink, HUE.ocean],
+    [HUE.violet, HUE.peach]
+  ],
+  peach: [
+    [HUE.pink, HUE.violet],
+    [HUE.gold, HUE.sky],
+    [HUE.rose, HUE.ocean]
+  ],
+  sun: [
+    [HUE.peach, HUE.sky],
+    [HUE.violet, HUE.pink],
+    [HUE.mint, HUE.ocean]
+  ],
+  mint: [
+    [HUE.ocean, HUE.gold],
+    [HUE.teal, HUE.violet],
+    [HUE.sky, HUE.gold]
+  ],
+  ocean: [
+    [HUE.violet, HUE.mint],
+    [HUE.teal, HUE.pink],
+    [HUE.sky, HUE.peach]
+  ],
+  sky: [
+    [HUE.violet, HUE.peach],
+    [HUE.teal, HUE.pink],
+    [HUE.mint, HUE.violet]
+  ],
+  lavender: [
+    [HUE.pink, HUE.ocean],
+    [HUE.sky, HUE.peach],
+    [HUE.teal, HUE.pink]
+  ]
+}
+
+/** This key's pair: its turn among the drawings that share its colour, in the registry's order. */
+function comboFor(key: string, accent: string): readonly [number, number] {
+  const pairs = COMBOS[accent] ?? COMBOS.sky
+  const turn = Object.keys(ILLUSTRATIONS)
+    .filter((k) => ILLUSTRATIONS[k].accent === accent)
+    .indexOf(key)
+  return pairs[Math.max(0, turn) % pairs.length]
 }
 
 /**
  * How one grained gradient is laid out (globals.css, .story-surface): where its pools of colour
- * sit, how far each spreads and how far round the colour wheel the other two pools lean from
- * the drawing's own colour (one a little warmer, one a little cooler, so they always sit with it).
+ * sit and how far each spreads. (Which two colours go with the drawing's own is chosen with the
+ * drawing: COMBOS above. A surface with no drawing of its own, a picture in a Story, takes its
+ * Story's.)
  * Worked out from a key, so every surface is its own but always the same one: a bubble's disc and
  * its Story share theirs (the panel grows out of the disc), a gallery and each picture get their
  * own, and the server and the browser agree. It costs nothing to draw this way: the browser
@@ -60,7 +130,6 @@ function makeSeed(key: string): CSSProperties {
   const span = (lo: number, hi: number) => Math.round(lo + next() * (hi - lo))
   const flip = next() < 0.5
   const side = (x: number) => (flip ? 100 - x : x)
-  const lean = next() < 0.5 ? 1 : -1
   return {
     '--p1': `${side(span(-10, 30))}% ${span(-10, 28)}%`,
     '--p2': `${side(span(70, 110))}% ${span(-5, 45)}%`,
@@ -73,8 +142,6 @@ function makeSeed(key: string): CSSProperties {
     '--s3': `${span(55, 95)}% ${span(45, 75)}%`,
     '--s4': `${span(25, 55)}% ${span(35, 70)}%`,
     '--s5': `${span(35, 70)}% ${span(22, 45)}%`,
-    '--s6': `${span(28, 60)}% ${span(25, 50)}%`,
-    '--h2': lean * span(24, 48),
-    '--h3': -lean * span(18, 40)
+    '--s6': `${span(28, 60)}% ${span(25, 50)}%`
   } as CSSProperties
 }

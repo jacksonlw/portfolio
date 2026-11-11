@@ -2,6 +2,8 @@
 
 import {
   ArrowCounterClockwiseIcon,
+  ArrowUpRightIcon,
+  CaretRightIcon,
   PauseIcon,
   PlayIcon
 } from '@phosphor-icons/react/ssr'
@@ -48,10 +50,11 @@ import {
 } from '@/components/site/overlay'
 import { ACCENT_BG, ACCENT_STROKE, ACCENT_TEXT } from '@/lib/accent'
 import { cn } from '@/lib/cn'
-import { discAccent, surfaceSeed } from './disc'
+import { discAccent } from './disc'
 import { INTRO, type Intro } from './intro'
 import { LAYOUT, OFF_BOARD, type BubbleSize, type Layout } from './layouts'
 import photo from '../../../public/profile-cutout.png'
+import photoMask from '../../../public/profile-cutout-mask.png'
 
 /*
  * The constellation: the whole page. Jackson's Me node sits at the center, his satellites (resume,
@@ -124,9 +127,9 @@ const BUBBLE_STYLE: Record<
   BubbleSize,
   { disc: number; art: number; label: string }
 > = {
-  lg: { disc: 6.25, art: 4.2, label: 'text-[0.875em]/[1.43]' },
-  md: { disc: 5.4, art: 3.6, label: 'text-[0.875em]/[1.43]' },
-  sm: { disc: 4.5, art: 3, label: 'text-[0.75em]/[1.34]' }
+  lg: { disc: 6.25, art: 4.2, label: 'text-[0.9375em]/[1.4]' },
+  md: { disc: 5.4, art: 3.6, label: 'text-[0.9375em]/[1.4]' },
+  sm: { disc: 4.5, art: 3, label: 'text-[0.875em]/[1.4]' }
 }
 
 type Star = Skill & {
@@ -201,7 +204,7 @@ function collisions(
   const boxes = stars.map((s) => {
     const x = (s.x / 100) * W
     const y = (s.y / 100) * H
-    const w = s.name.length * 7 + 14
+    const w = s.name.length * 7.5 + 14
     return {
       l: x - w / 2,
       r: x + w / 2,
@@ -343,7 +346,10 @@ function nodeScales(k: number) {
 }
 
 /** A star's label, roughly (px at the usual text size): half its width, and its height with the dot. */
-const starLabel = (name: string) => ({ half: (name.length * 7 + 14) / 2, tall: 30 })
+const starLabel = (name: string) => ({
+  half: (name.length * 7.5 + 14) / 2,
+  tall: 30
+})
 
 /**
  * The stars on this board, and each area's center. Their spots are % of the board, so on a small
@@ -426,6 +432,27 @@ function spreadStars(
   // In their first order, which the lines and the intro count on.
   return { stars: out.sort((a, b) => a.i - b.i), hubs }
 }
+
+/**
+ * Which way the light falls on a node at `x`, `y` (% of a board `w` × `h` px): a unit vector from
+ * the node toward the photo at `me`, where the board's light comes from. The disc is lit on that
+ * side and throws its shadow the other way (globals.css, .node-disc: --lx, --ly).
+ */
+function lightFrom(
+  me: readonly [number, number],
+  x: number,
+  y: number,
+  w: number,
+  h: number
+): [number, number] {
+  const dx = ((me[0] - x) / 100) * w
+  const dy = ((me[1] - y) / 100) * h
+  const d = Math.hypot(dx, dy) || 1
+  return [Math.round((dx / d) * 100) / 100, Math.round((dy / d) * 100) / 100]
+}
+
+const lightVars = (lx: number, ly: number) =>
+  ({ '--lx': lx, '--ly': ly }) as CSSProperties
 
 /** What lights up with the active node. */
 function linksOf(
@@ -1018,35 +1045,51 @@ const satId = (kind: string) => `sat:${kind}`
 const starId = (name: string) => `skill:${name}`
 const bubbleId = (slug: string) => `bubble:${slug}`
 
-/** The grained gradient behind the photo: lavender, laid out as its own surface (disc.ts). */
-const PORTRAIT_SURFACE = {
-  '--disc-accent': 'var(--af-lavender)',
-  ...surfaceSeed('me')
+/** The shapes of colour drifting behind the photo (globals.css, .sun-shape: one rule each). */
+const SUN_SHAPES = [1, 2, 3, 4, 5, 6, 7]
+
+/** The figure's outline, as a CSS mask: the light laid on the photo falls only on the figure. */
+const FIGURE_MASK = {
+  '--figure-mask': `url(${photoMask.src})`
 } as CSSProperties
 
-/** Jackson's photo in its ring: his face, cut out of its room, on the grained gradient. */
+/**
+ * Jackson's photo in its ring: cut out of its room and standing in front of polished chrome, lit
+ * to belong there (globals.css, .portrait-figure and what's in it).
+ */
 function Portrait({ className, hit }: { className?: string; hit?: string }) {
   return (
     <span
       data-hit={hit}
       data-shape="circle"
-      className={cn(
-        'chrome-rim portrait-disc relative block overflow-hidden rounded-full border-[3px]',
-        className
-      )}
-      style={PORTRAIT_SURFACE}
+      className={cn('sun relative isolate block rounded-full', className)}
     >
-      <Image
-        src={photo}
-        alt={`Portrait of ${PROFILE.name}`}
-        fill
-        priority
-        placeholder="blur"
-        sizes="200px"
-        className="portrait-photo object-cover"
-      />
-      {/* A light grade that ties the photo to the theme (globals.css, .portrait-grade). */}
-      <span aria-hidden className="portrait-grade" />
+      {/* The light it gives off: the supernova's own light, still churning round it (globals.css). */}
+      <span aria-hidden className="sun-corona">
+        <span />
+      </span>
+      <span className="portrait-disc relative block size-full overflow-hidden rounded-full">
+        {/* Shapes of the same light drift about the disc behind the figure, under a film of grain. */}
+        <span aria-hidden className="sun-surface">
+          {SUN_SHAPES.map((n) => (
+            <i key={n} className="sun-shape" />
+          ))}
+        </span>
+        <span aria-hidden className="sun-grain" />
+        <span className="portrait-figure" style={FIGURE_MASK}>
+          <span aria-hidden className="portrait-outline" />
+          <Image
+            src={photo}
+            alt={`Portrait of ${PROFILE.name}`}
+            fill
+            priority
+            sizes="200px"
+            className="portrait-photo object-cover"
+          />
+          <span aria-hidden className="portrait-light" />
+          <span aria-hidden className="portrait-rim" />
+        </span>
+      </span>
     </span>
   )
 }
@@ -1610,6 +1653,8 @@ const IntroFx = memo(function IntroFx({
 /** A bubble on the board: its disc, title, tagline and dates, linking to its Story. */
 const BubbleNode = memo(function BubbleNode({
   bubble: b,
+  lx,
+  ly,
   lit,
   live,
   fly,
@@ -1619,6 +1664,9 @@ const BubbleNode = memo(function BubbleNode({
   desc
 }: {
   bubble: Bubble
+  /** Which way the photo's light reaches it (lightFrom). */
+  lx: number
+  ly: number
   lit: boolean
   live: boolean
   fly: Fly
@@ -1650,6 +1698,7 @@ const BubbleNode = memo(function BubbleNode({
       style={{
         left: `${b.x}%`,
         top: `${b.y}%`,
+        ...lightVars(lx, ly),
         // Put the disc's center (inside 0.5rem of padding) on the bubble's point.
         translate: `-50% calc(-${style.disc / 2}rem * var(--node-k, 1) - 0.5rem)`
       }}
@@ -1691,14 +1740,14 @@ const BubbleNode = memo(function BubbleNode({
           </span>
           <span
             data-hit={`project:${b.slug}`}
-            className="max-w-[13.5em] text-center text-[0.75em] leading-snug text-muted-foreground"
+            className="max-w-[12.5em] text-center text-[0.8125em] leading-snug text-muted-foreground"
           >
             {b.tagline}
           </span>
           {bubbleWhen(b) && (
             <span
               data-hit={`project:${b.slug}`}
-              className="mt-0.5 text-[0.6875em] leading-snug font-medium text-muted-foreground"
+              className="mt-0.5 text-[0.8125em] leading-snug font-medium text-muted-foreground"
             >
               {bubbleWhen(b)}
             </span>
@@ -1746,10 +1795,7 @@ const StarNode = memo(function StarNode({
         translate: s.above ? '-50% calc(-100% + 0.625rem)' : '-50% -0.625rem'
       }}
     >
-      <div
-        data-node={starId(s.name)}
-        className="will-change-transform"
-      >
+      <div data-node={starId(s.name)} className="will-change-transform">
         <button
           type="button"
           onFocus={() => open({ kind: 'skill', id: s.name })}
@@ -1782,7 +1828,7 @@ const StarNode = memo(function StarNode({
                 : 'text-muted-foreground group-hover:text-foreground'
             )}
             // Never smaller than its usual size, however small the board.
-            style={{ fontSize: 'calc(0.8125rem * var(--text-k, 1))' }}
+            style={{ fontSize: 'calc(0.875rem * var(--text-k, 1))' }}
           >
             {s.name}
           </span>
@@ -1808,6 +1854,8 @@ const SatelliteNode = memo(function SatelliteNode({
   y,
   ox,
   oy,
+  lx,
+  ly,
   isActive,
   live,
   fly,
@@ -1815,6 +1863,9 @@ const SatelliteNode = memo(function SatelliteNode({
   close
 }: {
   satellite: Satellite
+  /** Which way the photo's light reaches it (lightFrom). */
+  lx: number
+  ly: number
   /** Its spot (% of the board), and its offset from the photo (px). */
   x: number
   y: number
@@ -1836,6 +1887,7 @@ const SatelliteNode = memo(function SatelliteNode({
       style={{
         left: `${x}%`,
         top: `${y}%`,
+        ...lightVars(lx, ly),
         // Put the disc's center (inside 0.25rem of padding) on the satellite's point.
         translate: '-50% calc(-1.8rem * var(--node-k, 1) - 0.25rem)'
       }}
@@ -1853,10 +1905,15 @@ const SatelliteNode = memo(function SatelliteNode({
           data-on={isActive || undefined}
           className={cn(
             live && 'intro-piece',
-            'board-node group flex flex-col items-center rounded-lg p-1 focus-ring transition-opacity duration-300'
+            'board-node group relative flex flex-col items-center rounded-lg p-1 focus-ring transition-opacity duration-300'
           )}
           style={flight}
         >
+          {/* It opens somewhere else: an arrow off the disc's top right says so while it's lit
+              (globals.css, .sat-arrow). Inside the link, so it moves with the node. */}
+          {s.kind !== 'email' && (
+            <ArrowUpRightIcon weight="bold" aria-hidden className="sat-arrow" />
+          )}
           <SatelliteDisc
             satellite={s}
             lit={isActive}
@@ -1866,8 +1923,11 @@ const SatelliteNode = memo(function SatelliteNode({
           />
           <span
             data-hit={`satellite:${s.kind}`}
-            className={cn('mt-1 leading-[1.34] font-semibold', isActive && 'lit-text')}
-            style={{ fontSize: 'calc(0.75rem * var(--text-k, 1))' }}
+            className={cn(
+              'mt-1 leading-[1.34] font-semibold',
+              isActive && 'lit-text'
+            )}
+            style={{ fontSize: 'calc(0.8125rem * var(--text-k, 1))' }}
           >
             {s.label}
           </span>
@@ -1897,7 +1957,7 @@ const MeNode = memo(function MeNode({
       style={{
         left: `${me[0]}%`,
         top: `${me[1]}%`,
-        translate: '-50% calc(-4.5rem * var(--node-k, 1))'
+        translate: '-50% calc(-5.25rem * var(--node-k, 1))'
       }}
     >
       <div data-node={ME_ID} className="will-change-transform">
@@ -1925,12 +1985,12 @@ const MeNode = memo(function MeNode({
             'flex w-max cursor-default flex-col items-center rounded-2xl pb-2 text-center focus-ring'
           )}
           // The intro grows it from the photo's centre.
-          style={{ transformOrigin: '50% calc(4.5rem * var(--node-k, 1))' }}
+          style={{ transformOrigin: '50% calc(5.25rem * var(--node-k, 1))' }}
         >
           <Portrait
             hit="me"
             className={cn(
-              'size-[calc(9rem*var(--node-k,1))]',
+              'size-[calc(10.5rem*var(--node-k,1))]',
               meOpen && LIT_RING
             )}
           />
@@ -1945,7 +2005,7 @@ const MeNode = memo(function MeNode({
           <p
             data-hit="me"
             className="mt-1 leading-[1.43] whitespace-nowrap text-muted-foreground"
-            style={{ fontSize: 'calc(0.875rem * var(--text-k, 1))' }}
+            style={{ fontSize: 'calc(0.9375rem * var(--text-k, 1))' }}
           >
             {PROFILE.role} · {PROFILE.location.split(',')[0]}
           </p>
@@ -2246,7 +2306,8 @@ export function Constellation({
       )}
 
       {/* Pause the page's ambient motion (overlay.ts): beside the other round buttons. Not shown
-          under reduced motion, where none of it runs to begin with. */}
+          under reduced motion, where none of it runs to begin with, nor below `lg`, where the page
+          is a plain column with nothing to pause. */}
       <button
         type="button"
         onClick={() => setMotionPaused(!still)}
@@ -2254,7 +2315,7 @@ export function Constellation({
         aria-pressed={still}
         title={still ? 'Resume motion' : 'Pause motion'}
         className={cn(
-          'intro-chrome chrome-rim round-btn fixed right-[4.25rem] bottom-4 z-40 flex size-10 items-center justify-center rounded-full border-2 text-foreground shadow-card-hover focus-ring motion-reduce:hidden!',
+          'intro-chrome chrome-rim round-btn fixed right-[4.25rem] bottom-4 z-40 hidden size-10 items-center justify-center rounded-full border-2 text-foreground shadow-card-hover focus-ring motion-reduce:hidden! lg:flex',
           INTRO.ms > 0 && 'lg:right-[7.25rem]'
         )}
       >
@@ -2603,7 +2664,7 @@ const Board = memo(function Board({
       x: ME[0],
       y: ME[1],
       weight: 0.5,
-      r: 72 * disc,
+      r: 84 * disc,
       reach: REACH.me,
       pullReach: 30,
       travel: 3
@@ -3001,6 +3062,7 @@ const Board = memo(function Board({
           {satellites.map((s) => {
             const [x, y] = satPos[s.kind]
             const [ox, oy] = satOffset(s.kind)
+            const [lx, ly] = lightFrom(ME, x, y, boardSize[0], boardSize[1])
             return (
               <SatelliteNode
                 key={s.kind}
@@ -3009,6 +3071,8 @@ const Board = memo(function Board({
                 y={y}
                 ox={ox}
                 oy={oy}
+                lx={lx}
+                ly={ly}
                 isActive={activeSat?.kind === s.kind}
                 live={live}
                 fly={fly}
@@ -3024,19 +3088,26 @@ const Board = memo(function Board({
       <section>
         <h2 className="sr-only">Work and projects</h2>
         <ul role="list">
-          {bubbles.map((b) => (
-            <BubbleNode
-              key={b.slug}
-              bubble={b}
-              lit={activeBubble?.slug === b.slug || linked.projects.has(b.slug)}
-              live={live}
-              fly={fly}
-              open={open}
-              close={close}
-              onOpen={onOpenStory}
-              desc={bubbleDesc(b, stars)}
-            />
-          ))}
+          {bubbles.map((b) => {
+            const [lx, ly] = lightFrom(ME, b.x, b.y, boardSize[0], boardSize[1])
+            return (
+              <BubbleNode
+                key={b.slug}
+                bubble={b}
+                lx={lx}
+                ly={ly}
+                lit={
+                  activeBubble?.slug === b.slug || linked.projects.has(b.slug)
+                }
+                live={live}
+                fly={fly}
+                open={open}
+                close={close}
+                onOpen={onOpenStory}
+                desc={bubbleDesc(b, stars)}
+              />
+            )
+          })}
         </ul>
       </section>
 
@@ -3197,7 +3268,7 @@ const Column = memo(function Column({
   return (
     <div className="px-5 pt-10 pb-28 lg:hidden">
       {/* You: everything on this page lines up on the left edge. */}
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-3.5">
         <button
           type="button"
           onClick={() => setPicked({ kind: 'me' })}
@@ -3206,8 +3277,10 @@ const Column = memo(function Column({
           className="constellation-drift shrink-0 rounded-full focus-ring"
         >
           <Portrait
+            // As tall as the name, role and button beside it (a little less on the narrowest
+            // phones, so the name still fits on one line).
             className={cn(
-              'size-20 border-[3px]',
+              'size-24 min-[360px]:size-28',
               picked?.kind === 'me' && LIT_RING
             )}
           />
@@ -3219,6 +3292,16 @@ const Column = memo(function Column({
           <p className="mt-1 text-sm text-muted-foreground">
             {PROFILE.role} · {PROFILE.location}
           </p>
+          {/* The photo opens the About too, but nothing about a photo says so: this does. */}
+          <button
+            type="button"
+            onClick={() => setPicked({ kind: 'me' })}
+            aria-haspopup="dialog"
+            className="mt-2.5 inline-flex h-8 items-center gap-1 rounded-full bg-primary pr-2.5 pl-3.5 text-sm font-semibold text-primary-foreground focus-ring"
+          >
+            About me
+            <CaretRightIcon weight="bold" className="size-3.5" aria-hidden />
+          </button>
         </div>
       </div>
       <nav aria-label="Links">
@@ -3235,6 +3318,14 @@ const Column = memo(function Column({
               >
                 <SatelliteDisc satellite={s} className="size-8" />
                 {s.label}
+                {/* It opens somewhere else. */}
+                {s.kind !== 'email' && (
+                  <ArrowUpRightIcon
+                    weight="bold"
+                    aria-hidden
+                    className="-ml-0.5 size-3.5 text-muted-foreground"
+                  />
+                )}
               </a>
             </li>
           ))}

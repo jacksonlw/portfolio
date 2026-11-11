@@ -46,7 +46,7 @@ export const LAYOUT: Layout = {
     press: { r: 190, deg: -42 },
     github: { r: 215, deg: 158 },
     linkedin: { r: 215, deg: 100 },
-    email: { r: 250, deg: 42 }
+    email: { r: 270, deg: 42 }
   },
   areas: {
     'AI & agents': [13, 24],

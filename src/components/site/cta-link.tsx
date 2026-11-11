@@ -16,7 +16,7 @@ const VARIANTS = {
 
 const SIZES = {
   default: 'h-9 px-4 text-sm',
-  lg: 'h-11 px-5 text-[15px]'
+  lg: 'h-11 px-5 text-base'
 } as const
 
 const isExternal = (href: string) =>
