@@ -35,7 +35,6 @@ const mdAbs = (text: string) =>
 
 const STATUS_LABEL: Record<NonNullable<Project['status']>, string> = {
   live: 'Live',
-  'in-development': 'In development',
   archived: 'Archived'
 }
 

@@ -582,7 +582,6 @@ function factsOf(b: StoryBubble) {
     b.kind === 'project' && 'status' in b && b.status
       ? {
           live: 'Live',
-          'in-development': 'In development',
           archived: 'Archived'
         }[b.status]
       : null

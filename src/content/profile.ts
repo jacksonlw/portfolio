@@ -355,7 +355,7 @@ export const PROJECTS: Project[] = [
     tagline: 'AI session replays',
     summary:
       'AnyForm shows you where people get stuck in your app. It records every visit and finds the trouble spots for you, and it can send AI users through the app before real ones arrive.',
-    status: 'in-development',
+    status: null,
     role: null,
     dates: { start: 'October 2026', end: null },
     stack: ['Go', 'Next.js', 'TypeScript', 'PostgreSQL', 'Playwright'],
@@ -369,7 +369,7 @@ export const PROJECTS: Project[] = [
     tagline: 'Music reviews',
     summary:
       'A Letterboxd for music. It’s an iPhone app where you rate songs and albums, keep them in your Crate and see what your friends think, with four daily music games to come back for.',
-    status: 'in-development',
+    status: null,
     role: null,
     dates: { start: 'September 2026', end: null },
     stack: ['Go', 'PostgreSQL', 'SwiftUI', 'UIKit', 'Next.js'],
@@ -383,7 +383,7 @@ export const PROJECTS: Project[] = [
     tagline: 'Agent software factory',
     summary:
       'A desktop app that runs a team of coding agents for you. The agents do the work and decide how, and you set the why. It has landed about 60 changes to its own code.',
-    status: 'in-development',
+    status: null,
     role: null,
     dates: { start: 'October 2026', end: null },
     stack: ['Rust', 'Tauri', 'React', 'TypeScript', 'Anthropic API', 'MCP'],

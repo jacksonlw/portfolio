@@ -55,7 +55,7 @@ export type Project = {
   tagline: string
   /** One line, shown on cards and as the page lede. */
   summary: string
-  status: 'live' | 'in-development' | 'archived' | null
+  status: 'live' | 'archived' | null
   role: string | null
   dates: DateRange | null
   stack: string[]
