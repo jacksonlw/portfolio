@@ -51,7 +51,7 @@ import {
 import { ACCENT_BG, ACCENT_STROKE, ACCENT_TEXT } from '@/lib/accent'
 import { cn } from '@/lib/cn'
 import { discAccent } from './disc'
-import { INTRO, type Intro } from './intro'
+import { coreTimeAt, INTRO, INTRO_CAP, type Intro } from './intro'
 import { LAYOUT, OFF_BOARD, type BubbleSize, type Layout } from './layouts'
 import photo from '../../../public/profile-cutout.png'
 import photoMask from '../../../public/profile-cutout-mask.png'
@@ -566,27 +566,6 @@ const PULL_FADE = 90
 const GLIDE = 0.07
 /** How often the idle float is stepped while the cursor isn't moving anything (ms). */
 const IDLE_MS = 48
-
-/**
- * Where in the core's intro animation (0–1 of its run) it reaches `size` (its scale), from the
- * keyframes of intro-core in globals.css, so the intro can carry on from a core that grew while
- * waiting. Capped before the collapse, so the burst always plays.
- */
-function coreTimeAt(size: number) {
-  const keys: [number, number][] = [
-    [0, 0.12],
-    [0.08, 0.16],
-    [0.31, 0.55],
-    [0.455, 1]
-  ]
-  if (size <= keys[0][1]) return 0
-  for (let k = 1; k < keys.length; k++) {
-    const [t0, s0] = keys[k - 1]
-    const [t1, s1] = keys[k]
-    if (size <= s1) return t0 + ((size - s0) / (s1 - s0)) * (t1 - t0)
-  }
-  return keys[keys.length - 1][0]
-}
 
 /** 0 below `a`, 1 above `b`, and an S-curve between: for pulls that fade without a seam. */
 const smoothstep = (a: number, b: number, x: number) => {
@@ -2493,37 +2472,56 @@ const Board = memo(function Board({
   const [ready, setReady] = useState(skipIntro || readyAt <= 0)
   const live = !played
 
-  // The intro doubles as the loader. Until the page has loaded (scripts, fonts, your photo), the
+  // The intro doubles as the loader. Until what it shows has loaded (your photo, the fonts), the
   // board waits: only a small core shows, churning softly, with everything else held at its first
-  // frame (globals.css, .intro-wait). Once loaded (or after a few seconds at most), the whole
-  // supernova plays from the start, and its timers start with it, so the burst is never lost to a
-  // busy page.
+  // frame (globals.css, .intro-wait). The wait is ended by a small inline script in the page's
+  // <head> (intro.ts, INTRO_START_SCRIPT), not from here: the supernova is CSS, so it starts
+  // without waiting for this code to arrive, and can't be held up by a slow or failed script.
+  // This only finds out when it started and falls in step: its timers, and what's hoverable when.
   const [waiting, setWaiting] = useState(!skipIntro)
-  // How far into the intro to pick up when the wait ends (ms): the core keeps swelling while it
-  // waits (globals.css, core-grow), so the intro carries on from the size it has reached instead of
-  // shrinking back to the start.
+  // How far into the intro it is when the board falls in step with it (ms).
   const startAt = useRef(0)
   useEffect(() => {
     if (!waiting) return
-    let raf = 0
-    const go = () => {
-      window.removeEventListener('load', go)
+    let timer = 0
+    // Not on an animation frame: a tab opened in the background never gets one, and would wait
+    // for ever.
+    const fall = (t: number) => {
+      startAt.current = Math.max(0, Math.round(t))
+      timer = window.setTimeout(() => setWaiting(false), 0)
+    }
+    // The first time, the inline script starts it: fall in with wherever it has got to.
+    const sync = () => {
+      const s = window.__intro
+      if (s) fall(s.t + performance.now() - s.at)
+    }
+    // A replay (or a page that somehow has no inline script): start it from here, carrying on from
+    // the size the core has swelled to.
+    const start = () => {
+      document.documentElement.classList.add('intro-go')
       const core = board.current?.querySelector<HTMLElement>('.intro-core')
       const size = core ? parseFloat(getComputedStyle(core).scale) || 0 : 0
-      startAt.current = Math.round(
-        coreTimeAt(size) * (intro.buildup + intro.kick + 450)
-      )
-      raf = requestAnimationFrame(() => setWaiting(false))
+      fall(coreTimeAt(size) * (intro.buildup + intro.kick + 450))
     }
-    if (document.readyState === 'complete') go()
-    else window.addEventListener('load', go)
-    const cap = window.setTimeout(go, 6000)
+    if (run > 0) {
+      start()
+      return () => window.clearTimeout(timer)
+    }
+    if (window.__intro) sync()
+    else document.addEventListener('intro-go', sync, { once: true })
+    // If the script never spoke, don't wait on it past its own cap.
+    const cap = window.setTimeout(
+      () => {
+        if (!window.__intro) start()
+      },
+      Math.max(0, INTRO_CAP + 250 - performance.now())
+    )
     return () => {
-      window.removeEventListener('load', go)
+      document.removeEventListener('intro-go', sync)
       window.clearTimeout(cap)
-      cancelAnimationFrame(raf)
+      window.clearTimeout(timer)
     }
-  }, [waiting, intro.buildup, intro.kick])
+  }, [waiting, run, intro.buildup, intro.kick])
   // The wait is over: every intro animation (on the board, and the page's controls) jumps to where
   // the core had got to, and the timers start from there too.
   useLayoutEffect(() => {
@@ -2801,11 +2799,13 @@ const Board = memo(function Board({
         // While the intro plays: the page around the board clips what it throws past its edges.
         live && 'intro-live',
         live && intro.shake > 0 && 'intro-shake',
-        // Held at its first frame until the page has loaded (see `waiting`).
+        // Held at its first frame until the opening is started (see `waiting`).
         live && waiting && 'intro-wait',
         // Nothing on the board can be hovered or clicked until it has landed.
         !ready && 'intro-lock [&_*]:pointer-events-none'
       )}
+      // How long the core's own animation runs (ms), for the script that starts the opening.
+      data-intro-run={intro.buildup + intro.kick + 450}
       // While something is hovered, everything unrelated dims (globals.css, .board-node).
       data-hovering={active !== null || undefined}
       style={

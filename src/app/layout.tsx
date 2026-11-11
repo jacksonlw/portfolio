@@ -4,6 +4,7 @@ import './globals.css'
 import { ChatbotSlot } from '@/components/chatbot/chatbot-slot'
 import { ThemeToggle } from '@/components/site/theme-toggle'
 import { PROFILE } from '@/content/profile'
+import { INTRO_START_SCRIPT } from '@/components/skills/intro'
 
 // The AnyForm brand typeface and its mono companion (OFL; licences beside the files in ./fonts).
 // The file here is cut down to what the site sets type in: weights 300 to 700 and the optical
@@ -88,6 +89,8 @@ export default function RootLayout({
         {/* Inline on purpose, so it runs before the first paint (no flash of the wrong theme).
             React warns about script tags in development; it's harmless here. */}
         <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
+        {/* Starts the opening animation without waiting for the site's JavaScript (intro.ts). */}
+        <script dangerouslySetInnerHTML={{ __html: INTRO_START_SCRIPT }} />
       </head>
       <body className="flex min-h-dvh flex-col" suppressHydrationWarning>
         <main className="flex-1">{children}</main>
