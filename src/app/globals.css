@@ -1288,8 +1288,8 @@ html.dark .portrait-photo {
 }
 /* A thin line round the figure, as every drawing on the board has, but of polished metal, not
    flat ink: the chrome rim's own sweep of silver and faint colour, so it catches the light
-   differently along its length, and a little see-through, so it reads as a drawn edge and never
-   as a strip of the old background left behind. It's the figure's outline, grown a hair's width
+   differently along its length, so it reads as a drawn, shining edge and never as a strip of
+   the old background left behind. It's the figure's outline, grown a hair's width
    every way (the mask laid eight times, each nudged outward), sitting behind the photo so only
    the sliver outside the figure shows. Dark ink on the light page, silver chrome on the dark. */
 .portrait-outline {
@@ -1298,16 +1298,19 @@ html.dark .portrait-photo {
   pointer-events: none;
   --o: 0.45cqw;
   --d: calc(var(--o) * 0.7);
-  /* On the light page it's the drawings' own dark ink, with a little sheen along it. */
-  background: linear-gradient(
-    135deg,
-    var(--ink, #1e1e24) 0%,
-    #454a54 35%,
-    var(--ink, #1e1e24) 60%,
-    #3a3e46 85%,
-    var(--ink, #1e1e24) 100%
+  /* On the light page it's the drawings' dark ink, thinned: full in places and all but gone in
+     others, so it's a line that catches here and there, not an even border. */
+  background: conic-gradient(
+    from 210deg,
+    var(--ink, #1e1e24),
+    color-mix(in oklab, var(--ink, #1e1e24) 25%, transparent),
+    color-mix(in oklab, var(--ink, #1e1e24) 80%, transparent),
+    color-mix(in oklab, var(--ink, #1e1e24) 15%, transparent),
+    color-mix(in oklab, var(--ink, #1e1e24) 70%, transparent),
+    color-mix(in oklab, var(--ink, #1e1e24) 20%, transparent),
+    var(--ink, #1e1e24)
   );
-  opacity: 0.85;
+  opacity: 0.6;
   mask-image:
     var(--figure-mask), var(--figure-mask), var(--figure-mask),
     var(--figure-mask), var(--figure-mask), var(--figure-mask),
@@ -1324,9 +1327,20 @@ html.dark .portrait-photo {
     var(--d) calc(var(--d) * -1),
     calc(var(--d) * -1) calc(var(--d) * -1);
 }
+/* On the dark page it's a shine, not a border: mostly see-through, with a few bright passages
+   where the metal catches the light, fading to almost nothing between them. */
 html.dark .portrait-outline {
-  background: var(--chrome-rim);
-  opacity: 0.55;
+  background: conic-gradient(
+    from 210deg,
+    #ffffff,
+    rgb(255 255 255 / 0.15),
+    color-mix(in oklab, var(--iri-cyan) 35%, rgb(255 255 255 / 0.75)),
+    rgb(255 255 255 / 0.1),
+    rgb(255 255 255 / 0.8),
+    rgb(255 255 255 / 0.12),
+    #ffffff
+  );
+  opacity: 0.5;
 }
 .portrait-light,
 .portrait-rim,
