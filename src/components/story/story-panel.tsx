@@ -236,6 +236,17 @@ export function StoryPanel({
   // Once the write-up is scrolled the header shrinks to a slim bar. It grows back only at the
   // very top: the gap between the two marks keeps it from flickering as its own change in height
   // moves what's under it.
+  // Once the panel has opened, the scrolling area gets a backdrop in the header's own colour
+  // (story-under). Pulled down past the top, as a trackpad or a phone lets you, the write-up
+  // leaves a gap under the header, and the gap shows whatever is behind: it has to be the same
+  // wash, not the card. Held back while the panel opens or closes, when the write-up itself is
+  // see-through for a moment.
+  const [opened, setOpened] = useState(instant)
+  useEffect(() => {
+    if (opened) return
+    const t = window.setTimeout(() => setOpened(true), OPEN_MS)
+    return () => window.clearTimeout(t)
+  }, [opened])
   const [compact, setCompact] = useState(false)
   const onScroll = useCallback(() => {
     const y = scroller.current?.scrollTop ?? 0
@@ -505,9 +516,12 @@ export function StoryPanel({
         <div
           ref={scroller}
           onScroll={onScroll}
-          className="min-h-0 flex-1 overflow-y-auto overscroll-contain"
+          className={cn(
+            'min-h-0 flex-1 overflow-y-auto overscroll-contain',
+            opened && !closing && 'story-under'
+          )}
         >
-          <div ref={content}>
+          <div ref={content} className="bg-card">
             <Body
               bubble={bubble}
               story={story}

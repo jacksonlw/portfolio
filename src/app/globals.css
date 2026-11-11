@@ -76,20 +76,41 @@
    silver-white centre fading to soft gray in light mode; a faint glow in deep ink in dark. */
 /* It's a layer of its own, fixed behind the page, not a fixed background on the body: a fixed
    background is repainted as the page scrolls (and iOS doesn't keep it fixed at all), where a
-   layer just stays put. As tall as the screen ever gets, so a phone's toolbar sliding away never
-   uncovers its edge. */
+   layer just stays put. */
+/* It reaches a quarter of a screen past the top and the bottom, the same light carrying on out
+   there, and past that the page's own colour is the light's last shade. So pulling the page past
+   its ends (a trackpad, a phone) shows more of the same, never a band of another colour, and a
+   phone's toolbar sliding away never uncovers an edge. */
+:root {
+  --screen: 1vh;
+  --page-edge: #d9dce2;
+}
+@supports (height: 1lvh) {
+  :root {
+    --screen: 1lvh;
+  }
+}
+html.dark {
+  --page-edge: #000000;
+}
+html {
+  background-color: var(--page-edge);
+}
+/* The page's colour is the layer below; the body itself is clear, or it would cover it. */
+body {
+  background-color: transparent;
+}
 body::before {
   content: '';
   position: fixed;
   z-index: -1;
-  top: 0;
+  top: calc(var(--screen) * -25);
   left: 0;
   width: 100%;
-  height: 100vh;
-  height: 100lvh;
+  height: calc(var(--screen) * 150);
   pointer-events: none;
   background-image: radial-gradient(
-    ellipse 110% 90% at 50% 46%,
+    ellipse 110% calc(var(--screen) * 90) at 50% calc(var(--screen) * 71),
     #fbfbfc 0%,
     #f1f2f5 38%,
     #e2e4e9 78%,
@@ -100,7 +121,7 @@ body::before {
 /* Dark mode is deep space: near-black, with the faintest lift around you. */
 html.dark body::before {
   background-image: radial-gradient(
-    ellipse 110% 90% at 50% 46%,
+    ellipse 110% calc(var(--screen) * 90) at 50% calc(var(--screen) * 71),
     #0d0e14 0%,
     #07080c 34%,
     #030406 68%,
@@ -1219,6 +1240,21 @@ html[data-story-open]
 }
 .dark .story-wash {
   background: color-mix(in oklab, var(--disc-accent, #ccdaff) 12%, var(--card));
+}
+
+/* Behind a Story's write-up, for when it's pulled past its ends: the header's wash above (so the
+   gap that opens under the header is the header's colour) and the card below, as the footer is. */
+.story-under {
+  background: linear-gradient(
+    color-mix(in oklab, var(--disc-accent, #ccdaff) 30%, var(--card)) 50%,
+    var(--card) 50%
+  );
+}
+.dark .story-under {
+  background: linear-gradient(
+    color-mix(in oklab, var(--disc-accent, #ccdaff) 12%, var(--card)) 50%,
+    var(--card) 50%
+  );
 }
 
 /* What lights up on hover takes the supernova's light, not the brand blue: chrome lines with
