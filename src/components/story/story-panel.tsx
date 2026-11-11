@@ -62,6 +62,8 @@ import { cn } from '@/lib/cn'
 export type StoryBubble = (Project | WorkNode) & { kind: 'project' | 'work' }
 
 const OPEN_MS = 460
+/** How far past the top of the write-up's card the surface still runs, behind the card (px). */
+const SURFACE_SLACK = 240
 const CLOSE_MS = 360
 /**
  * A damped spring (about 4% overshoot) for the opening, so the panel lands with some weight and
@@ -247,10 +249,39 @@ export function StoryPanel({
   // very top: the gap between the two marks keeps it from flickering as its own change in height
   // moves what's under it.
   const [compact, setCompact] = useState(false)
+  // The surface is only ever shown down to where the write-up's card begins (and a little past
+  // it, behind the card, for when the write-up is pulled down past the top). Below that the panel
+  // is plain card. Otherwise the surface would show wherever nothing covers it: in the gap above
+  // the footer when the write-up is pulled up past its end. The header always keeps its part.
+  const trimSurface = useCallback(() => {
+    const el = panel.current
+    const card = content.current?.querySelector('[data-card]')
+    const head = el?.querySelector('header')
+    if (!el || !card || !head || !surface.current) return
+    const top = el.getBoundingClientRect().top
+    const c = card.getBoundingClientRect()
+    const end = Math.max(
+      head.getBoundingClientRect().bottom - top,
+      Math.min(c.top + SURFACE_SLACK, c.bottom) - top
+    )
+    surface.current.style.clipPath = `inset(0 0 ${Math.max(0, Math.round(el.clientHeight - end))}px 0)`
+  }, [])
+  useLayoutEffect(() => {
+    trimSurface()
+    const ro = new ResizeObserver(trimSurface)
+    for (const el of [
+      panel.current,
+      content.current,
+      panel.current?.querySelector('header')
+    ])
+      if (el) ro.observe(el)
+    return () => ro.disconnect()
+  }, [trimSurface])
   const onScroll = useCallback(() => {
     const y = scroller.current?.scrollTop ?? 0
     setCompact((c) => (y > 32 ? true : y < 4 ? false : c))
-  }, [])
+    trimSurface()
+  }, [trimSurface])
 
   // Open: grow out of the bubble, the disc's colour giving way to the page as the text fades in.
   useLayoutEffect(() => {
@@ -537,7 +568,9 @@ export function StoryPanel({
             'min-h-0 flex-1 overflow-y-auto overscroll-contain focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring short:overflow-visible'
           )}
         >
-          <div ref={content}>
+          {/* At least as tall as the area it scrolls in, with the card taking up the slack, so a
+              short write-up's card runs down to the footer. */}
+          <div ref={content} className="flex min-h-full flex-col">
             <Body
               bubble={bubble}
               story={story}
@@ -656,10 +689,7 @@ const Body = memo(function Body({
       {story && story.gallery.length > 0 && (
         <Gallery items={story.gallery} settleMs={settleMs} />
       )}
-      {/* The card runs on below the write-up's end (a shadow, so it adds nothing to scroll): pulled
-          up past the bottom, the gap above the footer is the card, as the footer is, not the
-          surface behind. */}
-      <div className="bg-card shadow-[0_60vh_0_var(--card)]">
+      <div data-card className="flex-1 bg-card">
         <div className="mx-auto w-full max-w-4xl space-y-12 px-5 pt-10 pb-12 sm:px-10">
           {story && story.sections.length > 0 ? (
             story.sections.map((s) => (
