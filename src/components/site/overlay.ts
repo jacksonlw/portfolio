@@ -73,7 +73,8 @@ export function useSwipeToClose(
     const onMove = (e: TouchEvent) => {
       const y = e.touches[0].clientY
       if (!dragging) {
-        if (y <= startY || scrollEl.scrollTop > 0) return
+        // (On a short screen the panel itself scrolls, not the area inside it: either counts.)
+        if (y <= startY || scrollEl.scrollTop > 0 || node.scrollTop > 0) return
         // A sideways swipe (the gallery) is never a dismiss.
         if ((e.target as Element).closest('[data-swipe-x]')) return
         // Start the drag from here, so a scroll that reached the top doesn't jump the sheet.
@@ -109,6 +110,71 @@ export function useSwipeToClose(
   }, [el, scrim, scroller, enabled, onClose])
 }
 
+/** What Tab can land on inside `root`, in order (only what's actually showing). */
+function tabbable(root: HTMLElement) {
+  return [
+    ...root.querySelectorAll<HTMLElement>(
+      'a[href], button:not([disabled]), input, select, textarea, video[controls], [tabindex]:not([tabindex="-1"])'
+    )
+  ].filter((el) => el.getClientRects().length > 0 && !el.closest('[inert]'))
+}
+
+/**
+ * Keeps the keyboard inside a dialog while it's open: Tab from its last control goes to its
+ * first (and back the other way), and focus that has ended up outside it is brought back in.
+ * aria-modal only tells a screen reader the rest is out of reach; this is what makes it so for
+ * the Tab key.
+ */
+export function useFocusTrap(
+  el: RefObject<HTMLElement | null>,
+  enabled: boolean
+) {
+  useEffect(() => {
+    if (!enabled) return
+    const onKey = (e: KeyboardEvent) => {
+      const root = el.current
+      if (e.key !== 'Tab' || !root) return
+      const list = tabbable(root)
+      if (!list.length) return
+      const first = list[0]
+      const last = list[list.length - 1]
+      const at = document.activeElement
+      if (!root.contains(at)) {
+        e.preventDefault()
+        ;(e.shiftKey ? last : first).focus()
+      } else if (e.shiftKey && at === first) {
+        e.preventDefault()
+        last.focus()
+      } else if (!e.shiftKey && at === last) {
+        e.preventDefault()
+        first.focus()
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [el, enabled])
+}
+
+/**
+ * Hands focus back when something that took it closes: to whatever had it when it opened (the
+ * star that was tapped, say), unless focus has already moved on somewhere else by then.
+ */
+export function useReturnFocus(
+  el: RefObject<HTMLElement | null>,
+  open: boolean
+) {
+  useEffect(() => {
+    if (!open) return
+    const root = el.current
+    const from = document.activeElement as HTMLElement | null
+    return () => {
+      const at = document.activeElement
+      if (at && at !== document.body && !root?.contains(at)) return
+      if (from?.isConnected) from.focus({ preventScroll: true })
+    }
+  }, [el, open])
+}
+
 /*
  * While a Story covers the page, what's behind it holds still: the constellation's motion loop
  * stops and its looping animations pause (globals.css, html[data-story-open]). Nothing behind the
@@ -132,6 +198,49 @@ export function onPageCovered(cb: () => void) {
   return () => {
     coverListeners.delete(cb)
   }
+}
+
+/*
+ * The visitor's own switch for the page's ambient motion (the idle float, the twinkling dust, the
+ * drift and the flowing dashes): the pause button beside the theme switch. Anything that moves
+ * by itself for more than a few seconds needs a way to be stopped on the page itself, not only
+ * through a system setting. Their choice is kept in localStorage. Motion they cause themselves
+ * (nodes leaning toward the cursor, a Story opening) carries on.
+ */
+let paused = false
+const pausedListeners = new Set<() => void>()
+
+export const motionPaused = () => paused
+
+export function setMotionPaused(on: boolean, save = true) {
+  if (save)
+    try {
+      if (on) localStorage.setItem('motion', 'paused')
+      else localStorage.removeItem('motion')
+    } catch {}
+  if (paused === on) return
+  paused = on
+  // globals.css pauses the looping animations under html.still.
+  document.documentElement.classList.toggle('still', on)
+  pausedListeners.forEach((cb) => cb())
+}
+
+export function onMotionPaused(cb: () => void) {
+  pausedListeners.add(cb)
+  return () => {
+    pausedListeners.delete(cb)
+  }
+}
+
+/** The switch's state, following it (false on the server); picks up a saved choice on mount. */
+export function useMotionPaused() {
+  useEffect(() => {
+    try {
+      if (localStorage.getItem('motion') === 'paused')
+        setMotionPaused(true, false)
+    } catch {}
+  }, [])
+  return useSyncExternalStore(onMotionPaused, motionPaused, () => false)
 }
 
 /** Whether the visitor has asked for less motion (read when it's needed, not on render). */

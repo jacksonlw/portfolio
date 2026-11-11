@@ -1,11 +1,16 @@
 'use client'
 
-import { PlayIcon } from '@phosphor-icons/react/ssr'
+import {
+  ArrowCounterClockwiseIcon,
+  PauseIcon,
+  PlayIcon
+} from '@phosphor-icons/react/ssr'
 import Image from 'next/image'
 import {
   memo,
   useCallback,
   useEffect,
+  useId,
   useLayoutEffect,
   useMemo,
   useRef,
@@ -29,10 +34,16 @@ import {
 import type { Story } from '@/content/types'
 import { StoryPanel } from '@/components/story/story-panel'
 import {
+  motionPaused,
+  onMotionPaused,
   onPageCovered,
   pageCovered,
+  setMotionPaused,
   setPageCovered,
   useBodyLock,
+  useFocusTrap,
+  useMotionPaused,
+  useReturnFocus,
   useSwipeToClose
 } from '@/components/site/overlay'
 import { ACCENT_BG, ACCENT_STROKE, ACCENT_TEXT } from '@/lib/accent'
@@ -62,7 +73,15 @@ import photo from '../../../public/profile-picture.jpg'
  * motion nothing moves at all.
  *
  * From `lg` it fills the screen (Board); below that the same constellation is laid out vertically
- * (Column).
+ * (Column). The breakpoint is in rem, so a window zoomed in far enough (or a large default text
+ * size) gets the Column too, which reflows down to 320px.
+ *
+ * Read without the picture (a screen reader, the Tab key) it's an ordinary page in a sensible
+ * order: Jackson and his bio, a nav of his links, a list of work and projects, then his skills
+ * under a heading for each area. What a popover shows on hover is each node's description
+ * (aria-describedby), so it's read out with the node; the popover itself is hidden from
+ * assistive tech as a duplicate. Popovers stay while the pointer is on them, and Escape closes
+ * them.
  */
 
 /* ---------- layout ---------- */
@@ -356,13 +375,26 @@ function hash(id: string) {
   return ((h >>> 0) % 10000) / 10000
 }
 
-/** The board's pixel size, kept current as it resizes. The lines and satellites need it. */
+/**
+ * The board's pixel size, kept current as it resizes. The lines and satellites need it. `rem` is
+ * the visitor's text size against the usual 16px (1.25 with their browser's default set to 20px):
+ * the nodes are sized in rem and grow with it, so the distances between them have to as well.
+ */
 function useBoardSize(board: React.RefObject<HTMLDivElement | null>) {
-  const [size, setSize] = useState({ w: 0, h: 0 })
+  const [size, setSize] = useState({ w: 0, h: 0, rem: 1 })
   useLayoutEffect(() => {
     const el = board.current
     if (!el) return
-    const measure = () => setSize({ w: el.clientWidth, h: el.clientHeight })
+    const measure = () => {
+      const w = el.clientWidth
+      const h = el.clientHeight
+      const rem =
+        parseFloat(getComputedStyle(document.documentElement).fontSize) / 16 ||
+        1
+      setSize((s) =>
+        s.w === w && s.h === h && s.rem === rem ? s : { w, h, rem }
+      )
+    }
     // Measure straight away, before the first paint, so the layout is right from the start; then
     // keep up with resizes.
     measure()
@@ -603,8 +635,11 @@ function useCursorGravity(
         : 1
       const ease = (k: number) => 1 - (1 - k) ** steps
       lastRun = now
-      rise += ((settled ? 1 : 0) - rise) * ease(0.03)
-      if (settled && rise > 0.99) rise = 1
+      // It eases out again, back to each node's own spot, while the visitor has motion paused.
+      const floating = settled && !motionPaused()
+      rise += ((floating ? 1 : 0) - rise) * ease(floating ? 0.03 : 0.08)
+      if (floating && rise > 0.99) rise = 1
+      if (!floating && rise < 0.01) rise = 0
       let moving = rise > 0 && rise < 1
       // Looked up again now and then, and at once when what's lit changes, so new hover lines
       // follow their nodes from their first frame.
@@ -706,7 +741,9 @@ function useCursorGravity(
     wake.current = run
     wide.addEventListener('change', run)
     const offCovered = onPageCovered(run)
+    const offPaused = onMotionPaused(run)
     return () => {
+      offPaused()
       wake.current = () => {}
       cancelAnimationFrame(raf)
       window.clearTimeout(timer)
@@ -795,6 +832,7 @@ function useIntentHover(
       const now = current.current
       let best: string | null = null
       let bestScore = Infinity
+      let bestD = Infinity
       for (const node of el.querySelectorAll<HTMLElement>('[data-hit]')) {
         const key = node.dataset.hit!
         const kind =
@@ -809,9 +847,24 @@ function useIntentHover(
         const score = 0.65 * d + 0.35 * distance(rect, circle, ax, ay) - held
         if (score < bestScore) {
           bestScore = score
+          bestD = d
           best = key
         }
       }
+      // The open node's popover can be hovered too: with the pointer on it, it stays (so it can
+      // be read with a magnifier, or the pointer simply rested there), unless the pointer is
+      // squarely on another node, which then takes over as usual.
+      if (now && !(best && bestD === 0))
+        for (const pop of el.querySelectorAll<HTMLElement>('[data-pop]')) {
+          const r = pop.getBoundingClientRect()
+          if (
+            p.x >= r.left &&
+            p.x <= r.right &&
+            p.y >= r.top &&
+            p.y <= r.bottom
+          )
+            best = now
+        }
       if (best !== now) setActive(best ? fromKey(best) : null)
     }
 
@@ -1057,6 +1110,22 @@ function Explain({
   return null
 }
 
+/** What a star's popover says, as one line of text (its description for screen readers). */
+function starDesc(star: Star, bubbles: Bubble[]) {
+  const used = bubbles.filter((p) => star.projects.includes(p.slug))
+  return `${star.explanation}${
+    used.length ? ` Used in ${used.map((p) => p.title).join(', ')}.` : ''
+  }`
+}
+
+/** The same for a bubble. */
+function bubbleDesc(bubble: Bubble, stars: Star[]) {
+  const used = stars.filter((s) => s.projects.includes(bubble.slug))
+  return `${bubble.kind === 'work' ? 'Work' : 'Project'}. ${bubble.summary}${
+    used.length ? ` Built with ${used.map((s) => s.name).join(', ')}.` : ''
+  } Opens the story.`
+}
+
 /** The popover's eyebrow for a bubble: work or project, and when (or the tagline, if no date). */
 const eyebrow = (b: Bubble, withTagline: boolean) =>
   [
@@ -1078,20 +1147,28 @@ function BubbleTarget({
   handlers,
   onOpen,
   lit,
+  describedBy,
   children
 }: {
   bubble: Bubble
   className: string
   style?: CSSProperties
-  handlers: Record<string, () => void>
+  handlers: {
+    onFocus: (e: React.FocusEvent<HTMLElement>) => void
+    onBlur: () => void
+  }
   onOpen: (slug: string) => void
   /** Lit: it stays bright while the rest of the board dims. */
   lit?: boolean
+  /** The id of the text that describes it (what its popover shows). */
+  describedBy?: string
   children: ReactNode
 }) {
   return (
     <a
       href={storyPath(bubble.slug)}
+      aria-haspopup="dialog"
+      aria-describedby={describedBy}
       data-on={lit || undefined}
       {...handlers}
       onClick={(e) => {
@@ -1426,7 +1503,8 @@ const BubbleNode = memo(function BubbleNode({
   fly,
   open,
   close,
-  onOpen
+  onOpen,
+  desc
 }: {
   bubble: Bubble
   lit: boolean
@@ -1435,19 +1513,27 @@ const BubbleNode = memo(function BubbleNode({
   open: Open
   close: () => void
   onOpen: (slug: string) => void
+  /** What its popover says, for screen readers. */
+  desc: string
 }) {
   const style = BUBBLE_STYLE[b.size]
-  // The pointer is handled by useIntentHover; these keep the keyboard working.
+  const descId = useId()
+  // The pointer is handled by useIntentHover; these keep the keyboard working. Only focus that
+  // came from the keyboard opens the popover: focus handed back by a closing Story after a
+  // click shouldn't leave one hanging there.
   const handlers = useMemo(
     () => ({
-      onFocus: () => open({ kind: 'project', id: b.slug }),
+      onFocus: (e: React.FocusEvent<HTMLElement>) => {
+        if (e.currentTarget.matches(':focus-visible'))
+          open({ kind: 'project', id: b.slug })
+      },
       onBlur: close
     }),
     [open, close, b.slug]
   )
   const flight = useMemo(() => fly(b.x, b.y, b.slug), [fly, b.x, b.y, b.slug])
   return (
-    <div
+    <li
       className="absolute z-10"
       style={{
         left: `${b.x}%`,
@@ -1466,6 +1552,7 @@ const BubbleNode = memo(function BubbleNode({
           handlers={handlers}
           onOpen={onOpen}
           lit={lit}
+          describedBy={descId}
           className={cn(
             live && 'intro-piece',
             'board-node group flex flex-col items-center rounded-xl p-2 focus-ring transition-opacity duration-300'
@@ -1498,14 +1585,17 @@ const BubbleNode = memo(function BubbleNode({
           {bubbleWhen(b) && (
             <span
               data-hit={`project:${b.slug}`}
-              className="mt-0.5 text-[0.6875rem] leading-snug font-medium text-muted-foreground/75"
+              className="mt-0.5 text-[0.6875rem] leading-snug font-medium text-muted-foreground"
             >
               {bubbleWhen(b)}
             </span>
           )}
         </BubbleTarget>
+        <span id={descId} hidden>
+          {desc}
+        </span>
       </div>
-    </div>
+    </li>
   )
 })
 
@@ -1513,23 +1603,25 @@ const BubbleNode = memo(function BubbleNode({
 const StarNode = memo(function StarNode({
   star: s,
   lit,
-  isActive,
   live,
   fly,
   open,
-  close
+  close,
+  desc
 }: {
   star: Star
   lit: boolean
-  isActive: boolean
   live: boolean
   fly: Fly
   open: Open
   close: () => void
+  /** What its popover says, for screen readers. */
+  desc: string
 }) {
+  const descId = useId()
   const flight = useMemo(() => fly(s.x, s.y, s.name), [fly, s.x, s.y, s.name])
   return (
-    <div
+    <li
       className="absolute"
       style={{
         left: `${s.x}%`,
@@ -1549,7 +1641,8 @@ const StarNode = memo(function StarNode({
           onFocus={() => open({ kind: 'skill', id: s.name })}
           onBlur={close}
           onClick={() => open({ kind: 'skill', id: s.name })}
-          aria-pressed={isActive}
+          // Nothing to press: it shows what the skill is, which is its description.
+          aria-describedby={descId}
           data-on={lit || undefined}
           className={cn(
             live && 'intro-piece',
@@ -1569,7 +1662,7 @@ const StarNode = memo(function StarNode({
           <span
             data-hit={`skill:${s.name}`}
             className={cn(
-              'text-[13px] leading-tight font-medium whitespace-nowrap',
+              'text-[0.8125rem] leading-tight font-medium whitespace-nowrap',
               lit
                 ? 'lit-text font-semibold'
                 : 'text-muted-foreground group-hover:text-foreground'
@@ -1578,10 +1671,19 @@ const StarNode = memo(function StarNode({
             {s.name}
           </span>
         </button>
+        <span id={descId} hidden>
+          {desc}
+        </span>
       </div>
-    </div>
+    </li>
   )
 })
+
+/** A satellite's name for screen readers: what it is, its detail, and that it leaves the page. */
+const satelliteLabel = (s: Satellite) =>
+  `${s.kind === 'press' ? `Press: ${s.title}, ${s.detail}` : `${s.title}: ${s.detail}`}${
+    s.kind !== 'email' ? ' (opens in a new tab)' : ''
+  }`
 
 /** A satellite on the board, orbiting the Me node. */
 const SatelliteNode = memo(function SatelliteNode({
@@ -1613,7 +1715,7 @@ const SatelliteNode = memo(function SatelliteNode({
     [fly, x, y, s.kind, ox, oy]
   )
   return (
-    <div
+    <li
       className="absolute z-10"
       style={{ left: `${x}%`, top: `${y}%`, translate: '-50% -2.25rem' }}
     >
@@ -1630,11 +1732,7 @@ const SatelliteNode = memo(function SatelliteNode({
             : {})}
           onFocus={() => open({ kind: 'satellite', id: s.kind })}
           onBlur={close}
-          aria-label={
-            s.kind === 'press'
-              ? `Press: ${s.title}, ${s.detail}`
-              : `${s.title}: ${s.detail}`
-          }
+          aria-label={satelliteLabel(s)}
           data-on={isActive || undefined}
           className={cn(
             live && 'intro-piece',
@@ -1657,7 +1755,7 @@ const SatelliteNode = memo(function SatelliteNode({
           </span>
         </a>
       </div>
-    </div>
+    </li>
   )
 })
 
@@ -1692,6 +1790,13 @@ const MeNode = memo(function MeNode({
           aria-describedby="me-about"
           onFocus={() => open({ kind: 'me' })}
           onBlur={close}
+          // A button answers to Enter and Space: they show and hide the bio.
+          onKeyDown={(e) => {
+            if (e.key !== 'Enter' && e.key !== ' ') return
+            e.preventDefault()
+            if (meOpen) close()
+            else open({ kind: 'me' })
+          }}
           onPointerUp={(e) => {
             if (e.pointerType !== 'mouse')
               if (meOpen) close()
@@ -1726,8 +1831,10 @@ const MeNode = memo(function MeNode({
         <div
           id="me-about"
           role="tooltip"
+          // While it's showing, the pointer can rest on it (useIntentHover).
+          data-pop={meOpen || undefined}
           className={cn(
-            'dark ink-pop pointer-events-none absolute left-1/2 w-[34rem] -translate-x-1/2 rounded-lg bg-background p-5 text-foreground shadow-pop transition-[opacity,translate] duration-200',
+            'dark ink-pop pointer-events-none absolute left-1/2 w-[34rem] -translate-x-1/2 rounded-lg bg-background p-5 text-foreground shadow-pop transition-[opacity,translate] duration-200 motion-reduce:transition-none',
             meOpen ? 'translate-y-0 opacity-100' : 'translate-y-1 opacity-0'
           )}
           // Just under your name as drawn (the block above is scaled), at full size itself.
@@ -1775,9 +1882,12 @@ const onWideChange = (cb: () => void) => {
  */
 function OneLayout({
   wide,
+  inert,
   children
 }: {
   wide: boolean
+  /** Out of reach while something covers the page. */
+  inert: boolean
   children: (late: boolean) => ReactNode
 }) {
   // Whether this layout was the hidden one when the page loaded (always false on the server).
@@ -1803,10 +1913,14 @@ function OneLayout({
         dangerouslySetInnerHTML={{ __html: '' }}
       />
     ) : (
-      <div className="contents">{children(false)}</div>
+      <div className="contents" inert={inert}>
+        {children(false)}
+      </div>
     )
   return fits || kept ? (
-    <div className="contents">{children(skipped)}</div>
+    <div className="contents" inert={inert}>
+      {children(skipped)}
+    </div>
   ) : null
 }
 
@@ -1865,6 +1979,7 @@ export function Constellation({
     setStory({ slug, instant: true, closing: false, stepped: dir })
   }, [])
   // Whether Stories fill the window (from `lg`); kept here so it holds from one Story to the next.
+  const still = useMotionPaused()
   const [storyFull, setStoryFull] = useState(false)
   const toggleStoryFull = useCallback(() => setStoryFull((f) => !f), [])
   // Stories in the page's own order (by time), for previous and next.
@@ -1873,7 +1988,21 @@ export function Constellation({
     [bubbles]
   )
   const storyClosed = useCallback(() => {
-    setStory(null)
+    // Focus goes back to the bubble the Story shrank into (the one showing: the board's or the
+    // column's), so the keyboard carries on from where the Story was, not the top of the page.
+    const slug = slugAt(window.location.pathname)
+    setStory((s) => {
+      const at = slug ?? s?.slug
+      const link =
+        at &&
+        [
+          ...document.querySelectorAll<HTMLElement>(
+            `a[href="${storyPath(at)}"][aria-haspopup]`
+          )
+        ].find((a) => a.getClientRects().length > 0)
+      if (link) queueMicrotask(() => link.focus({ preventScroll: true }))
+      return null
+    })
     if (!slugAt(window.location.pathname)) return
     if (pushed.current) {
       pushed.current = false
@@ -1926,7 +2055,9 @@ export function Constellation({
 
   return (
     <>
-      <OneLayout wide>
+      {/* While a Story is open the page behind it is inert: out of reach of the Tab key and of
+          screen readers, like the modal dialog it is. */}
+      <OneLayout wide inert={covering}>
         {(late) => (
           <Board
             key={replays}
@@ -1944,7 +2075,7 @@ export function Constellation({
         )}
       </OneLayout>
 
-      <OneLayout wide={false}>
+      <OneLayout wide={false} inert={covering}>
         {() => (
           <Column
             stars={stars}
@@ -1981,11 +2112,36 @@ export function Constellation({
           onClick={() => setReplays((n) => n + 1)}
           aria-label="Replay the opening animation"
           title="Replay"
-          className="intro-chrome chrome-rim round-btn fixed right-[4.25rem] bottom-4 z-40 hidden size-10 items-center justify-center rounded-full border-2 text-foreground shadow-card-hover focus-ring lg:flex"
+          // Under reduced motion there's no animation to replay, so no button either.
+          className="intro-chrome chrome-rim round-btn fixed right-[4.25rem] bottom-4 z-40 hidden size-10 items-center justify-center rounded-full border-2 text-foreground shadow-card-hover focus-ring motion-reduce:hidden! lg:flex"
         >
-          <PlayIcon weight="fill" className="size-4" aria-hidden />
+          <ArrowCounterClockwiseIcon
+            weight="bold"
+            className="size-4"
+            aria-hidden
+          />
         </button>
       )}
+
+      {/* Pause the page's ambient motion (overlay.ts): beside the other round buttons. Not shown
+          under reduced motion, where none of it runs to begin with. */}
+      <button
+        type="button"
+        onClick={() => setMotionPaused(!still)}
+        aria-label="Pause background motion"
+        aria-pressed={still}
+        title={still ? 'Resume motion' : 'Pause motion'}
+        className={cn(
+          'intro-chrome chrome-rim round-btn fixed right-[4.25rem] bottom-4 z-40 flex size-10 items-center justify-center rounded-full border-2 text-foreground shadow-card-hover focus-ring motion-reduce:hidden!',
+          INTRO.ms > 0 && 'lg:right-[7.25rem]'
+        )}
+      >
+        {still ? (
+          <PlayIcon weight="fill" className="size-4" aria-hidden />
+        ) : (
+          <PauseIcon weight="fill" className="size-4" aria-hidden />
+        )}
+      </button>
     </>
   )
 }
@@ -2022,7 +2178,10 @@ const Board = memo(function Board({
   const size = useBoardSize(board)
   const ME = layout.me
   // One scale for the whole layout (distances and node sizes), from the board's size.
-  const scale = layoutScale(layout, size.w, size.h)
+  // Worked out as if text were its usual 16px (a larger text size is a smaller board, in effect);
+  // `reach` is the same scale in real px, for the distances.
+  const scale = layoutScale(layout, size.w / size.rem, size.h / size.rem)
+  const reach = scale * size.rem
   const boardSize = useMemo<[number, number]>(
     () => (size.w ? [size.w, size.h] : layout.reference),
     [size.w, size.h, layout.reference]
@@ -2030,10 +2189,10 @@ const Board = memo(function Board({
   const bubbles = useMemo(
     () =>
       placed.map((b) => {
-        const [x, y] = around(layout, b.r, b.deg, scale, boardSize)
+        const [x, y] = around(layout, b.r, b.deg, reach, boardSize)
         return { ...b, x, y }
       }),
-    [placed, layout, scale, boardSize]
+    [placed, layout, reach, boardSize]
   )
   const linked = useMemo(
     () => linksOf(active, stars, satellites),
@@ -2291,8 +2450,8 @@ const Board = memo(function Board({
   const satOffset = (kind: Satellite['kind']): [number, number] => {
     const { r, deg } = layout.satellites[kind]
     return [
-      r * scale * Math.cos((deg * Math.PI) / 180),
-      r * scale * Math.sin((deg * Math.PI) / 180)
+      r * reach * Math.cos((deg * Math.PI) / 180),
+      r * reach * Math.sin((deg * Math.PI) / 180)
     ]
   }
 
@@ -2301,10 +2460,10 @@ const Board = memo(function Board({
     const m: Record<string, [number, number]> = {}
     for (const s of satellites) {
       const { r, deg } = layout.satellites[s.kind]
-      m[s.kind] = around(layout, r, deg, scale, boardSize)
+      m[s.kind] = around(layout, r, deg, reach, boardSize)
     }
     return m
-  }, [satellites, scale, boardSize, layout])
+  }, [satellites, reach, boardSize, layout])
 
   const motionNodes = useMemo(() => {
     const m: Record<string, MotionNode> = {}
@@ -2313,7 +2472,7 @@ const Board = memo(function Board({
       x: ME[0],
       y: ME[1],
       weight: 0.5,
-      r: 72 * scale,
+      r: 72 * reach,
       reach: REACH.me,
       pullReach: 30,
       travel: 3
@@ -2324,7 +2483,7 @@ const Board = memo(function Board({
         x,
         y,
         weight: 0.8,
-        r: 32 * scale,
+        r: 32 * reach,
         reach: REACH.satellite,
         // The same long, soft approach as a star, moving a little less.
         pullReach: 30,
@@ -2346,7 +2505,7 @@ const Board = memo(function Board({
         x: n.x,
         y: n.y,
         weight: 0.6,
-        r: BUBBLE_STYLE[n.size].disc * 8 * scale,
+        r: BUBBLE_STYLE[n.size].disc * 8 * reach,
         reach: REACH.project,
         // Heavier than a star: pulled from as far, but moving a little less.
         pullReach: 30,
@@ -2354,7 +2513,7 @@ const Board = memo(function Board({
       }
     // Dust isn't here: it floats by itself in CSS (Dust), so the loop never touches it.
     return m
-  }, [stars, bubbles, satellites, satPos, ME, scale])
+  }, [stars, bubbles, satellites, satPos, ME, reach])
 
   const activeId = activeStar
     ? starId(activeStar.name)
@@ -2449,6 +2608,10 @@ const Board = memo(function Board({
           '--shake': intro.shake
         } as CSSProperties
       }
+      // Escape puts away whatever popover is showing, without moving the pointer or focus.
+      onKeyDown={(e) => {
+        if (e.key === 'Escape' && active) setActive(null)
+      }}
       onClick={(e) => {
         // A click just off a satellite, while it's the one lit, follows its link.
         if (active?.kind !== 'satellite') return
@@ -2693,89 +2856,111 @@ const Board = memo(function Board({
         </>
       )}
 
-      {/* Area labels: plain text at each cluster's heart. An area with a lit star stays bright
-          (and strengthens), so you can always see which area a skill belongs to. */}
-      {Object.entries(layout.areas).map(([area, hub]) => (
-        <p
-          key={area}
-          className={cn(
-            on('intro-label'),
-            'pointer-events-none absolute -translate-x-1/2 -translate-y-1/2 text-xs font-semibold tracking-wide whitespace-nowrap uppercase transition-[opacity,color] duration-300',
-            ACCENT_TEXT[AREAS[area as Skill['area']].accent],
-            !litAreas.has(area) && active && 'opacity-40'
-          )}
-          style={
-            {
-              left: `${hub[0]}%`,
-              top: `${hub[1]}%`,
-              // Fade in as the area's stars land around it.
-              '--intro-label-delay': `${titleDelay(hub[0], hub[1])}ms`
-            } as CSSProperties
-          }
-        >
-          {area}
-        </p>
-      ))}
-
-      {/* Bubbles: work and projects around the Me node. */}
-      {bubbles.map((b) => (
-        <BubbleNode
-          key={b.slug}
-          bubble={b}
-          lit={activeBubble?.slug === b.slug || linked.projects.has(b.slug)}
-          live={live}
-          fly={fly}
-          open={open}
-          close={close}
-          onOpen={onOpenStory}
-        />
-      ))}
-
-      {/* Stars. */}
-      {stars.map((s) => {
-        const isActive = activeStar?.name === s.name
-        return (
-          <StarNode
-            key={s.name}
-            star={s}
-            isActive={isActive}
-            lit={isActive || linked.skills.has(s.name)}
-            live={live}
-            fly={fly}
-            open={open}
-            close={close}
-          />
-        )
-      })}
-
-      {/* Satellites, orbiting the Me node. */}
-      {satellites.map((s) => {
-        const [x, y] = satPos[s.kind]
-        const [ox, oy] = satOffset(s.kind)
-        return (
-          <SatelliteNode
-            key={s.kind}
-            satellite={s}
-            x={x}
-            y={y}
-            ox={ox}
-            oy={oy}
-            isActive={activeSat?.kind === s.kind}
-            live={live}
-            fly={fly}
-            open={open}
-            close={close}
-          />
-        )
-      })}
-
+      {/* The nodes, in the order they read: you, your links, your work, your skills. Each group
+          is a plain list (its items are placed on the board, so the lists themselves take up no
+          room), with headings a screen reader can jump between. */}
       {/* The Me node. Clicking does nothing; a tap opens the About on touch screens. */}
       <MeNode me={ME} meOpen={meOpen} live={live} open={open} close={close} />
+
+      {/* Satellites, orbiting the Me node. */}
+      <nav aria-label="Links">
+        <ul role="list">
+          {satellites.map((s) => {
+            const [x, y] = satPos[s.kind]
+            const [ox, oy] = satOffset(s.kind)
+            return (
+              <SatelliteNode
+                key={s.kind}
+                satellite={s}
+                x={x}
+                y={y}
+                ox={ox}
+                oy={oy}
+                isActive={activeSat?.kind === s.kind}
+                live={live}
+                fly={fly}
+                open={open}
+                close={close}
+              />
+            )
+          })}
+        </ul>
+      </nav>
+
+      {/* Bubbles: work and projects around the Me node. */}
+      <section>
+        <h2 className="sr-only">Work and projects</h2>
+        <ul role="list">
+          {bubbles.map((b) => (
+            <BubbleNode
+              key={b.slug}
+              bubble={b}
+              lit={activeBubble?.slug === b.slug || linked.projects.has(b.slug)}
+              live={live}
+              fly={fly}
+              open={open}
+              close={close}
+              onOpen={onOpenStory}
+              desc={bubbleDesc(b, stars)}
+            />
+          ))}
+        </ul>
+      </section>
+
+      {/* Stars, an area at a time. The area's name is plain text at its cluster's heart: an area
+          with a lit star stays bright (and strengthens), so you can always see which area a skill
+          belongs to. */}
+      <section>
+        <h2 className="sr-only">Skills</h2>
+        {Object.entries(layout.areas).map(([area, hub]) => (
+          <section key={area}>
+            <h3
+              className={cn(
+                on('intro-label'),
+                'pointer-events-none absolute -translate-x-1/2 -translate-y-1/2 text-xs font-semibold tracking-wide whitespace-nowrap uppercase transition-[opacity,color] duration-300',
+                ACCENT_TEXT[AREAS[area as Skill['area']].accent],
+                !litAreas.has(area) && active && 'opacity-40'
+              )}
+              style={
+                {
+                  left: `${hub[0]}%`,
+                  top: `${hub[1]}%`,
+                  // Fade in as the area's stars land around it.
+                  '--intro-label-delay': `${titleDelay(hub[0], hub[1])}ms`
+                } as CSSProperties
+              }
+            >
+              {area}
+            </h3>
+            <ul role="list">
+              {stars
+                .filter((s) => s.area === area)
+                .map((s) => (
+                  <StarNode
+                    key={s.name}
+                    star={s}
+                    lit={
+                      activeStar?.name === s.name || linked.skills.has(s.name)
+                    }
+                    live={live}
+                    fly={fly}
+                    open={open}
+                    close={close}
+                    desc={starDesc(s, bubbles)}
+                  />
+                ))}
+            </ul>
+          </section>
+        ))}
+      </section>
 
       {/* The ink popover beside the active star, bubble or satellite. */}
       {(anchor || satAnchor) && (
         <div
-          role="tooltip"
+          // For the eye only: the same words are each node's description (aria-describedby),
+          // which is there whether or not the popover is. The pointer can rest on it.
+          aria-hidden
+          data-pop
           className={cn(
             'dark ink-pop pointer-events-none absolute z-30 w-80 rounded-lg bg-background p-4 text-foreground shadow-pop',
             (anchor?.y ?? satAnchor![1]) > 60 && '-translate-y-full',
@@ -2819,8 +3004,8 @@ const Board = memo(function Board({
         // controls would sit there through the blast; a new name starts it again every time.
         <style>{`@keyframes intro-chrome-${run} { from { opacity: 0 } } @media (min-width: 64rem) and (prefers-reduced-motion: no-preference) { .intro-chrome { animation: intro-chrome-${run} ${Math.round(intro.ms * 0.6)}ms ease-out ${chromeDelay}ms backwards; } }`}</style>
       )}
-      <p className="intro-chrome pointer-events-none absolute bottom-4 left-5 text-xs text-muted-foreground/80">
-        Hover anything to see how it connects.
+      <p className="intro-chrome pointer-events-none absolute bottom-4 left-5 text-xs text-muted-foreground">
+        Hover or focus anything to see how it connects.
       </p>
     </div>
   )
@@ -2884,6 +3069,7 @@ const Column = memo(function Column({
           type="button"
           onClick={() => setPicked({ kind: 'me' })}
           aria-label={`About ${PROFILE.name}`}
+          aria-haspopup="dialog"
           className="constellation-drift shrink-0 rounded-full focus-ring"
         >
           <Portrait
@@ -2902,27 +3088,25 @@ const Column = memo(function Column({
           </p>
         </div>
       </div>
-      <ul className="mt-5 flex flex-wrap gap-1.5">
-        {satellites.map((s) => (
-          <li key={s.kind}>
-            <a
-              href={s.href}
-              {...(s.kind !== 'email'
-                ? { target: '_blank', rel: 'noopener noreferrer' }
-                : {})}
-              aria-label={
-                s.kind === 'press'
-                  ? `Press: ${s.title}, ${s.detail}`
-                  : `${s.title}: ${s.detail}`
-              }
-              className="flex items-center gap-2 rounded-full border border-border bg-card/70 py-1 pr-3.5 pl-1 text-sm font-semibold focus-ring"
-            >
-              <SatelliteDisc satellite={s} className="size-8" />
-              {s.label}
-            </a>
-          </li>
-        ))}
-      </ul>
+      <nav aria-label="Links">
+        <ul role="list" className="mt-5 flex flex-wrap gap-1.5">
+          {satellites.map((s) => (
+            <li key={s.kind}>
+              <a
+                href={s.href}
+                {...(s.kind !== 'email'
+                  ? { target: '_blank', rel: 'noopener noreferrer' }
+                  : {})}
+                aria-label={satelliteLabel(s)}
+                className="flex items-center gap-2 rounded-full border border-border bg-card/70 py-1 pr-3.5 pl-1 text-sm font-semibold focus-ring"
+              >
+                <SatelliteDisc satellite={s} className="size-8" />
+                {s.label}
+              </a>
+            </li>
+          ))}
+        </ul>
+      </nav>
 
       {/* Work and projects, newest first: a disc with its name, what it is and when. */}
       <h2 className="mt-10 text-xs font-semibold tracking-wide text-muted-foreground uppercase">
@@ -2930,14 +3114,27 @@ const Column = memo(function Column({
       </h2>
       {/* As many columns as fit, three at most (one on the narrowest phones, two on most, three
           from sm), read across then down. */}
-      <ul className="mt-3 grid grid-cols-1 gap-x-2 gap-y-1 min-[22.5rem]:grid-cols-2 sm:grid-cols-3">
+      <ul
+        role="list"
+        className="mt-3 grid grid-cols-1 gap-x-2 gap-y-1 min-[22.5rem]:grid-cols-2 sm:grid-cols-3"
+      >
         {ranked.map((b) => {
           const on = litBubbles.has(b.slug)
           return (
             <li key={b.slug}>
               <a
                 href={storyPath(b.slug)}
+                aria-haspopup="dialog"
                 onClick={(e) => {
+                  // A new tab or window, if that's what was asked for (as on the board).
+                  if (
+                    e.metaKey ||
+                    e.ctrlKey ||
+                    e.shiftKey ||
+                    e.altKey ||
+                    e.button !== 0
+                  )
+                    return
                   e.preventDefault()
                   onOpenStory(b.slug)
                 }}
@@ -2973,20 +3170,21 @@ const Column = memo(function Column({
       </ul>
 
       {/* Skills: each area a cluster of stars. */}
+      <h2 className="sr-only">Skills</h2>
       <div className="mt-10 space-y-7">
         {Object.entries(AREAS).map(([area, { accent }]) => {
           const list = stars.filter((s) => s.area === area)
           return (
             <section key={area}>
-              <h2
+              <h3
                 className={cn(
                   'text-xs font-semibold tracking-wide uppercase',
                   ACCENT_TEXT[accent]
                 )}
               >
                 {area}
-              </h2>
-              <ul className="mt-2.5 flex flex-wrap gap-1.5">
+              </h3>
+              <ul role="list" className="mt-2.5 flex flex-wrap gap-1.5">
                 {list.map((s) => {
                   const on = litStars.has(s.name)
                   return (
@@ -2996,6 +3194,7 @@ const Column = memo(function Column({
                         onClick={() =>
                           setPicked({ kind: 'star', name: s.name })
                         }
+                        aria-haspopup="dialog"
                         className={cn(
                           'flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm font-medium focus-ring transition-[opacity,border-color,background-color] duration-300',
                           on
@@ -3058,6 +3257,8 @@ function Sheet({
   const sheet = useRef<HTMLDivElement>(null)
   const scrim = useRef<HTMLDivElement>(null)
   const open = picked !== null
+  // Before the effect below moves focus into the sheet: this notes where it was, to hand it back.
+  useReturnFocus(sheet, open)
   useEffect(() => {
     if (!open) return
     close.current?.focus()
@@ -3067,6 +3268,7 @@ function Sheet({
   }, [open, onClose])
 
   useBodyLock(open)
+  useFocusTrap(sheet, open)
   useSwipeToClose(sheet, scrim, open, onClose)
 
   // A new pick starts at the top of the sheet.
@@ -3095,7 +3297,7 @@ function Sheet({
         }
         inert={!open}
         className={cn(
-          'dark ink-pop fixed inset-x-0 bottom-0 z-50 max-h-[70dvh] overflow-y-auto overscroll-contain rounded-t-2xl bg-background px-5 pt-3 pb-[max(1.5rem,env(safe-area-inset-bottom))] text-foreground shadow-pop transition-transform duration-300 ease-out lg:hidden',
+          'dark ink-pop fixed inset-x-0 bottom-0 z-50 max-h-[70dvh] overflow-y-auto overscroll-contain rounded-t-2xl bg-background px-5 pt-3 pb-[max(1.5rem,env(safe-area-inset-bottom))] text-foreground shadow-pop transition-transform duration-300 ease-out motion-reduce:transition-none lg:hidden',
           open ? 'translate-y-0' : 'translate-y-full'
         )}
       >
@@ -3129,7 +3331,7 @@ function Sheet({
                 <p className="mt-4 text-xs font-medium text-muted-foreground">
                   Used in
                 </p>
-                <ul className="mt-2 flex flex-wrap gap-2">
+                <ul role="list" className="mt-2 flex flex-wrap gap-2">
                   {bubbles
                     .filter((b) => star.projects.includes(b.slug))
                     .map((b) => (

@@ -5,6 +5,9 @@
  */
 
 @custom-variant dark (&:is(.dark *));
+/* A short screen: a phone on its side, or a window zoomed far in (1280×1024 at 400% is 256px
+   tall). Fixed headers and footers give way there, so the content keeps the room. */
+@custom-variant short (@media (max-height: 30rem));
 
 @theme inline {
   --font-sans: var(--af-font-sans);

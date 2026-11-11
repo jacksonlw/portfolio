@@ -6,6 +6,7 @@ import {
   ArrowsOutSimpleIcon,
   CaretLeftIcon,
   CaretRightIcon,
+  PauseIcon,
   PlayIcon,
   XIcon
 } from '@phosphor-icons/react/ssr'
@@ -24,6 +25,7 @@ import { RichText } from '@/components/site/rich-text'
 import {
   prefersReducedMotion,
   useBodyLock,
+  useFocusTrap,
   useReducedMotion,
   useSwipeToClose
 } from '@/components/site/overlay'
@@ -49,6 +51,12 @@ import { cn } from '@/lib/cn'
  * Story (its disc, title and what it was) and holds the controls, and shrinks to a slim bar once
  * you scroll; the footer steps to the previous and next Story. From `lg` the card can be opened
  * up to fill the window.
+ *
+ * For the keyboard and screen readers it's a modal dialog: focus moves into it and stays there
+ * (Tab goes round its controls; the page behind is inert, see Constellation), the write-up is a
+ * stop of its own so the arrow keys can scroll it, and focus goes back to the bubble on close.
+ * On a short screen (`short:`, a phone on its side or a window zoomed far in) the header and
+ * footer stop being fixed and the whole panel scrolls as one, so they never crowd out the text.
  */
 
 export type StoryBubble = (Project | WorkNode) & { kind: 'project' | 'work' }
@@ -231,6 +239,7 @@ export function StoryPanel({
   const titleId = `story-${bubble.slug}-title`
 
   useBodyLock(true)
+  useFocusTrap(panel, !closing)
   useSwipeToClose(panel, scrim, !closing, onRequestClose, scroller)
 
   // Once the write-up is scrolled the header shrinks to a slim bar. It grows back only at the
@@ -341,6 +350,8 @@ export function StoryPanel({
     if (found) {
       // From where the panel rests (an opening still under way is dropped).
       el.getAnimations().forEach((a) => a.cancel())
+      // (On a short screen the panel itself scrolls: back to its top, where the copy is drawn.)
+      el.scrollTop = 0
       const to = el.getBoundingClientRect()
       const radius = radiusOf(el)
       placeReplica(replica.current, found.el, found.rect)
@@ -464,7 +475,7 @@ export function StoryPanel({
         aria-labelledby={titleId}
         data-compact={compact || undefined}
         className={cn(
-          'group/panel relative flex h-full w-full flex-col overflow-hidden bg-card text-card-foreground shadow-pop will-change-transform motion-reduce:transition-none lg:border lg:transition-[max-width,height,border-radius] lg:duration-300',
+          'group/panel relative flex h-full w-full flex-col overflow-hidden bg-card text-card-foreground shadow-pop will-change-transform motion-reduce:transition-none lg:border lg:transition-[max-width,height,border-radius] lg:duration-300 short:block short:overflow-x-hidden short:overflow-y-auto short:overscroll-contain',
           // A little larger than the write-up alone needs: the header and footer are always there.
           full
             ? 'lg:h-[100dvh] lg:max-w-[100vw] lg:rounded-none lg:border-transparent'
@@ -475,12 +486,13 @@ export function StoryPanel({
         {/* The controls: fixed in the panel's corner, so they never move as the header shrinks. */}
         <div
           ref={controls}
-          className="absolute top-[max(0.5rem,env(safe-area-inset-top))] right-3 z-30 flex gap-1.5"
+          className="absolute top-[max(0.5rem,env(safe-area-inset-top))] right-3 z-30 flex gap-1.5 short:sticky short:h-0 short:justify-end short:pr-3"
         >
           <button
             type="button"
             onClick={onToggleFull}
-            aria-label={full ? 'Exit full screen' : 'Full screen'}
+            // The name stays put and aria-pressed carries the state (not both changing at once).
+            aria-label="Full screen"
             title={full ? 'Exit full screen' : 'Full screen'}
             aria-pressed={full}
             className="round-btn hidden size-10 items-center justify-center rounded-full bg-card/80 text-foreground focus-ring backdrop-blur hover:bg-muted lg:flex"
@@ -516,8 +528,13 @@ export function StoryPanel({
         <div
           ref={scroller}
           onScroll={onScroll}
+          // A stop for the keyboard, so the arrow keys, Page Up/Down and Space scroll the write-up
+          // (the page behind is locked, and the controls above aren't inside what scrolls).
+          tabIndex={0}
+          role="region"
+          aria-label={`${bubble.title}: the story`}
           className={cn(
-            'min-h-0 flex-1 overflow-y-auto overscroll-contain',
+            'min-h-0 flex-1 overflow-y-auto overscroll-contain focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring short:overflow-visible',
             opened && !closing && 'story-under'
           )}
         >
@@ -603,7 +620,9 @@ const Heading = memo(function Heading({
         <div className="min-w-0 flex-1 pr-12 lg:pr-24">
           <h2
             id={titleId}
-            className="truncate text-[1.75rem] leading-tight font-semibold tracking-tight transition-[font-size] duration-200 ease-out group-data-[compact]/panel:text-lg motion-reduce:transition-none sm:text-[2.25rem] sm:group-data-[compact]/panel:text-lg"
+            // Wraps at full size (a long title on a narrow or zoomed screen is never cut short);
+            // one line only in the slim bar.
+            className="text-[1.75rem] leading-tight font-semibold tracking-tight text-balance break-words transition-[font-size] duration-200 ease-out group-data-[compact]/panel:truncate group-data-[compact]/panel:text-lg motion-reduce:transition-none sm:text-[2.25rem] sm:group-data-[compact]/panel:text-lg"
           >
             {b.title}
           </h2>
@@ -682,7 +701,7 @@ function Recap({
           {b.summary}
         </p>
         {b.links.length > 0 && (
-          <ul className="mt-5 flex flex-wrap gap-2">
+          <ul role="list" className="mt-5 flex flex-wrap gap-2">
             {b.links.map((l) => (
               <li key={l.href}>
                 <a
@@ -697,6 +716,7 @@ function Recap({
                     className="size-3.5"
                     aria-hidden
                   />
+                  <span className="sr-only">(opens in a new tab)</span>
                 </a>
               </li>
             ))}
@@ -704,10 +724,10 @@ function Recap({
         )}
         {skills.length > 0 && (
           <>
-            <p className="mt-6 text-xs font-medium text-foreground/60">
+            <p className="mt-6 text-xs font-medium text-foreground/70">
               Built with
             </p>
-            <ul className="mt-2 flex flex-wrap gap-1.5">
+            <ul role="list" className="mt-2 flex flex-wrap gap-1.5">
               {skills.map((s) => (
                 <li
                   key={s.name}
@@ -726,7 +746,11 @@ function Recap({
 
 /* ---------- media ---------- */
 
-/** A clip: muted and looping, playing only while `playing`. Under reduced motion it waits for a tap. */
+/**
+ * A clip: muted and looping, playing only while `playing`. Under reduced motion it waits for a
+ * tap. Once it's going, a small button in its corner pauses it and starts it again: anything
+ * that moves by itself for more than a few seconds needs a way to be stopped.
+ */
 function Clip({
   item,
   playing,
@@ -741,12 +765,13 @@ function Clip({
   const video = useRef<HTMLVideoElement>(null)
   const reduce = useReducedMotion()
   const [started, setStarted] = useState(false)
+  const [stopped, setStopped] = useState(false)
   useEffect(() => {
     const v = video.current
     if (!v) return
-    if (playing && (!reduce || started)) v.play().catch(() => {})
+    if (playing && !stopped && (!reduce || started)) v.play().catch(() => {})
     else v.pause()
-  }, [playing, reduce, started])
+  }, [playing, reduce, started, stopped])
   return (
     <span className="relative block w-fit max-w-full">
       <video
@@ -770,6 +795,21 @@ function Clip({
           className="absolute inset-0 m-auto flex size-14 items-center justify-center rounded-full bg-background/85 text-foreground shadow-pop focus-ring"
         >
           <PlayIcon weight="fill" className="size-5" aria-hidden />
+        </button>
+      )}
+      {(!reduce || started) && (
+        <button
+          type="button"
+          onClick={() => setStopped((s) => !s)}
+          aria-label={`${stopped ? 'Play' : 'Pause'}: ${item.caption}`}
+          title={stopped ? 'Play' : 'Pause'}
+          className="absolute right-2 bottom-2 flex size-8 items-center justify-center rounded-full bg-background/85 text-foreground shadow-pop focus-ring"
+        >
+          {stopped ? (
+            <PlayIcon weight="fill" className="size-3.5" aria-hidden />
+          ) : (
+            <PauseIcon weight="fill" className="size-3.5" aria-hidden />
+          )}
         </button>
       )}
     </span>
@@ -947,10 +987,29 @@ function Gallery({
     return () => window.removeEventListener('keydown', onKey)
   }, [go, index])
 
+  // An arrow disappears at its end of the gallery. If it was the one being pressed, focus moves
+  // to the other arrow instead of being dropped.
+  const prevArrow = useRef<HTMLButtonElement>(null)
+  const nextArrow = useRef<HTMLButtonElement>(null)
+  const pressed = useRef<-1 | 1 | 0>(0)
+  useEffect(() => {
+    const dir = pressed.current
+    if (!dir) return
+    const ended = dir < 0 ? index === 0 : index === items.length - 1
+    if (!ended) return
+    pressed.current = 0
+    ;(dir < 0 ? nextArrow : prevArrow).current?.focus({ preventScroll: true })
+  }, [index, items.length])
+
   const arrow = (dir: -1 | 1, label: string, icon: ReactNode) => (
     <button
+      ref={dir < 0 ? prevArrow : nextArrow}
       type="button"
-      onClick={() => go(index + dir)}
+      onClick={() => {
+        pressed.current = dir
+        go(index + dir)
+      }}
+      onBlur={() => (pressed.current = 0)}
       aria-label={label}
       disabled={dir < 0 ? index === 0 : index === items.length - 1}
       className={cn(
@@ -1010,7 +1069,7 @@ function Gallery({
           )}
         </>
       )}
-      <div className="flex items-center justify-between gap-4 bg-card px-5 py-3 sm:px-10">
+      <div className="flex flex-col gap-1 bg-card px-5 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4 sm:px-10">
         <p
           className="min-w-0 text-sm text-pretty text-muted-foreground"
           aria-live="polite"
@@ -1018,7 +1077,8 @@ function Gallery({
           {items[index]?.caption}
         </p>
         {items.length > 1 && (
-          <div className="flex shrink-0 gap-1.5">
+          // Each dot sits in a 24px button: the dot is what you see, the button what you hit.
+          <div className="-mx-2 flex shrink-0 flex-wrap sm:mx-0">
             {items.map((g, i) => (
               <button
                 key={g.id}
@@ -1026,11 +1086,19 @@ function Gallery({
                 onClick={() => go(i)}
                 aria-label={`Show ${i + 1} of ${items.length}`}
                 aria-current={i === index || undefined}
-                className={cn(
-                  'h-2 rounded-full focus-ring transition-[width,background-color] duration-300',
-                  i === index ? 'w-5 bg-foreground' : 'w-2 bg-foreground/25'
-                )}
-              />
+                className="flex h-6 min-w-6 items-center justify-center rounded-full px-0.5 focus-ring"
+              >
+                <span
+                  className={cn(
+                    // The clear border shows up as a real one in forced-colours mode, where
+                    // background colours are dropped.
+                    'h-2 rounded-full border border-transparent transition-[width,background-color] duration-300 motion-reduce:transition-none',
+                    i === index
+                      ? 'w-5 bg-foreground forced-colors:bg-[Highlight]'
+                      : 'w-2 bg-foreground/50'
+                  )}
+                />
+              </button>
             ))}
           </div>
         )}

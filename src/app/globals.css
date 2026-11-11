@@ -155,6 +155,9 @@ html.dark .chrome-rim {
   --primary-foreground: var(--paper);
   --secondary-foreground: var(--ink);
   --accent-foreground: var(--ink);
+  /* A step darker than the brand's grey (#5b6270): small text sits on the page's light, which
+     falls off to #d9dce2 at the edges, and has to hold 4.5:1 out there too (this is 5.1:1). */
+  --muted-foreground: #525966;
 }
 
 .dark {
@@ -1215,6 +1218,12 @@ html[data-story-open]
   animation-play-state: paused;
 }
 
+/* The same when the visitor pauses the page's motion themselves (the pause button; overlay.ts).
+   The idle float is eased to a stop by the motion loop. */
+html.still :is(.dust-group, .constellation-drift, .constellation-flow) {
+  animation-play-state: paused;
+}
+
 /* A Story's panel as it grows out of its bubble: the disc's own glow, filling the panel, then
    fading to the page (components/story/story-panel.tsx). */
 .story-bloom {
@@ -1314,5 +1323,21 @@ html.dark .lit-text {
 @media (prefers-reduced-motion: no-preference) {
   .hover-lines {
     animation: intro-fade 180ms ease-out backwards;
+  }
+}
+
+/* Forced colours (Windows high contrast): backgrounds are dropped, so what was drawn with one
+   gets a line instead. The discs and the star dots keep their borders, which the system colours. */
+@media (forced-colors: active) {
+  .node-disc,
+  .chrome-rim {
+    border-color: CanvasText !important;
+  }
+  .star-lit,
+  .node-disc[data-lit] {
+    border-color: Highlight !important;
+  }
+  .ink-pop {
+    border: 1px solid CanvasText;
   }
 }
