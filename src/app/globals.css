@@ -595,23 +595,25 @@ main:has(.intro-live) {
   }
 }
 
-/* Waiting for the page to load (.intro-wait on the board): everything is held at its first
+/* Waiting for the photo and fonts (.intro-wait on the board): everything is held at its first
    frame except the core, which slowly swells as a churning orb, the loader. The page's own controls
-   wait too. When the class goes, every intro animation starts from the beginning. */
+   wait too. The hold ends when <html> gets .intro-go, from an inline script that needs nothing
+   from the network (intro.ts), so it can't outlast a slow or failed download; the board drops
+   .intro-wait itself once React is running. */
 @media (prefers-reduced-motion: no-preference) {
-  .intro-wait,
-  .intro-wait *,
-  html:has(.intro-wait) .intro-chrome {
+  html:not(.intro-go) .intro-wait,
+  html:not(.intro-go) .intro-wait *,
+  html:not(.intro-go):has(.intro-wait) .intro-chrome {
     animation-play-state: paused !important;
   }
   /* The core keeps swelling while it waits, fast at first and then ever more slowly, so a slow
      load reads as the build-up taking its time; the intro carries on from wherever it got to. */
-  .intro-wait .intro-core {
+  html:not(.intro-go) .intro-wait .intro-core {
     animation: core-grow 7s cubic-bezier(0.2, 0.55, 0.3, 1) forwards !important;
   }
-  .intro-wait .core-blob,
-  .intro-wait .core-heart,
-  .intro-wait .core-orb::after {
+  html:not(.intro-go) .intro-wait .core-blob,
+  html:not(.intro-go) .intro-wait .core-heart,
+  html:not(.intro-go) .intro-wait .core-orb::after {
     animation-play-state: running !important;
   }
 }
@@ -1281,10 +1283,10 @@ html.dark .portrait-figure {
     drop-shadow(3cqw 3cqw 3.5cqw rgb(10 10 24 / 0.45));
 }
 .portrait-photo {
-  filter: saturate(1.02) contrast(1.04) brightness(0.94);
+  filter: saturate(0.97) contrast(1.04) brightness(0.94);
 }
 html.dark .portrait-photo {
-  filter: saturate(0.98) contrast(1.05) brightness(0.91);
+  filter: saturate(0.93) contrast(1.05) brightness(0.91);
 }
 /* A thin line round the figure, as every drawing on the board has, but of polished metal, not
    flat ink: the chrome rim's own sweep of silver and faint colour, so it catches the light
@@ -1357,8 +1359,8 @@ html.dark .portrait-outline {
      plain brightening would wash it out. */
   --face: radial-gradient(
     ellipse 26% 30% at 51% 35%,
-    rgb(255 222 200 / 0.6) 0%,
-    rgb(255 222 200 / 0.3) 55%,
+    rgb(255 234 222 / 0.52) 0%,
+    rgb(255 234 222 / 0.26) 55%,
     transparent 100%
   );
   background:
