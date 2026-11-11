@@ -2,6 +2,7 @@
 
 import {
   ArrowCounterClockwiseIcon,
+  CaretRightIcon,
   PauseIcon,
   PlayIcon
 } from '@phosphor-icons/react/ssr'
@@ -2129,7 +2130,8 @@ export function Constellation({
       )}
 
       {/* Pause the page's ambient motion (overlay.ts): beside the other round buttons. Not shown
-          under reduced motion, where none of it runs to begin with. */}
+          under reduced motion, where none of it runs to begin with, nor below `lg`, where the page
+          is a plain column with nothing to pause. */}
       <button
         type="button"
         onClick={() => setMotionPaused(!still)}
@@ -2137,7 +2139,7 @@ export function Constellation({
         aria-pressed={still}
         title={still ? 'Resume motion' : 'Pause motion'}
         className={cn(
-          'intro-chrome chrome-rim round-btn fixed right-[4.25rem] bottom-4 z-40 flex size-10 items-center justify-center rounded-full border-2 text-foreground shadow-card-hover focus-ring motion-reduce:hidden!',
+          'intro-chrome chrome-rim round-btn fixed right-[4.25rem] bottom-4 z-40 hidden size-10 items-center justify-center rounded-full border-2 text-foreground shadow-card-hover focus-ring motion-reduce:hidden! lg:flex',
           INTRO.ms > 0 && 'lg:right-[7.25rem]'
         )}
       >
@@ -3092,6 +3094,16 @@ const Column = memo(function Column({
           <p className="mt-1 text-sm text-muted-foreground">
             {PROFILE.role} · {PROFILE.location}
           </p>
+          {/* The photo opens the About too, but nothing about a photo says so: this does. */}
+          <button
+            type="button"
+            onClick={() => setPicked({ kind: 'me' })}
+            aria-haspopup="dialog"
+            className="mt-2.5 inline-flex h-8 items-center gap-1 rounded-full bg-primary pr-2.5 pl-3.5 text-sm font-semibold text-primary-foreground focus-ring"
+          >
+            About me
+            <CaretRightIcon weight="bold" className="size-3.5" aria-hidden />
+          </button>
         </div>
       </div>
       <nav aria-label="Links">
