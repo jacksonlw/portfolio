@@ -2146,6 +2146,18 @@ html.dark .portrait-disc::before {
   background-image: var(--grain-on);
   mix-blend-mode: var(--grain-blend);
 }
+/* A surface behind a picture among the paragraphs is one of several in a long write-up that
+   scrolls. Layers of its own there would each drag whatever is drawn over them (the picture, its
+   frame) onto more layers, a dozen or more for one Story, all to be kept and put together on
+   every frame of a scroll. So it's drawn the way a disc is: in one go, into the write-up itself. */
+.story-surface[data-flat] {
+  background-image: var(--grain-on), var(--pools);
+  background-blend-mode: var(--grain-blend), normal;
+}
+.story-surface[data-flat]::before,
+.story-surface[data-flat]::after {
+  content: none;
+}
 .story-surface {
   --surf-base: color-mix(
     in oklab,

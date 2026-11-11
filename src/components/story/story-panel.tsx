@@ -62,9 +62,13 @@ import { cn } from '@/lib/cn'
 export type StoryBubble = (Project | WorkNode) & { kind: 'project' | 'work' }
 
 const OPEN_MS = 340
-/** How far past the top of the write-up's card the surface still runs, behind the card (px). */
-const SURFACE_SLACK = 240
 const CLOSE_MS = 320
+/** How much of the foot of the write-up the surface is cut away from, once the card covers it (px). */
+const FOOT_STRIP = 200
+/** How far the card comes up over that strip before the cut is made (px). */
+const FOOT_LEAD = 240
+/** How long after opening a click outside the panel is ignored (ms): a double-click's worth. */
+const OUTSIDE_GRACE_MS = 400
 /**
  * The one curve the panel moves on, both ways: a quick spring with a slight bounce (damping 0.76,
  * about 2.5% past its mark, then settled). 0 → 1 over t in 0…1; it's most of the way there by a
@@ -109,6 +113,8 @@ function between(
   }
 }
 const EASE = 'cubic-bezier(0.2, 0.8, 0.2, 1)'
+/** How the bloom starts out: not in the page (showBloom brings it in for the morph). */
+const BLOOM_OFF: CSSProperties = { display: 'none' }
 
 /** Every copy of the bubble's disc (the board's, the column's, a sheet chip's). */
 const discEls = (slug: string) => [
@@ -201,6 +207,18 @@ function morph(to: DOMRect, radius: number, disc: DOMRect) {
   )
 }
 
+/**
+ * The bloom (the disc's colour and its copy, over the whole panel) is only in the page while the
+ * panel is growing or shrinking. The rest of the time it's display: none, not merely clear.
+ */
+function showBloom(el: HTMLElement | null) {
+  if (el) el.style.display = 'flex'
+  return el
+}
+const hideBloom = (el: HTMLElement | null) => {
+  if (el) el.style.display = 'none'
+}
+
 const radiusOf = (el: HTMLElement) =>
   parseFloat(getComputedStyle(el).borderTopLeftRadius) || 0
 
@@ -253,6 +271,16 @@ export function StoryPanel({
   const nextBtn = useRef<HTMLButtonElement>(null)
   const titleId = `story-${bubble.slug}-title`
 
+  // A click outside the panel closes it, but not one that lands in the first moments: the second
+  // click of a double-click on the bubble falls on the scrim the first one just put up, and
+  // would otherwise shut the Story as it opens (a blink of scrim and panel, then nothing).
+  const [openedAt] = useState(() =>
+    typeof performance === 'undefined' ? 0 : performance.now()
+  )
+  const closeFromOutside = useCallback(() => {
+    if (performance.now() - openedAt > OUTSIDE_GRACE_MS) onRequestClose()
+  }, [openedAt, onRequestClose])
+
   useBodyLock(true)
   useFocusTrap(panel, !closing)
   useSwipeToClose(panel, scrim, !closing, onRequestClose, scroller)
@@ -261,26 +289,40 @@ export function StoryPanel({
   // very top: the gap between the two marks keeps it from flickering as its own change in height
   // moves what's under it.
   const [compact, setCompact] = useState(false)
-  // The surface is only ever shown down to where the write-up's card begins (and a little past
-  // it, behind the card, for when the write-up is pulled down past the top). Below that the panel
-  // is plain card. Otherwise the surface would show wherever nothing covers it: in the gap above
-  // the footer when the write-up is pulled up past its end. The header always keeps its part.
-  const trimSurface = useCallback(() => {
-    const el = panel.current
-    const card = content.current?.querySelector('[data-card]')
-    const head = el?.querySelector('header')
-    if (!el || !card || !head || !surface.current) return
-    const top = el.getBoundingClientRect().top
-    const c = card.getBoundingClientRect()
-    const end = Math.max(
-      head.getBoundingClientRect().bottom - top,
-      Math.min(c.top + SURFACE_SLACK, c.bottom) - top
-    )
-    surface.current.style.clipPath = `inset(0 0 ${Math.max(0, Math.round(el.clientHeight - end))}px 0)`
+  // The write-up's end can come up off the footer for a moment: pulled past its end where the
+  // browser lets it bounce, or when the header shrinks under a scroll that's already at the end.
+  // Nothing covers the surface in that gap, so along the foot of the write-up the surface is cut
+  // away, leaving the panel's plain card colour there.
+  //
+  // It's only cut once the card has come well up over that strip, where nobody can see it happen,
+  // and scrolling does no more than flip between the two (cut, whole). Where the strip is and
+  // when to flip are measured when the layout changes, never during a scroll: a style written on
+  // every scroll event has the browser paint and commit on every frame of the scroll, and the
+  // tiles coming into view wait behind that work and show blank.
+  const trim = useRef({ cut: '', from: Infinity, on: '' })
+  const applyTrim = useCallback(() => {
+    const t = trim.current
+    const want = (scroller.current?.scrollTop ?? 0) > t.from ? t.cut : ''
+    if (want === t.on || !surface.current) return
+    t.on = want
+    surface.current.style.clipPath = want
   }, [])
+  const measureTrim = useCallback(() => {
+    const el = panel.current
+    const area = scroller.current
+    const card = content.current?.querySelector('[data-card]')
+    if (!el || !area || !card) return
+    const top = el.getBoundingClientRect().top
+    // Where the strip starts, and where the card sits with the write-up at its top.
+    const strip = area.getBoundingClientRect().bottom - top - FOOT_STRIP
+    const cardTop = card.getBoundingClientRect().top + area.scrollTop - top
+    trim.current.cut = `inset(0 0 ${Math.max(0, Math.round(el.clientHeight - strip))}px 0)`
+    trim.current.from = cardTop - strip + FOOT_LEAD
+    applyTrim()
+  }, [applyTrim])
   useLayoutEffect(() => {
-    trimSurface()
-    const ro = new ResizeObserver(trimSurface)
+    measureTrim()
+    const ro = new ResizeObserver(measureTrim)
     for (const el of [
       panel.current,
       content.current,
@@ -288,12 +330,12 @@ export function StoryPanel({
     ])
       if (el) ro.observe(el)
     return () => ro.disconnect()
-  }, [trimSurface])
+  }, [measureTrim])
   const onScroll = useCallback(() => {
     const y = scroller.current?.scrollTop ?? 0
     setCompact((c) => (y > 32 ? true : y < 4 ? false : c))
-    trimSurface()
-  }, [trimSurface])
+    applyTrim()
+  }, [applyTrim])
 
   // Open: grow out of the bubble, the disc's colour giving way to the page as the text fades in.
   useLayoutEffect(() => {
@@ -324,6 +366,7 @@ export function StoryPanel({
     const found = prefersReducedMotion() ? null : visibleDisc(bubble.slug)
     const disc = found?.rect
     if (found) placeReplica(replica.current, found.el, found.rect)
+    let bloomFade: Animation | undefined
     const anims: (Animation | undefined)[] = [
       scrim.current?.animate(
         { opacity: [0, 1] },
@@ -341,18 +384,23 @@ export function StoryPanel({
           easing: 'linear'
         }),
         // The bubble's drawing is gone almost at once; the panel is what you watch.
-        bloom.current?.animate(
+        (bloomFade = showBloom(bloom.current)?.animate(
           { opacity: [1, 0] },
-          { duration: 100, easing: 'ease-out', fill: 'forwards' }
-        ),
+          { duration: 100, easing: 'ease-out' }
+        )),
         content.current?.animate(
           { opacity: [0, 1] },
           { duration: 200, delay: 70, easing: EASE, fill: 'backwards' }
         )
       )
+    // Once it has faded, the bloom is taken out altogether (until the close): left in place at
+    // no opacity it would still be two more panel-sized layers for the browser to carry.
+    const bloomEl = bloom.current
+    if (bloomFade) bloomFade.onfinish = () => hideBloom(bloomEl)
     // Measured from where things sit at rest, so a second run (React's dev double-mount) starts clean.
     return () => {
       anims.forEach((a) => a?.cancel())
+      hideBloom(bloomEl)
       hideDiscs(bubble.slug, false)
     }
     // Only the first opening of this panel grows; a re-render never replays it.
@@ -365,9 +413,27 @@ export function StoryPanel({
     const el = panel.current
     if (!el) return onClosed()
     const found = prefersReducedMotion() ? null : visibleDisc(bubble.slug)
+    // Everything leaves from where it is, not from where it would have been at rest. Closed
+    // while it's still opening (a quick second click, Escape straight after), the panel is a
+    // small circle near its bubble, the scrim half there and the text not yet in: starting the
+    // way out from "fully open" would flash the whole Story up for a frame first.
+    const opacityNow = (node: Element | null) =>
+      node ? Number(getComputedStyle(node).opacity) : 1
+    const opening = el
+      .getAnimations()
+      .find((a) => a.playState === 'running' && !(a instanceof CSSTransition))
+    // How far toward the disc the panel still is (0 at rest, 1 the disc itself).
+    const p0 = opening
+      ? Math.min(
+          1,
+          Math.max(0, 1 - spring(Number(opening.currentTime ?? 0) / OPEN_MS))
+        )
+      : 0
+    // The less there is left to shrink, the less time it takes.
+    const ms = CLOSE_MS * Math.max(0.4, 1 - p0)
     scrim.current?.animate(
-      { opacity: [1, 0] },
-      { duration: CLOSE_MS * 0.6, easing: 'ease-out', fill: 'forwards' }
+      { opacity: [opacityNow(scrim.current), 0] },
+      { duration: ms * 0.6, easing: 'ease-out', fill: 'forwards' }
     )
     let raf = 0
     let fallback = 0
@@ -384,30 +450,50 @@ export function StoryPanel({
       onClosed()
     }
     if (found) {
-      // From where the panel rests (an opening still under way is dropped).
-      el.getAnimations().forEach((a) => a.cancel())
+      const textNow = opacityNow(content.current)
+      const bloomNow =
+        bloom.current?.style.display === 'none' ? 0 : opacityNow(bloom.current)
+      // The opening, if it's still under way, is dropped (the loop below carries on from where
+      // it had got to, p0), and the panel is measured where it rests. Only the opening is
+      // dropped, not a change of size still easing along (to or from filling the window):
+      // cancelling that would jump the panel to the size it was heading for.
+      for (const a of el.getAnimations())
+        if (!(a instanceof CSSTransition)) a.cancel()
       // (On a short screen the panel itself scrolls: back to its top, where the copy is drawn.)
       el.scrollTop = 0
       const to = el.getBoundingClientRect()
       const radius = radiusOf(el)
+      // Instead it stops at the size it has right now: the clip below is worked out against
+      // this box, and a box still changing under it would land a circle that isn't the disc's.
+      Object.assign(el.style, {
+        transition: 'none',
+        flex: 'none',
+        width: `${to.width}px`,
+        maxWidth: 'none',
+        height: `${to.height}px`,
+        borderRadius: `${radius}px`
+      })
       placeReplica(replica.current, found.el, found.rect)
+      // (If it was still fading out from the opening, that's dropped, and with it the hiding
+      // that was to follow.)
+      bloom.current?.getAnimations().forEach((a) => a.cancel())
       // The disc's colour and drawing come up fast, so it's the bubble that comes home.
-      bloom.current?.animate(
-        { opacity: [0, 1] },
-        { duration: CLOSE_MS * 0.3, easing: 'ease-out', fill: 'forwards' }
+      showBloom(bloom.current)?.animate(
+        { opacity: [bloomNow, 1] },
+        { duration: ms * 0.3, easing: 'ease-out', fill: 'forwards' }
       )
       // Driven frame by frame rather than as fixed keyframes: the disc keeps drifting (and leaning
       // toward the cursor) while hidden, so each frame aims at where it is now, and the panel ends
       // exactly on top of the real disc.
       // The text goes at once (the disc's colour is coming up over it anyway).
       content.current?.animate(
-        { opacity: [1, 0] },
-        { duration: CLOSE_MS * 0.25, fill: 'forwards' }
+        { opacity: [textNow, 0] },
+        { duration: ms * 0.25, fill: 'forwards' }
       )
       if (controls.current) controls.current.style.visibility = 'hidden'
       const start = performance.now()
       const step = (now: number) => {
-        const t = Math.min(1, (now - start) / CLOSE_MS)
+        const t = Math.min(1, Math.max(0, (now - start) / ms))
         // First the panel becomes the disc: it stays solid the whole way down, ending as a circle
         // exactly the disc's size with the copy filling it, so there is never a ring of panel
         // round the bubble. Only then, with nothing of the panel left to see, is its fill dropped
@@ -417,7 +503,13 @@ export function StoryPanel({
         const rim = landed ? RIM * EASE_OUT((t - LANDED) / (1 - LANDED)) : 0
         Object.assign(
           el.style,
-          between(to, radius, found.el.getBoundingClientRect(), spring(t), rim)
+          between(
+            to,
+            radius,
+            found.el.getBoundingClientRect(),
+            p0 + (1 - p0) * spring(t),
+            rim
+          )
         )
         el.style.backgroundColor = landed ? 'transparent' : ''
         el.style.borderColor = 'transparent'
@@ -428,16 +520,18 @@ export function StoryPanel({
         if (t >= 1) finish()
         else raf = requestAnimationFrame(step)
       }
-      raf = requestAnimationFrame(step)
+      // The first step is taken here and now, not on the next frame: the opening was dropped
+      // just above, and a frame drawn before the loop's first would show the panel at rest.
+      step(start)
     } else {
       const fade = el.animate(
-        { opacity: [1, 0] },
+        { opacity: [opacityNow(el), 0] },
         { duration: 180, easing: 'ease-in', fill: 'forwards' }
       )
       fade.onfinish = finish
     }
     // Never left stuck if frames stop coming (a background tab): it simply closes.
-    fallback = window.setTimeout(finish, CLOSE_MS + 400)
+    fallback = window.setTimeout(finish, ms + 400)
     return () => {
       done = true
       cancelAnimationFrame(raf)
@@ -500,15 +594,19 @@ export function StoryPanel({
         'fixed inset-0 z-50 motion-reduce:transition-none lg:flex lg:items-center lg:justify-center lg:transition-[padding] lg:duration-300',
         full ? 'lg:p-0' : 'lg:p-4'
       )}
-      onClick={(e) => e.target === e.currentTarget && onRequestClose()}
+      onClick={(e) => e.target === e.currentTarget && closeFromOutside()}
     >
       <div
         ref={scrim}
         aria-hidden
-        onClick={onRequestClose}
-        // Blurred only from `lg`, where the page shows around the card. Below that the panel
-        // covers the whole screen, and a blur nobody can see would still be worked out.
-        className="absolute inset-0 bg-[rgb(12_13_16/0.45)] lg:backdrop-blur-[2px]"
+        onClick={closeFromOutside}
+        // Blurred only where the page shows around the card: from `lg`, and not while the Story
+        // fills the window. Otherwise the panel covers the whole screen, and a blur nobody can
+        // see would still be worked out on every frame.
+        className={cn(
+          'absolute inset-0 bg-[rgb(12_13_16/0.45)]',
+          !full && 'lg:backdrop-blur-[2px]'
+        )}
       />
       <div
         ref={panel}
@@ -617,7 +715,8 @@ export function StoryPanel({
         <div
           ref={bloom}
           aria-hidden
-          className="pointer-events-none absolute inset-0 z-40 flex items-center justify-center opacity-0"
+          className="pointer-events-none absolute inset-0 z-40 items-center justify-center opacity-0"
+          style={BLOOM_OFF}
         >
           <div ref={bloomBg} className="story-surface absolute inset-0" />
           {/* An exact copy of the bubble's disc goes here (placeReplica). */}
@@ -711,7 +810,12 @@ const Body = memo(function Body({
       {story && story.gallery.length > 0 && (
         <Gallery items={story.gallery} settleMs={settleMs} />
       )}
-      <div data-card className="flex-1 bg-card">
+      {/* The card is a layer of its own, and a solid one (will-change, on plain bg-card). When
+          the write-up is flung faster than the browser can draw it, the part not drawn yet is
+          then filled with the card's colour, and the text simply arrives a moment late.
+          Otherwise that part is see-through, and the coloured surface behind flashes up
+          through the text. */}
+      <div data-card className="flex-1 bg-card will-change-transform">
         <div className="mx-auto w-full max-w-4xl space-y-12 px-5 pt-10 pb-12 sm:px-10">
           {story && story.sections.length > 0 ? (
             story.sections.map((s) => (
@@ -827,6 +931,21 @@ function Clip({
     if (playing && !stopped && (!reduce || started)) v.play().catch(() => {})
     else v.pause()
   }, [playing, reduce, started, stopped])
+  // When the Story closes, the clip lets go of what it had loaded and its decoder straight away,
+  // not whenever the browser next tidies up: open enough Stories in a row and those add up.
+  useEffect(() => {
+    const v = video.current
+    return () => {
+      // (Only once it has really left the page: in development React runs this once on a clip
+      // that's staying, to check that effects clean up.)
+      queueMicrotask(() => {
+        if (!v || v.isConnected) return
+        v.pause()
+        v.removeAttribute('src')
+        v.load()
+      })
+    }
+  }, [])
   return (
     <span className="relative block w-fit max-w-full">
       <video
@@ -959,6 +1078,8 @@ function InlineMedia({ item }: { item: GalleryItem }) {
           'story-surface relative flex justify-center rounded-xl px-6 py-8',
           item.frame === 'browser' && 'px-4 sm:px-8'
         )}
+        // Painted straight into the write-up as it scrolls (globals.css): no layers of its own.
+        data-flat
         style={surfaceSeed(`picture:${item.id}`)}
       >
         <Framed item={item} playing={seen} fit="width" />

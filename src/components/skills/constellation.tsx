@@ -2015,6 +2015,12 @@ const slugAt = (path: string) =>
   path.match(/^\/(?:projects|work)\/([\w-]+)\/?$/)?.[1] ?? null
 
 type OpenStory = {
+  /**
+   * Which opening this is. Each one gets a panel of its own: a Story asked for again while it's
+   * still on its way out (Back, then Forward) starts fresh, and doesn't pick up the half-closed
+   * panel where it was left.
+   */
+  id: number
   slug: string
   instant: boolean
   closing: boolean
@@ -2129,15 +2135,18 @@ export function Constellation({
 
   // The open Story, and whether this page put its address in the history (so closing can go Back).
   const [story, setStory] = useState<OpenStory | null>(
-    initialStory ? { slug: initialStory, instant: true, closing: false } : null
+    initialStory
+      ? { id: 0, slug: initialStory, instant: true, closing: false }
+      : null
   )
+  const opened = useRef(0)
   const pushed = useRef(false)
   const openStory = useCallback((slug: string) => {
     if (window.location.pathname !== storyPath(slug)) {
       window.history.pushState(null, '', storyPath(slug))
       pushed.current = true
     }
-    setStory({ slug, instant: false, closing: false })
+    setStory({ id: ++opened.current, slug, instant: false, closing: false })
   }, [])
   const closeStory = useCallback(
     () => setStory((s) => s && { ...s, closing: true }),
@@ -2147,7 +2156,13 @@ export function Constellation({
   // (replaced, not added to the history, so closing still goes back to the page in one step).
   const stepStory = useCallback((slug: string, dir: 'prev' | 'next') => {
     window.history.replaceState(null, '', storyPath(slug))
-    setStory({ slug, instant: true, closing: false, stepped: dir })
+    setStory({
+      id: ++opened.current,
+      slug,
+      instant: true,
+      closing: false,
+      stepped: dir
+    })
   }, [])
   // Whether Stories fill the window (from `lg`); kept here so it holds from one Story to the next.
   const still = useMotionPaused()
@@ -2197,11 +2212,13 @@ export function Constellation({
     const onPop = () => {
       const slug = slugAt(window.location.pathname)
       pushed.current = false
+      const id = ++opened.current
       setStory((s) =>
         slug
-          ? s?.slug === slug
+          ? // Already open (and staying): nothing to do. One that's closing is opened again.
+            s?.slug === slug && !s.closing
             ? s
-            : { slug, instant: false, closing: false }
+            : { id, slug, instant: false, closing: false }
           : s && { ...s, closing: true }
       )
     }
@@ -2275,7 +2292,7 @@ export function Constellation({
 
       {story && storyBubble && (
         <StoryPanel
-          key={story.slug}
+          key={story.id}
           bubble={storyBubble}
           story={stories[story.slug] ?? null}
           skills={storySkills}
