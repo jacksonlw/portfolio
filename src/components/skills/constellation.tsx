@@ -1201,44 +1201,54 @@ const Dust = memo(function Dust({
   sparks: Spark[]
   me: readonly [number, number]
 }) {
-  return Array.from({ length: DUST_GROUPS }, (_, g) => (
+  // Clipped to the board: a group drifts a few px past its edges (and a speck can land beyond
+  // them on a short window), which made the page that much taller than the screen, enough for
+  // a scrollbar to come and go with nothing to scroll to.
+  return (
     <span
-      key={g}
       aria-hidden
-      className="dust-group pointer-events-none absolute inset-0"
-      style={
-        {
-          // Each group drifts its own way and at its own pace, from where the blast left it:
-          // no head start, so nothing moves at the moment it settles.
-          '--float': `${11 + g * 3}s`,
-          '--twinkle': `${2.6 + g * 1.1}s`,
-          '--fx': `${[6, -5, 4][g % 3]}px`,
-          '--fy': `${[5, 4, -6][g % 3]}px`
-        } as CSSProperties
-      }
+      className="pointer-events-none absolute inset-0 overflow-clip"
     >
-      {sparks.map(
-        (sp, i) =>
-          i % DUST_GROUPS === g && (
-            <span
-              key={sp.id}
-              data-extra={i % 2 === 1 || undefined}
-              className="absolute rounded-full"
-              style={{
-                left: `calc(${me[0]}% + ${sp.dx}px)`,
-                top: `calc(${me[1]}% + ${sp.dy}px)`,
-                width: sp.size,
-                height: sp.size,
-                marginLeft: -sp.size / 2,
-                marginTop: -sp.size / 2,
-                background: `var(--spark-${sp.tone})`,
-                opacity: sp.rest
-              }}
-            />
-          )
-      )}
+      {Array.from({ length: DUST_GROUPS }, (_, g) => (
+        <span
+          key={g}
+          aria-hidden
+          className="dust-group pointer-events-none absolute inset-0"
+          style={
+            {
+              // Each group drifts its own way and at its own pace, from where the blast left it:
+              // no head start, so nothing moves at the moment it settles.
+              '--float': `${11 + g * 3}s`,
+              '--twinkle': `${2.6 + g * 1.1}s`,
+              '--fx': `${[6, -5, 4][g % 3]}px`,
+              '--fy': `${[5, 4, -6][g % 3]}px`
+            } as CSSProperties
+          }
+        >
+          {sparks.map(
+            (sp, i) =>
+              i % DUST_GROUPS === g && (
+                <span
+                  key={sp.id}
+                  data-extra={i % 2 === 1 || undefined}
+                  className="absolute rounded-full"
+                  style={{
+                    left: `calc(${me[0]}% + ${sp.dx}px)`,
+                    top: `calc(${me[1]}% + ${sp.dy}px)`,
+                    width: sp.size,
+                    height: sp.size,
+                    marginLeft: -sp.size / 2,
+                    marginTop: -sp.size / 2,
+                    background: `var(--spark-${sp.tone})`,
+                    opacity: sp.rest
+                  }}
+                />
+              )
+          )}
+        </span>
+      ))}
     </span>
-  ))
+  )
 })
 
 type Mote = {
