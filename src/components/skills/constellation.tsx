@@ -2,7 +2,6 @@
 
 import {
   ArrowCounterClockwiseIcon,
-  CaretRightIcon,
   PauseIcon,
   PlayIcon
 } from '@phosphor-icons/react/ssr'
@@ -49,10 +48,10 @@ import {
 } from '@/components/site/overlay'
 import { ACCENT_BG, ACCENT_STROKE, ACCENT_TEXT } from '@/lib/accent'
 import { cn } from '@/lib/cn'
-import { discAccent } from './disc'
+import { discAccent, surfaceSeed } from './disc'
 import { INTRO, type Intro } from './intro'
 import { LAYOUT, OFF_BOARD, type BubbleSize, type Layout } from './layouts'
-import photo from '../../../public/profile-picture.jpg'
+import photo from '../../../public/profile-cutout.png'
 
 /*
  * The constellation: the whole page. Jackson's Me node sits at the center, his satellites (resume,
@@ -125,9 +124,9 @@ const BUBBLE_STYLE: Record<
   BubbleSize,
   { disc: number; art: number; label: string }
 > = {
-  lg: { disc: 6.25, art: 4.2, label: 'text-sm' },
-  md: { disc: 5.4, art: 3.6, label: 'text-sm' },
-  sm: { disc: 4.5, art: 3, label: 'text-xs' }
+  lg: { disc: 6.25, art: 4.2, label: 'text-[0.875em]/[1.43]' },
+  md: { disc: 5.4, art: 3.6, label: 'text-[0.875em]/[1.43]' },
+  sm: { disc: 4.5, art: 3, label: 'text-[0.75em]/[1.34]' }
 }
 
 type Star = Skill & {
@@ -324,6 +323,108 @@ function layoutScale(layout: Layout, w: number, h: number) {
   if (!w || !h) return 1
   const [rw, rh] = layout.reference
   return Math.min(1.15, Math.max(0.6, Math.min(w / rw, h / rh)))
+}
+
+/**
+ * How a board smaller than the reference shares out its one scale `k`. Distances shrink by `k`
+ * itself. Text holds its full size down to a board four-fifths of the reference, and below that
+ * gives up only a little (never under TEXT_FLOOR), so it stays readable; the discs give up the
+ * room instead, shrinking a little faster than the distances. On a bigger board everything grows
+ * together.
+ */
+const TEXT_FLOOR = 0.92
+
+function nodeScales(k: number) {
+  return {
+    disc: k < 1 ? k - (1 - k) * 0.2 : k,
+    text: Math.max(TEXT_FLOOR, Math.min(1, k / 0.8), k),
+    name: Math.max(0.85, k)
+  }
+}
+
+/** A star's label, roughly (px at the usual text size): half its width, and its height with the dot. */
+const starLabel = (name: string) => ({ half: (name.length * 7 + 14) / 2, tall: 30 })
+
+/**
+ * The stars on this board, and each area's center. Their spots are % of the board, so on a small
+ * one a figure would close up while its labels stayed the same size, and run together. Each
+ * figure instead opens back up toward the spread (px) its labels were fitted at, growing outward
+ * only: its inner edge stays where it was, clear of the bubbles, and it stops opening when its
+ * outer edge meets the board's. Its area's name moves with it.
+ */
+function spreadStars(
+  layout: Layout,
+  stars: Star[],
+  w: number,
+  h: number,
+  text: number
+): { stars: Star[]; hubs: Layout['areas'] } {
+  if (!w || !h) return { stars, hubs: layout.areas }
+  const [rw, rh] = layout.reference
+  const PAD = 8
+  const round = (v: number) => Math.round(v * 100) / 100
+  const hubs = { ...layout.areas }
+  const out: Star[] = []
+  for (const area of Object.keys(layout.areas) as Skill['area'][]) {
+    const list = stars.filter((s) => s.area === area)
+    const [cx, cy] = layout.areas[area]
+    const hx = (cx / 100) * w
+    const hy = (cy / 100) * h
+    const left = cx < 50
+    // The figure opened by `k` across and `ky` down around its center (px), and the edges of its
+    // labels: [inner, outer] across (as distances from the center line of the board's side it's
+    // on), [top, bottom] down.
+    const open = (k: number, ky: number) => {
+      const pts = list.map((s) => ({
+        s,
+        x: hx + ((s.x - cx) / 100) * w * k,
+        y: hy + ((s.y - cy) / 100) * h * ky
+      }))
+      const half = (s: Star) => starLabel(s.name).half * text
+      const tall = starLabel(list[0]?.name ?? '').tall * text
+      const l = Math.min(...pts.map((p) => p.x - half(p.s)))
+      const r = Math.max(...pts.map((p) => p.x + half(p.s)))
+      const t = Math.min(...pts.map((p) => p.y - (p.s.above ? tall : 8)))
+      const b = Math.max(...pts.map((p) => p.y + (p.s.above ? 8 : tall)))
+      return { pts, l, r, t, b }
+    }
+    if (!list.length) continue
+    const rest = open(1, 1)
+    // How far it would open to match the reference board's spread, and how far it can: holding
+    // its inner edge still, until its outer edge is at the board's.
+    const shiftFor = (f: ReturnType<typeof open>) =>
+      left ? Math.min(0, rest.r - f.r) : Math.max(0, rest.l - f.l)
+    const fits = (f: ReturnType<typeof open>) =>
+      left ? f.l + shiftFor(f) >= PAD : f.r + shiftFor(f) <= w - PAD
+    const want = Math.max(1, (text * rw) / w)
+    let k = 1
+    if (fits(open(want, 1))) k = want
+    else if (fits(rest)) {
+      let lo = 1
+      let hi = want
+      for (let i = 0; i < 12; i++) {
+        const mid = (lo + hi) / 2
+        if (fits(open(mid, 1))) lo = mid
+        else hi = mid
+      }
+      k = lo
+    }
+    // Down the board there are no bubbles beside it to keep clear of: it opens both ways.
+    const f = open(k, Math.max(1, (text * rh) / h))
+    let dx = shiftFor(f)
+    // Whatever else, nothing off the board.
+    dx += Math.max(0, PAD - (f.l + dx)) - Math.max(0, f.r + dx - (w - PAD))
+    const dy = Math.max(0, PAD - f.t) - Math.max(0, f.b - (h - PAD))
+    hubs[area] = [round(((hx + dx) / w) * 100), round(((hy + dy) / h) * 100)]
+    for (const p of f.pts)
+      out.push({
+        ...p.s,
+        x: round(((p.x + dx) / w) * 100),
+        y: round(((p.y + dy) / h) * 100)
+      })
+  }
+  // In their first order, which the lines and the intro count on.
+  return { stars: out.sort((a, b) => a.i - b.i), hubs }
 }
 
 /** What lights up with the active node. */
@@ -917,16 +1018,23 @@ const satId = (kind: string) => `sat:${kind}`
 const starId = (name: string) => `skill:${name}`
 const bubbleId = (slug: string) => `bubble:${slug}`
 
-/** Jackson's photo in its ring, cropped to his face. */
+/** The grained gradient behind the photo: lavender, laid out as its own surface (disc.ts). */
+const PORTRAIT_SURFACE = {
+  '--disc-accent': 'var(--af-lavender)',
+  ...surfaceSeed('me')
+} as CSSProperties
+
+/** Jackson's photo in its ring: his face, cut out of its room, on the grained gradient. */
 function Portrait({ className, hit }: { className?: string; hit?: string }) {
   return (
     <span
       data-hit={hit}
       data-shape="circle"
       className={cn(
-        'chrome-rim relative block overflow-hidden rounded-full border-[3px]',
+        'chrome-rim portrait-disc relative block overflow-hidden rounded-full border-[3px]',
         className
       )}
+      style={PORTRAIT_SURFACE}
     >
       <Image
         src={photo}
@@ -935,7 +1043,7 @@ function Portrait({ className, hit }: { className?: string; hit?: string }) {
         priority
         placeholder="blur"
         sizes="200px"
-        className="portrait-photo origin-[62%_31%] scale-[1.6] object-cover object-top"
+        className="portrait-photo object-cover"
       />
       {/* A light grade that ties the photo to the theme (globals.css, .portrait-grade). */}
       <span aria-hidden className="portrait-grade" />
@@ -975,8 +1083,9 @@ function BubbleDisc({
       )}
       data-lit={lit || undefined}
       style={{
-        width: `${rem}rem`,
-        height: `${rem}rem`,
+        // On the board the discs shrink with it (--node-k); anywhere else they're as given.
+        width: `calc(${rem}rem * var(--node-k, 1))`,
+        height: `calc(${rem}rem * var(--node-k, 1))`,
         ...discAccent(bubble.slug)
       }}
     >
@@ -984,7 +1093,7 @@ function BubbleDisc({
         name={bubble.slug}
         decorative
         className="h-auto"
-        style={{ width: `${art ?? rem * 0.6}rem` }}
+        style={{ width: `calc(${art ?? rem * 0.6}rem * var(--node-k, 1))` }}
       />
     </span>
   )
@@ -1542,13 +1651,14 @@ const BubbleNode = memo(function BubbleNode({
         left: `${b.x}%`,
         top: `${b.y}%`,
         // Put the disc's center (inside 0.5rem of padding) on the bubble's point.
-        translate: `-50% calc(-${style.disc / 2}rem - 0.5rem)`
+        translate: `-50% calc(-${style.disc / 2}rem * var(--node-k, 1) - 0.5rem)`
       }}
     >
       <div
         data-node={bubbleId(b.slug)}
         className="will-change-transform"
-        style={{ scale: 'var(--node-k, 1)' }}
+        // The disc shrinks with the board; the words under it keep their size (--text-k).
+        style={{ fontSize: 'calc(1rem * var(--text-k, 1))' }}
       >
         <BubbleTarget
           bubble={b}
@@ -1581,14 +1691,14 @@ const BubbleNode = memo(function BubbleNode({
           </span>
           <span
             data-hit={`project:${b.slug}`}
-            className="max-w-40 text-center text-xs leading-snug text-muted-foreground"
+            className="max-w-[13.5em] text-center text-[0.75em] leading-snug text-muted-foreground"
           >
             {b.tagline}
           </span>
           {bubbleWhen(b) && (
             <span
               data-hit={`project:${b.slug}`}
-              className="mt-0.5 text-[0.6875rem] leading-snug font-medium text-muted-foreground"
+              className="mt-0.5 text-[0.6875em] leading-snug font-medium text-muted-foreground"
             >
               {bubbleWhen(b)}
             </span>
@@ -1639,8 +1749,6 @@ const StarNode = memo(function StarNode({
       <div
         data-node={starId(s.name)}
         className="will-change-transform"
-        // Labels stay legible: stars shrink less than everything else.
-        style={{ scale: 'max(0.85, var(--node-k, 1))' }}
       >
         <button
           type="button"
@@ -1668,11 +1776,13 @@ const StarNode = memo(function StarNode({
           <span
             data-hit={`skill:${s.name}`}
             className={cn(
-              'text-[0.8125rem] leading-tight font-medium whitespace-nowrap',
+              'leading-tight font-medium whitespace-nowrap',
               lit
                 ? 'lit-text font-semibold'
                 : 'text-muted-foreground group-hover:text-foreground'
             )}
+            // Never smaller than its usual size, however small the board.
+            style={{ fontSize: 'calc(0.8125rem * var(--text-k, 1))' }}
           >
             {s.name}
           </span>
@@ -1723,13 +1833,14 @@ const SatelliteNode = memo(function SatelliteNode({
   return (
     <li
       className="absolute z-10"
-      style={{ left: `${x}%`, top: `${y}%`, translate: '-50% -2.25rem' }}
+      style={{
+        left: `${x}%`,
+        top: `${y}%`,
+        // Put the disc's center (inside 0.25rem of padding) on the satellite's point.
+        translate: '-50% calc(-1.8rem * var(--node-k, 1) - 0.25rem)'
+      }}
     >
-      <div
-        data-node={satId(s.kind)}
-        className="will-change-transform"
-        style={{ scale: 'var(--node-k, 1)' }}
-      >
+      <div data-node={satId(s.kind)} className="will-change-transform">
         <a
           href={s.href}
           data-sat={s.kind}
@@ -1750,12 +1861,13 @@ const SatelliteNode = memo(function SatelliteNode({
             satellite={s}
             lit={isActive}
             hit={`satellite:${s.kind}`}
-            className="size-[3.6rem]"
-            artClassName="w-[2.3rem]"
+            className="size-[calc(3.6rem*var(--node-k,1))]"
+            artClassName="w-[calc(2.3rem*var(--node-k,1))]"
           />
           <span
             data-hit={`satellite:${s.kind}`}
-            className={cn('mt-1 text-xs font-semibold', isActive && 'lit-text')}
+            className={cn('mt-1 leading-[1.34] font-semibold', isActive && 'lit-text')}
+            style={{ fontSize: 'calc(0.75rem * var(--text-k, 1))' }}
           >
             {s.label}
           </span>
@@ -1785,7 +1897,7 @@ const MeNode = memo(function MeNode({
       style={{
         left: `${me[0]}%`,
         top: `${me[1]}%`,
-        translate: '-50% -4.5rem'
+        translate: '-50% calc(-4.5rem * var(--node-k, 1))'
       }}
     >
       <div data-node={ME_ID} className="will-change-transform">
@@ -1812,22 +1924,28 @@ const MeNode = memo(function MeNode({
             live && 'intro-me',
             'flex w-max cursor-default flex-col items-center rounded-2xl pb-2 text-center focus-ring'
           )}
-          // Scales with the layout, around the photo's centre.
-          style={{
-            transform: 'scale(var(--node-k, 1))',
-            transformOrigin: '50% 4.5rem'
-          }}
+          // The intro grows it from the photo's centre.
+          style={{ transformOrigin: '50% calc(4.5rem * var(--node-k, 1))' }}
         >
-          <Portrait hit="me" className={cn('size-36', meOpen && LIT_RING)} />
+          <Portrait
+            hit="me"
+            className={cn(
+              'size-[calc(9rem*var(--node-k,1))]',
+              meOpen && LIT_RING
+            )}
+          />
           <p
             data-hit="me"
-            className="mt-4 text-2xl font-semibold tracking-tight whitespace-nowrap"
+            className="mt-[calc(1rem*var(--node-k,1))] leading-[1.34] font-semibold tracking-tight whitespace-nowrap"
+            // The photo shrinks with the board; the name only a little, and the role not at all.
+            style={{ fontSize: 'calc(1.5rem * var(--name-k, 1))' }}
           >
             {PROFILE.name}
           </p>
           <p
             data-hit="me"
-            className="mt-1 text-sm whitespace-nowrap text-muted-foreground"
+            className="mt-1 leading-[1.43] whitespace-nowrap text-muted-foreground"
+            style={{ fontSize: 'calc(0.875rem * var(--text-k, 1))' }}
           >
             {PROFILE.role} · {PROFILE.location.split(',')[0]}
           </p>
@@ -1840,11 +1958,9 @@ const MeNode = memo(function MeNode({
           // While it's showing, the pointer can rest on it (useIntentHover).
           data-pop={meOpen || undefined}
           className={cn(
-            'dark ink-pop pointer-events-none absolute left-1/2 w-[34rem] -translate-x-1/2 rounded-lg bg-background p-5 text-foreground shadow-pop transition-[opacity,translate] duration-200 motion-reduce:transition-none',
+            'dark ink-pop pointer-events-none absolute top-full left-1/2 w-[34rem] -translate-x-1/2 rounded-lg bg-background p-5 text-foreground shadow-pop transition-[opacity,translate] duration-200 motion-reduce:transition-none',
             meOpen ? 'translate-y-0 opacity-100' : 'translate-y-1 opacity-0'
           )}
-          // Just under your name as drawn (the block above is scaled), at full size itself.
-          style={{ top: 'calc(4.5rem + (100% - 4.5rem) * var(--node-k, 1))' }}
         >
           <About />
         </div>
@@ -2130,8 +2246,7 @@ export function Constellation({
       )}
 
       {/* Pause the page's ambient motion (overlay.ts): beside the other round buttons. Not shown
-          under reduced motion, where none of it runs to begin with, nor below `lg`, where the page
-          is a plain column with nothing to pause. */}
+          under reduced motion, where none of it runs to begin with. */}
       <button
         type="button"
         onClick={() => setMotionPaused(!still)}
@@ -2139,7 +2254,7 @@ export function Constellation({
         aria-pressed={still}
         title={still ? 'Resume motion' : 'Pause motion'}
         className={cn(
-          'intro-chrome chrome-rim round-btn fixed right-[4.25rem] bottom-4 z-40 hidden size-10 items-center justify-center rounded-full border-2 text-foreground shadow-card-hover focus-ring motion-reduce:hidden! lg:flex',
+          'intro-chrome chrome-rim round-btn fixed right-[4.25rem] bottom-4 z-40 flex size-10 items-center justify-center rounded-full border-2 text-foreground shadow-card-hover focus-ring motion-reduce:hidden!',
           INTRO.ms > 0 && 'lg:right-[7.25rem]'
         )}
       >
@@ -2162,7 +2277,7 @@ const Board = memo(function Board({
   intro,
   run,
   skipIntro,
-  stars,
+  stars: scattered,
   bubbles: placed,
   satellites,
   onOpenStory
@@ -2184,11 +2299,19 @@ const Board = memo(function Board({
   const board = useRef<HTMLDivElement>(null)
   const size = useBoardSize(board)
   const ME = layout.me
-  // One scale for the whole layout (distances and node sizes), from the board's size.
+  // One scale for the layout's distances, from the board's size; the discs and the text each
+  // take their own share of it (nodeScales), so a small board shrinks discs before words.
   // Worked out as if text were its usual 16px (a larger text size is a smaller board, in effect);
-  // `reach` is the same scale in real px, for the distances.
+  // `reach` is the same scale in real px, for the distances, and `disc` likewise for the discs.
   const scale = layoutScale(layout, size.w / size.rem, size.h / size.rem)
+  const scales = nodeScales(scale)
   const reach = scale * size.rem
+  const disc = scales.disc * size.rem
+  const { stars, hubs } = useMemo(
+    () =>
+      spreadStars(layout, scattered, size.w, size.h, scales.text * size.rem),
+    [layout, scattered, size.w, size.h, scales.text, size.rem]
+  )
   const boardSize = useMemo<[number, number]>(
     () => (size.w ? [size.w, size.h] : layout.reference),
     [size.w, size.h, layout.reference]
@@ -2480,7 +2603,7 @@ const Board = memo(function Board({
       x: ME[0],
       y: ME[1],
       weight: 0.5,
-      r: 72 * reach,
+      r: 72 * disc,
       reach: REACH.me,
       pullReach: 30,
       travel: 3
@@ -2491,7 +2614,7 @@ const Board = memo(function Board({
         x,
         y,
         weight: 0.8,
-        r: 32 * reach,
+        r: 28.8 * disc,
         reach: REACH.satellite,
         // The same long, soft approach as a star, moving a little less.
         pullReach: 30,
@@ -2513,7 +2636,7 @@ const Board = memo(function Board({
         x: n.x,
         y: n.y,
         weight: 0.6,
-        r: BUBBLE_STYLE[n.size].disc * 8 * reach,
+        r: BUBBLE_STYLE[n.size].disc * 8 * disc,
         reach: REACH.project,
         // Heavier than a star: pulled from as far, but moving a little less.
         pullReach: 30,
@@ -2521,7 +2644,7 @@ const Board = memo(function Board({
       }
     // Dust isn't here: it floats by itself in CSS (Dust), so the loop never touches it.
     return m
-  }, [stars, bubbles, satellites, satPos, ME, reach])
+  }, [stars, bubbles, satellites, satPos, ME, disc])
 
   const activeId = activeStar
     ? starId(activeStar.name)
@@ -2607,7 +2730,9 @@ const Board = memo(function Board({
       data-hovering={active !== null || undefined}
       style={
         {
-          '--node-k': scale,
+          '--node-k': scales.disc,
+          '--text-k': scales.text,
+          '--name-k': scales.name,
           '--intro-kick': `${intro.kick}ms`,
           '--intro-build': `${intro.buildup}ms`,
           '--intro-blast': `${blast}ms`,
@@ -2920,7 +3045,7 @@ const Board = memo(function Board({
           belongs to. */}
       <section>
         <h2 className="sr-only">Skills</h2>
-        {Object.entries(layout.areas).map(([area, hub]) => (
+        {Object.entries(hubs).map(([area, hub]) => (
           <section key={area}>
             <h3
               className={cn(
@@ -2979,7 +3104,7 @@ const Board = memo(function Board({
             const [x, y] = anchor ? [anchor.x, anchor.y] : satAnchor!
             const left = anchor ? x > 50 : x < 50
             const gap = activeBubble
-              ? `${BUBBLE_STYLE[activeBubble.size].disc / 2 + 1}rem`
+              ? `${(BUBBLE_STYLE[activeBubble.size].disc / 2) * scales.disc + 1}rem`
               : activeSat
                 ? '2.5rem'
                 : '1.5rem'
@@ -3094,16 +3219,6 @@ const Column = memo(function Column({
           <p className="mt-1 text-sm text-muted-foreground">
             {PROFILE.role} · {PROFILE.location}
           </p>
-          {/* The photo opens the About too, but nothing about a photo says so: this does. */}
-          <button
-            type="button"
-            onClick={() => setPicked({ kind: 'me' })}
-            aria-haspopup="dialog"
-            className="mt-2.5 inline-flex h-8 items-center gap-1 rounded-full bg-primary pr-2.5 pl-3.5 text-sm font-semibold text-primary-foreground focus-ring"
-          >
-            About me
-            <CaretRightIcon weight="bold" className="size-3.5" aria-hidden />
-          </button>
         </div>
       </div>
       <nav aria-label="Links">
